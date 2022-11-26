@@ -57,6 +57,11 @@ class InstanceObj extends B.BasicObj {
         this.enumeratePhysicalDeviceObjs();
         return this._devices;
     }
+
+    //
+    createWindow(cInfo) {
+        return new B.WindowObj(this.handle, cInfo);
+    }
 }
 
 //

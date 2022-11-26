@@ -64,10 +64,10 @@ const createTypedBuffer = (physicalDevice, device, usage, byteSize, PTR = null) 
     V.vkGetBufferMemoryRequirements(device, buffer[0], memoryRequirements);
 
     //
-    const propertyFlag = PTR ? (
+    const propertyFlag = PTR == "BAR" ? (V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) : (PTR ? (
         V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
         V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-    ) : V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    ) : V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     //
     const memAllocFlags = new V.VkMemoryAllocateFlagsInfo({
@@ -87,7 +87,7 @@ const createTypedBuffer = (physicalDevice, device, usage, byteSize, PTR = null) 
     V.vkBindBufferMemory(device, buffer[0], bufferMemory[0], 0n);
 
     //
-    if (PTR) {
+    if (PTR && typeof PTR != "string") {
         //
         const dataPtr = new BigUint64Array(1);
         V.vkMapMemory(device, bufferMemory[0], 0n, bufferInfo.size, 0, dataPtr);

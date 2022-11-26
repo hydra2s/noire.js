@@ -32,6 +32,10 @@ class PhysicalDeviceObj extends B.BasicObj {
         B.Handles[this.handle[0]] = this;
     }
 
+    createDevice(cInfo) {
+        return new B.DeviceObj(this.handle, cInfo);
+    }
+
     getSurfaceInfo(surface) {
         let surf = { surface, presentModeCount: new Uint32Array(1), presentModes: [], surfaceSupport: [0] };
 

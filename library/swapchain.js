@@ -7,6 +7,7 @@ class SwapChainObj extends B.BasicObj {
         super(base, null); this.cInfo = cInfo;
         const physicalDeviceObj = B.Handles[this.cInfo.physicalDevice[0]];
         const surfaceInfo = physicalDeviceObj.getSurfaceInfo(this.cInfo.window.getSurface());
+        const deviceObj = B.Handles[this.base[0]];
 
         // TODO: full support auto info
         this.pInfo = new V.VkSwapchainCreateInfoKHR({
@@ -47,7 +48,8 @@ class SwapChainObj extends B.BasicObj {
             V.vkCreateImageView(this.base[0], imageViewInfo.set({image: this.swapchainImages[I]}), null, this.imageViews.addressOffsetOf(I)); // bit-tricky by device address
         }
 
-
+        //
+        deviceObj.SwapChains[this.handle[0]] = this;
     }
 }
 

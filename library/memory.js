@@ -7,7 +7,8 @@ class MemoryAllocatorObj extends BasicObj {
         super(base, null); this.cInfo = cInfo;
         this.Memories = {};
         this.handle = new BigUint64Array([0]);
-        B.Handles[this.handle.address()] = this;
+        this.handle[0] = this.handle.address();
+        B.Handles[this.handle[0]] = this;
     }
 
     allocateMemory(cInfo, allocationObj = null) {
@@ -18,7 +19,7 @@ class MemoryAllocatorObj extends BasicObj {
         }
 
         //
-        const deviceMemory = new DeviceMemoryObj(this.handle.address(), cInfo);
+        const deviceMemory = new DeviceMemoryObj(this.handle[0], cInfo);
         const memoryOffset = 0n; // TODO: support for allocation offsets and VMA
 
         //
@@ -26,8 +27,8 @@ class MemoryAllocatorObj extends BasicObj {
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 
         //
-        B.Handles[this.handle.address()] = this;
-        deviceObj.Allocators[this.handle.address()] = this;
+        B.Handles[this.handle[0]] = this;
+        deviceObj.Allocators[this.handle[0]] = this;
 
         //
         if (allocationObj) {
@@ -57,7 +58,7 @@ class DeviceMemoryObj extends BasicObj {
         this.Allocations = {};
 
         //
-        const memoryAllocatorObj = B.Handles[this.base.address()];
+        const memoryAllocatorObj = B.Handles[this.base[0]];
         const deviceObj = B.Handles[memoryAllocatorObj.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 

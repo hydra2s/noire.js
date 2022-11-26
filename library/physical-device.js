@@ -55,3 +55,7 @@ class PhysicalDeviceObj extends B.BasicObj {
         return queueIndex;
     }
 }
+
+//
+B.PhysicalDeviceObj = PhysicalDeviceObj;
+export default PhysicalDeviceObj;

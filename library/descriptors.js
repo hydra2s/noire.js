@@ -83,4 +83,6 @@ class DescriptorsObj extends B.BasicObj {
     }
 }
 
+//
+B.DeviceObj = DeviceObj;
 export default DeviceObj;

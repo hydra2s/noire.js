@@ -38,7 +38,7 @@ class SwapChainObj extends B.BasicObj {
             sType : V.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             viewType : V.VK_IMAGE_VIEW_TYPE_2D,
             format : this.pInfo.imageFormat,
-            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 },
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: this.pInfo.imageArrayLayers },
         });
 
         // moooo, korovka...
@@ -50,3 +50,7 @@ class SwapChainObj extends B.BasicObj {
 
     }
 }
+
+//
+B.SwapChainObj = SwapChainObj;
+export default SwapChainObj;

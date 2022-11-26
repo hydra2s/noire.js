@@ -4,6 +4,9 @@ import { default as V } from "../deps/vulkan.node.js/index.js";
 //
 class DeviceObj extends B.BasicObj {
     constructor(base, cInfo) {
+        //
+        const physicalDeviceObj = B.Handles[this.base[0]];
+        const instanceObj = B.Handles[physicalDeviceObj.base[0]];
 
         // 
         this.deviceQueueInfo = new V.VkDeviceQueueCreateInfo(new Array(cInfo.queueFamilies.length).fill({}).map((_, I)=>({
@@ -18,7 +21,7 @@ class DeviceObj extends B.BasicObj {
 
         //
         V.vkCreateDevice(physicalDevice, this.deviceInfo = new V.VkDeviceCreateInfo({
-            pNext: deviceFeatures,
+            pNext: physicalDeviceObj.deviceFeatures,
             queueCreateInfoCount: this.deviceQueueInfo.length,
             pQueueCreateInfos: this.deviceQueueInfo,
             enabledExtensionCount: this.deviceExtensions.length,
@@ -27,6 +30,13 @@ class DeviceObj extends B.BasicObj {
 
         //
         B.Handles[this.handle[0]] = this;
+
+        //
+        this.Handles = {
+            Images: {},
+            Buffers: {},
+            Memories: {}
+        };
     }
 
     getQueue(queueFamilyIndex, queueIndex = 0) {
@@ -37,4 +47,5 @@ class DeviceObj extends B.BasicObj {
 }
 
 //
+B.DeviceObj = DeviceObj;
 export default DeviceObj;

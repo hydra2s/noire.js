@@ -41,8 +41,16 @@ class InstanceObj extends B.BasicObj {
         B.Handles[this.handle[0]] = this;
     }
 
-    // TODO: 
+    //
     enumeratePhysicalDevices() {
-        
+        V.vkEnumeratePhysicalDevices(this.handle[0], this.deviceCount = new Uint32Array(1), null);
+        if (this.deviceCount[0] <= 0) console.error("Error: No render devices available!");
+        V.vkEnumeratePhysicalDevices(this.handle[0], this.deviceCount, this._devices = new BigUint64Array(this.deviceCount[0]));
+        this.devices = new Array(this.deviceCount[0]).fill({}).map((_, I)=>(new B.PhysicalDeviceObj(this.handle, this._devices[I])));
+        return this.devices;
     }
 }
+
+//
+B.InstanceObj = InstanceObj;
+export default InstanceObj;

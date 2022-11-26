@@ -21,3 +21,6 @@ class WindowObj extends B.BasicObj {
         return this.windowSize;
     }
 }
+
+B.WindowObj = WindowObj;
+export default WindowObj;

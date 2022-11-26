@@ -105,8 +105,8 @@ import fs from "fs";
         graphicsPipelineObj.cmdDraw({
             cmdBuf, vertexCount: 3, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)])
         });
-        swapchainObj.cmdToPresent(cmdBuf, 0);
-    }, swapchainObj.getImageCount());
+        swapchainObj.cmdToPresent(cmdBuf);
+    }, swapchainObj.getImageCount(), 0);
 
     //
     let lastTime = performance.now();

@@ -216,7 +216,17 @@ class GraphicsPipelineObj extends PipelineObj {
         }) : null;
 
         //
+        const colorAttachmentClear = new V.VkClearAttachment(colorTransitionBarrier.length);
+        const depthAttachmentClear = depthTransitionBarrier ? new V.VkClearAttachment({ aspectMask: deviceObj.ImageViews[depthImageView].cInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.depthAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
+        const stencilAttachmentClear = stencilTransitionBarrier ? new V.VkClearAttachment({ aspectMask: deviceObj.ImageViews[stencilImageView].cInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.stencilAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
+
+        //
+        const viewport_ = new V.VkViewport(viewport);
+        const scissor_ = new V.VkRect2D(scissor);
+
+        //
         for (let I=0;I<colorTransitionBarrier.length;I++) {
+            colorAttachmentClear[I] = { aspectMask: deviceObj.ImageViews[imageViews[I]].cInfo.subresourceRange.aspectMask, colorAttachment: I, ["clearValue:f32[4]"]: framebufferLayoutObj.colorAttachmentDynamicRenderInfo[I]["clearValue:f32[4]"] };
             dynamicRenderingInfo[I] = {
                 ...framebufferLayoutObj.colorAttachmentDynamicRenderInfo[I],
                 imageView: imageViews[I],
@@ -239,10 +249,6 @@ class GraphicsPipelineObj extends PipelineObj {
             layerCount = Math.min(deviceObj?.ImageViews[imageViews[I]]?.cInfo?.subresourceRange?.layerCount || 1, 1);
         }
 
-        //
-        const viewport_ = new V.VkViewport(viewport);
-        const scissor_ = new V.VkRect2D(scissor);
-
         // 
         V.vkCmdBeginRendering(cmdBuf[0]||cmdBuf, new V.VkRenderingInfoKHR({ 
             renderArea: scissor_[0], 
@@ -263,10 +269,19 @@ class GraphicsPipelineObj extends PipelineObj {
         V.vkCmdSetViewportWithCount(cmdBuf[0]||cmdBuf, viewport_.length, viewport_);
 
         //
+        if (!(vertexInfo && vertexInfo.length || vertexCount > 0)) {
+            const rects_ = new V.VkClearRect({ rect: scissor_[0], baseArrayLayer: 0, layerCount }); 
+            V.vkCmdClearAttachments(cmdBuf[0]||cmdBuf, colorAttachmentClear.length, colorAttachmentClear, rects_.length, rects_);
+            if (  depthAttachmentClear) V.vkCmdClearAttachments(cmdBuf[0]||cmdBuf,   depthAttachmentClear.length,   depthAttachmentClear, scissor_.length, scissor_);
+            if (stencilAttachmentClear) V.vkCmdClearAttachments(cmdBuf[0]||cmdBuf, stencilAttachmentClear.length, stencilAttachmentClear, scissor_.length, scissor_);
+        }
+
+        //
         if (vertexInfo && vertexInfo.length) {
             const multiDraw = new V.VkMultiDrawInfoEXT(vertexInfo);
             V.vkCmdDrawMultiEXT(cmdBuf[0]||cmdBuf, multiDraw.length, multiDraw, instanceCount, firstInstance, V.VkMultiDrawInfoEXT.byteLength);
-        } else {
+        } else 
+        if (vertexCount > 0) {
             V.vkCmdDraw(cmdBuf[0]||cmdBuf, vertexCount, instanceCount, firstVertex, firstInstance);
         }
 

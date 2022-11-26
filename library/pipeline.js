@@ -277,14 +277,14 @@ class GraphicsPipelineObj extends PipelineObj {
 
         // 
         let rendered = false;
-        if (this.usedMeshShader) {
+        if (this.usedMeshShader && dispatch) {
             V.vkCmdDrawMeshTasksEXT(cmdBuf[0]||cmdBuf, dispatch.x || 1, dispatch.y || 1, dispatch.z || 1); rendered = true;
         } else
-        if (vertexInfo && vertexInfo.length) {
+        if (!this.usedMeshShader && vertexInfo && vertexInfo.length) {
             const multiDraw = new V.VkMultiDrawInfoEXT(vertexInfo);
             V.vkCmdDrawMultiEXT(cmdBuf[0]||cmdBuf, multiDraw.length, multiDraw, instanceCount, firstInstance, V.VkMultiDrawInfoEXT.byteLength); rendered = true;
         } else 
-        if (vertexCount > 0) {
+        if (!this.usedMeshShader && vertexCount > 0) {
             V.vkCmdDraw(cmdBuf[0]||cmdBuf, vertexCount, instanceCount, firstVertex, firstInstance); rendered = true;
         } else {
             const rects_ = new V.VkClearRect({ rect: scissor_[0], baseArrayLayer: 0, layerCount }); 

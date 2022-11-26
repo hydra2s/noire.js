@@ -124,7 +124,7 @@ import fs from "fs";
         //console.log("FPS: " + (1000/(currentTime - lastTime)));
         lastTime = currentTime;
 
-        // TODO: pre-cache command buffer
+        // 
         fenceI[imageIndex] = deviceObj.submitCommands({
             waitStageMasks: [ V.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ],
             waitSemaphores: swapchainObj.semaphoreImageAvailable,

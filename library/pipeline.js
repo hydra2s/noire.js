@@ -62,6 +62,7 @@ class GraphicsPipelineObj extends PipelineObj {
         const stageKeys = Object.keys(cInfo.shaderStages);
         this.shaderStages = new V.VkPipelineShaderStageCreateInfo(stageKeys.length);
         let N = 0; for (let stage in cInfo.shaderStages) {
+            if (stage == V.VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT || stage == V.VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT) { this.usedMeshShader = true; };
             this.shaderStages[N++] = B.createShaderModuleInfo(B.createShaderModule(this.base[0], cInfo.shaderStages[stage].code), parseInt(stage), cInfo.shaderStages[stage].pName || "main");
         }
 
@@ -274,8 +275,11 @@ class GraphicsPipelineObj extends PipelineObj {
         V.vkCmdSetScissorWithCount(cmdBuf[0]||cmdBuf, scissor_.length, scissor_);
         V.vkCmdSetViewportWithCount(cmdBuf[0]||cmdBuf, viewport_.length, viewport_);
 
-        // TODO: support for Mesh Shaders
+        // 
         let rendered = false;
+        if (this.usedMeshShader) {
+            V.vkCmdDrawMeshTasksEXT(cmdBuf[0]||cmdBuf, dispatch.x || 1, dispatch.y || 1, dispatch.z || 1); rendered = true;
+        } else
         if (vertexInfo && vertexInfo.length) {
             const multiDraw = new V.VkMultiDrawInfoEXT(vertexInfo);
             V.vkCmdDrawMultiEXT(cmdBuf[0]||cmdBuf, multiDraw.length, multiDraw, instanceCount, firstInstance, V.VkMultiDrawInfoEXT.byteLength); rendered = true;

@@ -53,7 +53,7 @@ class FramebufferLayoutObj extends B.BasicObj {
         this.depthAttachmentDynamicRenderInfo = {
             loadOp: V.VK_ATTACHMENT_LOAD_OP_CLEAR,
             storeOp: V.VK_ATTACHMENT_STORE_OP_STORE,
-            imageLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            imageLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             "clearValue:VkClearDepthStencilValue": {depth: 1.0, stencil: 0},
             ...cInfo.depthAttachment.dynamicState
         };
@@ -62,7 +62,7 @@ class FramebufferLayoutObj extends B.BasicObj {
         this.stencilAttachmentDynamicRenderInfo = {
             loadOp: V.VK_ATTACHMENT_LOAD_OP_CLEAR,
             storeOp: V.VK_ATTACHMENT_STORE_OP_STORE,
-            imageLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            imageLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             "clearValue:VkClearDepthStencilValue": {depth: 1.0, stencil: 0},
             ...cInfo.stencilAttachment.dynamicState
         };

@@ -52,6 +52,115 @@ import fs from "fs";
     const readData = new Uint32Array(hostBufferObj.map());
     console.log(readData);
 
-    
+
+    // // // // // // //
+    // THE CONTINUE!  //
+    // // // // // // //
+
+    //
+    const framebufferLayoutObj = deviceObj.createFramebufferLayout({
+        colorAttachments: [{
+            blend: {},
+            format: V.VK_FORMAT_B8G8R8A8_UNORM,
+            dynamicState: {}
+        }],
+        depthAttachment: {
+            format: V.VK_FORMAT_UNDEFINED,
+            dynamicState: {}
+        },
+        stencilAttachment: {
+            format: V.VK_FORMAT_UNDEFINED,
+            dynamicState: {}
+        }
+    });
+
+    //
+    const windowObj = instanceObj.createWindow({ width: 1280, height: 720 });
+    const swapchainObj = deviceObj.createSwapChain({ window: windowObj });
+    const graphicsPipelineObj = deviceObj.createGraphicsPipeline({
+        pipelineLayout: descriptorsObj.handle[0],
+        shaderStages: {
+            [V.VK_SHADER_STAGE_VERTEX_BIT]: {code: await fs.promises.readFile("shaders/triangle.vert.spv")},
+            [V.VK_SHADER_STAGE_FRAGMENT_BIT]: {code: await fs.promises.readFile("shaders/triangle.frag.spv")}
+        }
+    });
+
+    //
+    const windowSize = windowObj.getWindowSize();
+    const viewport = new V.VkViewport({});
+    viewport[":f32[6]"] = [0, 0, windowSize[0], windowSize[1], 0.0, 1.0];
+    const scissor = new V.VkRect2D({ ["offset:u32[2]"]: [0,0], ["extent:u32[2]"]: windowSize});
+
+    //
+    let imageIndex = 0;
+    const fenceI = new BigUint64Array(swapchainObj.getImageCount());
+    for (let I=0;I<fenceI.length;I++) {
+        V.vkCreateFence(deviceObj.handle[0], new V.VkFenceCreateInfo({ flags: V.VK_FENCE_CREATE_SIGNALED_BIT }), null, fenceI.addressOffsetOf(I));
+    }
+
+    //
+    deviceObj.submitOnce({
+        queueFamilyIndex: 0,
+        queueIndex: 0,
+        cmdBufFn: (cmdBuf)=>{
+            swapchainObj.cmdFromUndefined(cmdBuf);
+        }
+    });
+
+    //
+    const waitStageMask = new Int32Array([ V.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ]);
+    const renderGen = async function*() {
+        // TODO: dedicated semaphores support
+        imageIndex = swapchainObj.acquireImageIndex();
+
+        // await fence before rendering (and poll events)
+        //await awaitFenceAsync(device[0], fence[imageIndex[0]]);
+        for await (let R of K.awaitFenceGen(deviceObj.handle[0], fenceI[imageIndex])) { yield R; };
+        V.vkDestroyFence(deviceObj.handle[0], fenceI[imageIndex], null); // promise to manually broke fence
+
+        //
+        fenceI[imageIndex] = deviceObj.submitOnce({
+            waitDstMask: [ V.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ],
+            waitSemaphores: swapchainObj.semaphoreImageAvailable,
+            signalSemaphores: swapchainObj.semaphoreRenderingAvailable,
+            queueFamilyIndex: 0,
+            queueIndex: 0,
+            cmdBufFn: (cmdBuf)=>{
+                swapchainObj.cmdToGeneral(cmdBuf);
+                graphicsPipelineObj.cmdDraw({
+                    cmdBuf, vertexCount: 3, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getCurrentImageView()])
+                });
+                swapchainObj.cmdToPresent(cmdBuf);
+            }
+        });
+
+        // TODO: dedicated semaphores support
+        swapchainObj.present({ queue: deviceObj.getQueue(0, 0) });
+
+        //
+        return V.VK_SUCCESS;
+    }
+
+    //
+    let renderer = null, iterator = null;
+    let status = V.VK_NOT_READY;
+    let terminated = false;
+
+    //
+    console.log("Begin rendering...");
+    while (!V.glfwWindowShouldClose(windowObj.window) && !terminated) {
+        V.glfwPollEvents();
+        deviceObj.tickProcessing();
+        //await awaitTick(); // crap, it's needed for async!
+
+        // as you can see, async isn't so async
+        //if (!renderer || renderer.status == "ready") { renderer = makeState(renderGen()); };
+        if (!renderer || iterator.done) { renderer = renderGen(); };
+        iterator = await renderer.next();
+    };
+
+    // 
+    V.glfwTerminate();
+
 })();
 

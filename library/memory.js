@@ -301,34 +301,36 @@ class ImageObj extends AllocationObj {
         super(base, cInfo);
         this.isImage = true;
 
-        //
-        const deviceObj = B.Handles[this.base[0]];
-        const physicalDeviceObj = B.Handles[deviceObj.base[0]];
+        if (this.cInfo) {
+            //
+            const deviceObj = B.Handles[this.base[0]];
+            const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 
 
-        // TODO: conversion array based extent to object
+            // TODO: conversion array based extent to object
 
 
-        // TODO: support for external memory allocators
-        V.vkCreateImage(this.base[0], this.pInfo = new V.VkImageCreateInfo({
-            imageType: cInfo.extent.depth > 1 ? VK_IMAGE_TYPE_3D : (cInfo.extent.height > 1 ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D),
-            format: cInfo.format,
-            extent: {width: cInfo.extent.width || 1, height: cInfo.extent.height || 1, depth: cInfo.extent.depth || 1},
-            mipLevels: cInfo.mipLevels || 1,
-            arrayLayers: cInfo.arrayLayers || 1,
-            samples: cInfo.samples || V.VK_SAMPLE_COUNT_1_BIT,
-            usage: cInfo.usage | V.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | V.VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-            sharingMode: V.VK_SHARING_MODE_EXCLUSIVE,
-            tiling: cInfo.tiling || V.VK_IMAGE_TILING_OPTIMAL,
-            queueFamilyIndexCount: cInfo.queueFamilyIndices?.length || 0,
-            pQueueFamilyIndices: cInfo.queueFamilyIndices,
-            initialLayout: cInfo.initialLayout || V.VK_IMAGE_LAYOUT_UNDEFINED
-        }), null, this.handle = new BigUint64Array(1));
-        deviceObj.Images[this.handle[0]] = this;
+            // TODO: support for external memory allocators
+            V.vkCreateImage(this.base[0], this.pInfo = new V.VkImageCreateInfo({
+                imageType: cInfo.extent.depth > 1 ? VK_IMAGE_TYPE_3D : (cInfo.extent.height > 1 ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D),
+                format: cInfo.format,
+                extent: {width: cInfo.extent.width || 1, height: cInfo.extent.height || 1, depth: cInfo.extent.depth || 1},
+                mipLevels: cInfo.mipLevels || 1,
+                arrayLayers: cInfo.arrayLayers || 1,
+                samples: cInfo.samples || V.VK_SAMPLE_COUNT_1_BIT,
+                usage: cInfo.usage | V.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | V.VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                sharingMode: V.VK_SHARING_MODE_EXCLUSIVE,
+                tiling: cInfo.tiling || V.VK_IMAGE_TILING_OPTIMAL,
+                queueFamilyIndexCount: cInfo.queueFamilyIndices?.length || 0,
+                pQueueFamilyIndices: cInfo.queueFamilyIndices,
+                initialLayout: cInfo.initialLayout || V.VK_IMAGE_LAYOUT_UNDEFINED
+            }), null, this.handle = new BigUint64Array(1));
+            deviceObj.Images[this.handle[0]] = this;
 
-        //
-        V.vkGetImageMemoryRequirements2(this.base[0], new V.VkImageMemoryRequirementsInfo2({ image: this.handle[0] }), this.memoryRequirements2 = new V.VkMemoryRequirements2());
-        this.memoryRequirements = this.memoryRequirements2.memoryRequirements;
+            //
+            V.vkGetImageMemoryRequirements2(this.base[0], new V.VkImageMemoryRequirementsInfo2({ image: this.handle[0] }), this.memoryRequirements2 = new V.VkMemoryRequirements2());
+            this.memoryRequirements = this.memoryRequirements2.memoryRequirements;
+        }
     }
 
     cmdCopyToBuffer(cmdBuf, buffer, regions, imageLayout = V.VK_IMAGE_LAYOUT_GENERAL) {
@@ -412,11 +414,69 @@ class ImageObj extends AllocationObj {
 }
 
 //
+class ImageViewObj extends B.BasicObj {
+    constructor(base, cInfo) {
+        super(base, null); this.cInfo = cInfo;
+        this.DSC_ID = -1;
+
+        if (this.cInfo) {
+            //
+            const deviceObj = this.base[0];
+            const imageObj = deviceObj.Images[this.cInfo.image];
+
+            //
+            V.vkCreateImageView(this.base[0], this.imageViewInfo = new V.VkImageViewCreateInfo({
+                viewType : this.cInfo.viewType || V.VK_IMAGE_VIEW_TYPE_2D, // TODO: automatic view type
+                format : imageObj.cInfo.format,
+                subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: this.cInfo.mipLevel || 0, levelCount: 1, baseArrayLayer: 0, layerCount: imageObj.cInfo.arrayLayers, ...this.cInfo.subresourceRange },
+            }).set({image: this.cInfo.image}), null, this.handle = new BigUint64Array(1));
+
+            //
+            if (this.cInfo.pipelineLayout) {
+                const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
+                if (this.cInfo.type == "storage") this.DSC_ID = descriptorsObj.storageImages.push(this.handle[0]);
+                if (this.cInfo.type == "sampled") this.DSC_ID = descriptorsObj.sampledImages.push(this.handle[0]);
+            }
+
+            //
+            deviceObj.ImageViews[this.handle[0]] = this;
+        }
+    }
+}
+
+//
+class SamplerObj extends B.BasicObj {
+    constructor(base, cInfo) {
+        super(base, null); this.cInfo = cInfo;
+        this.DSC_ID = -1;
+
+        //
+        const deviceObj = this.base[0];
+
+        //
+        V.vkCreateSampler(this.base[0], this.samplerInfo = new V.VkSamplerCreateInfo({
+            ...cInfo.samplerInfo
+        }), null, this.handle = new BigUint64Array(1));
+
+        //
+        if (this.cInfo.pipelineLayout) {
+            const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
+            this.DSC_ID = descriptorsObj.samplers.push(this.handle[0]);
+        }
+
+        //
+        deviceObj.Samplers[this.handle[0]] = this;
+    }
+}
+
+//
 B.MemoryAllocatorObj = MemoryAllocatorObj;
 B.DeviceMemoryObj = DeviceMemoryObj;
 B.AllocationObj = AllocationObj;
 B.BufferObj = BufferObj;
 B.ImageObj = ImageObj;
+B.ImageViewObj = ImageViewObj;
+B.SamplerObj = SamplerObj;
 
 //
 export default {
@@ -424,5 +484,7 @@ export default {
     DeviceMemoryObj,
     AllocationObj,
     BufferObj,
-    ImageObj
+    ImageObj,
+    SamplerObj,
+    ImageViewObj
 };

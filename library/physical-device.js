@@ -8,7 +8,8 @@ class PhysicalDeviceObj extends B.BasicObj {
         const instanceObj = B.Handles[base[0]];
 
         //
-        this.deviceRobustness2Features = new V.VkPhysicalDeviceRobustness2FeaturesEXT({});
+        this.deviceVertexInputFeatures = new V.VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT({});
+        this.deviceRobustness2Features = new V.VkPhysicalDeviceRobustness2FeaturesEXT({ pNext: this.deviceVertexInputFeatures });
         this.deviceRayQueryFeatures = new V.VkPhysicalDeviceRayQueryFeaturesKHR({ pNext: this.deviceRobustness2Features });
         this.deviceAccelerationStructureFeaturs = new V.VkPhysicalDeviceAccelerationStructureFeaturesKHR({pNext: this.deviceRayQueryFeatures});
         this.deviceFeatures11 = new V.VkPhysicalDeviceVulkan11Features({pNext: this.deviceAccelerationStructureFeaturs});

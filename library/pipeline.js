@@ -24,12 +24,12 @@ class ComputePipelineObj extends PipelineObj {
         deviceObj.Pipelines[this.handle[0]] = this;
     }
 
-    dispatch(cmdBuf, x = 1, y = 1, z = 1, pushConstRaw = null, byteOffset = 0n) {
+    dispatch(cmdBuf, x = 1, y = 1, z = 1, pushConstRaw = null, pushConstByteOffset = 0n) {
         const deviceObj = B.Handles[this.base[0]];
         const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
 
         if (pushConstRaw) {
-            V.vkCmdPushConstants(cmdBuf[0]||cmdBuf, this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout, V.VK_SHADER_STAGE_ALL, byteOffset, pushConstRaw.byteLength, pushConstRaw);
+            V.vkCmdPushConstants(cmdBuf[0]||cmdBuf, this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout, V.VK_SHADER_STAGE_ALL, pushConstByteOffset, pushConstRaw.byteLength, pushConstRaw);
         }
 
         const memoryBarrier = new V.VkMemoryBarrier2({ 
@@ -53,11 +53,16 @@ class GraphicsPipelineObj extends PipelineObj {
     constructor(base, cInfo) {
         super(base, cInfo);
 
+        //
+        const deviceObj = B.Handles[this.base[0]];
+        const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
+        const framebufferLayoutObj = B.Handles[(this.cInfo.framebufferLayout ? this.cInfo.framebufferLayout[0] : null) || this.cInfo.framebufferLayout] || B.DefaulFramebufferLayoutObj;
+
         // TODO: array based support
         const stageKeys = Object.keys(cInfo.shaderStages);
         this.shaderStages = new V.VkPipelineShaderStageCreateInfo(stageKeys.length);
         let N = 0; for (let stage in cInfo.shaderStages) {
-            this.shaderStages[N++] = B.createShaderModuleInfo(B.createShaderModule(device[0], cInfo.shaderStages[stage].code), parseInt(stage), cInfo.shaderStages[stage].pName || "main");
+            this.shaderStages[N++] = B.createShaderModuleInfo(B.createShaderModule(this.base[0], cInfo.shaderStages[stage].code), parseInt(stage), cInfo.shaderStages[stage].pName || "main");
         }
 
         // prefer dynamic states
@@ -105,24 +110,8 @@ class GraphicsPipelineObj extends PipelineObj {
             alphaToOneEnable: false,
         });
 
-        // TODO: support for framebuffer layouts
-        this.colorBlendAttachment = new V.VkPipelineColorBlendAttachmentState([{
-            blendEnable: true,
-            srcColorBlendFactor: V.VK_BLEND_FACTOR_SRC_ALPHA,
-            dstColorBlendFactor: V.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-            colorBlendOp: V.VK_BLEND_OP_ADD,
-            srcAlphaBlendFactor: V.VK_BLEND_FACTOR_ONE,
-            dstAlphaBlendFactor: V.VK_BLEND_FACTOR_ZERO,
-            alphaBlendOp: V.VK_BLEND_OP_ADD,
-            colorWriteMask: (
-                V.VK_COLOR_COMPONENT_R_BIT |
-                V.VK_COLOR_COMPONENT_G_BIT |
-                V.VK_COLOR_COMPONENT_B_BIT |
-                V.VK_COLOR_COMPONENT_A_BIT
-            )
-        }]);
-
-        //
+        // 
+        this.colorBlendAttachment = new V.VkPipelineColorBlendAttachmentState(framebufferLayoutObj.blendAttachments);
         this.colorBlendInfo = new V.VkPipelineColorBlendStateCreateInfo({
             logicOpEnable: false,
             logicOp: V.VK_LOGIC_OP_NO_OP,
@@ -131,15 +120,17 @@ class GraphicsPipelineObj extends PipelineObj {
             blendConstants: [0.0, 0.0, 0.0, 0.0]
         });
 
-        // TODO: support for framebuffer layouts
-        this.attachmentFormats = new Uint32Array( cInfo.formats );
+        // 
+        this.attachmentFormats = new Uint32Array( framebufferLayoutObj.colorFormats );
         this.dynamicRenderingPipelineInfo = new V.VkPipelineRenderingCreateInfoKHR({
             colorAttachmentCount: this.attachmentFormats.length,
-            pColorAttachmentFormats: this.attachmentFormats
+            pColorAttachmentFormats: this.attachmentFormats,
+            depthAttachmentFormat: framebufferLayoutObj.depthFormat,
+            stencilAttachmentFormat: framebufferLayoutObj.stencilFormat
         });
 
         //
-        this.dynamicStates = new Uint32Array([V.VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT, V.VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT, V.VK_DYNAMIC_STATE_VERTEX_INPUT_EXT, V.VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE ]);
+        this.dynamicStates = new Uint32Array([V.VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT, V.VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT, V.VK_DYNAMIC_STATE_VERTEX_INPUT_EXT/*, V.VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE*/ ]);
         this.dynamicStateInfo = new V.VkPipelineDynamicStateCreateInfo({
             dynamicStateCount: this.dynamicStates.length,
             pDynamicStates: this.dynamicStates
@@ -158,7 +149,7 @@ class GraphicsPipelineObj extends PipelineObj {
             pMultisampleState: this.multisampleInfo,
             pDepthStencilState: null,
             pColorBlendState: this.colorBlendInfo,
-            pDynamicState: null,
+            pDynamicState: this.dynamicStateInfo,
             layout: cInfo.pipelineLayout[0] || cInfo.pipelineLayout,
             subpass: 0,
             basePipelineHandle: null,
@@ -172,8 +163,8 @@ class GraphicsPipelineObj extends PipelineObj {
         deviceObj.Pipelines[this.handle[0]] = this;
     }
 
-    // TODO: draw commands support
-    cmdDraw() {
+    // 
+    cmdDraw({cmdBuf, vertexInfo = [], vertexCount = 3, instanceCount = 1, firstVertex = 0, firstInstance = 0, pushConstRaw = null, pushConstByteOffset = 0n, imageViews = [], viewport, scissor}) {
         //
         const memoryBarrier = new V.VkMemoryBarrier2({ 
             srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
@@ -184,6 +175,76 @@ class GraphicsPipelineObj extends PipelineObj {
             dstQueueFamilyIndex: ~0,
         });
 
+        //
+        const deviceObj = B.Handles[this.base[0]];
+        const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
+        const framebufferLayoutObj = B.Handles[(this.cInfo.framebufferLayout ? this.cInfo.framebufferLayout[0] : null) || this.cInfo.framebufferLayout] || B.DefaulFramebufferLayoutObj;
+        const dynamicRenderingInfo = new V.VkRenderingAttachmentInfo(Math.min(imageViews.length, framebufferLayoutObj.colorAttachmentDynamicRenderInfo.length));
+
+        //
+        let layerCount = deviceObj?.ImageViews[imageViews[0]]?.cInfo?.subresourceRange?.layerCount || 1;
+        const colorTransitionBarrier = new V.VkImageMemoryBarrier2(Math.min(imageViews.length, framebufferLayoutObj.colorAttachmentDynamicRenderInfo.length));
+        for (let I=0;I<colorTransitionBarrier.length;I++) {
+            dynamicRenderingInfo[I] = {
+                ...framebufferLayoutObj.colorAttachmentDynamicRenderInfo[I],
+                imageView: imageViews[I],
+                imageLayout: V.VK_IMAGE_LAYOUT_GENERAL
+            };
+
+            //
+            colorTransitionBarrier[I] = {
+                srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                srcAccessMask: V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+                dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+                oldLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+                newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+                image: deviceObj.ImageViews[imageViews[I]].cInfo.image,
+                subresourceRange: deviceObj.ImageViews[imageViews[I]].cInfo.subresourceRange
+            };
+
+            //
+            layerCount = Math.min(deviceObj?.ImageViews[imageViews[I]]?.cInfo?.subresourceRange?.layerCount || 1, 1);
+        }
+
+        //
+        const viewport_ = new V.VkViewport(viewport);
+        const scissor_ = new V.VkRect2D(scissor);
+
+        // TODO: depth buffer support
+        V.vkCmdBeginRendering(cmdBuf[0]||cmdBuf, new V.VkRenderingInfoKHR({ 
+            renderArea: scissor[0], 
+            layerCount, 
+            viewMask: 0x0, 
+            colorAttachmentCount: 
+            dynamicRenderingInfo.length, 
+            pColorAttachments: dynamicRenderingInfo,
+            pDepthAttachment: framebufferLayoutObj.depthFormat ? { ...framebufferLayoutObj.depthAttachmentDynamicRenderInfo } : null,
+            pStencilAttachment: framebufferLayoutObj.stencilFormat ? { ...framebufferLayoutObj.stencilAttachmentDynamicRenderInfo } : null,
+        }));
+        if (pushConstRaw) {
+            V.vkCmdPushConstants(cmdBuf[0]||cmdBuf, this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout, V.VK_SHADER_STAGE_ALL, pushConstByteOffset, pushConstRaw.byteLength, pushConstRaw);
+        }
+        V.vkCmdBindDescriptorSets(cmdBuf[0]||cmdBuf, V.VK_PIPELINE_BIND_POINT_GRAPHICS, this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout, 0, descriptorsObj.descriptorSets.length, descriptorsObj.descriptorSets, 0, 0n);
+        V.vkCmdBindPipeline(cmdBuf[0]||cmdBuf, V.VK_PIPELINE_BIND_POINT_GRAPHICS, this.handle[0]);
+
+        //
+        //V.vkCmdBindVertexBuffers2(cmdBuf[0]||cmdBuf, 0, 0, null, null, null, null); // suka
+        V.vkCmdSetVertexInputEXT(cmdBuf[0]||cmdBuf, 0, null, 0, null);
+        V.vkCmdSetScissorWithCount(cmdBuf[0]||cmdBuf, scissor_.length, scissor_);
+        V.vkCmdSetViewportWithCount(cmdBuf[0]||cmdBuf, viewport_.length, viewport_);
+
+        //
+        if (vertexInfo && vertexInfo.length) {
+            const multiDraw = new V.VkMultiDrawInfoEXT(vertexInfo);
+            V.vkCmdDrawMultiEXT(cmdBuf[0]||cmdBuf, multiDraw.length, multiDraw, instanceCount, firstInstance, V.VkMultiDrawInfoEXT.byteLength);
+        } else {
+            V.vkCmdDraw(cmdBuf[0]||cmdBuf, vertexCount, instanceCount, firstVertex, firstInstance);
+        }
+
+        //
+        V.vkCmdEndRendering(cmdBuf[0]||cmdBuf);
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: colorTransitionBarrier.length, pImageMemoryBarriers: colorTransitionBarrier }));
         V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ memoryBarrierCount: memoryBarrier.length, pMemoryBarriers: memoryBarrier }));
     }
 }

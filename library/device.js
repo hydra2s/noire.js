@@ -41,7 +41,9 @@ class DeviceObj extends B.BasicObj {
             Allocators: {},
             Descriptors: {},
             SwapChains: {},
-            Pipelines: {}
+            Pipelines: {},
+            ImageViews: {},
+            Samplers: {}
         });
 
         //
@@ -116,6 +118,18 @@ class DeviceObj extends B.BasicObj {
         return new (Type || B.MemoryAllocatorObj)(this.handle, cInfo);
     }
 
+    createFramebufferLayout(cInfo) {
+        return new B.FramebufferLayoutObj(this.handle, cInfo);
+    }
+
+    createImageView(cInfo) {
+        return new B.ImageViewObj(this.handle, cInfo);
+    }
+
+    createSampler(cInfo) {
+        return new B.SamplerObj(this.handle, cInfo);
+    }
+
     // for once or temp ops
     tickProcessing() {
         this.destroyQueue.map((F)=>F());
@@ -123,14 +137,22 @@ class DeviceObj extends B.BasicObj {
     }
 
     //
-    submitCommands({cmdBuf = [], queueFamilyIndex = 0, queueIndex = 0, waitSemaphores = [], signalSemaphores = []} = { cmdBuf: [], queueFamilyIndex: 0, queueIndex: 0, waitSemaphores: [], signalSemaphores: [] }) {
+    submitCommands({cmdBuf = [], queueFamilyIndex = 0, queueIndex = 0, waitSemaphores = [], signalSemaphores = [], waitDstMask = []} = { cmdBuf: [], queueFamilyIndex: 0, queueIndex: 0, waitSemaphores: [], signalSemaphores: [] }) {
         // single time command
         const fence = new BigUint64Array(1);
         const queue = this.getQueue(queueFamilyIndex, queueIndex);
 
         // TODO: submit2 support
         V.vkCreateFence(this.handle[0], new V.VkFenceCreateInfo({ flags: 0 }), null, fence);
-        V.vkQueueSubmit(queue[0], 1, new V.VkSubmitInfo({ commandBufferCount: cmdBuf.length, pCommandBuffers: cmdBuf }), fence[0]);
+        V.vkQueueSubmit(queue[0], 1, new V.VkSubmitInfo({ 
+            waitSemaphoreCount: waitSemaphores?.length || 0,
+            pWaitSemaphores: waitSemaphores ? new BigUint64Array(waitSemaphores) : null,
+            pWaitDstStageMask: new Uint32Array(waitDstMask),
+            commandBufferCount: cmdBuf.length,
+            pCommandBuffers: cmdBuf,
+            signalSemaphoreCount: signalSemaphores?.length || 0,
+            pSignalSemaphores: signalSemaphores ? new BigUint64Array(signalSemaphores) : null,
+        }), fence[0]);
 
         //
         const deallocProcess = ()=>{
@@ -138,7 +160,7 @@ class DeviceObj extends B.BasicObj {
             if (result != V.VK_NOT_READY) {
                 this.waitingProcesses.splice(this.waitingProcesses.indexOf(deallocProcess), 1); 
             };
-            V.vkDestroyFence(this.handle[0], fence[0], null);
+            //V.vkDestroyFence(this.handle[0], fence[0], null);
         };
         this.waitingProcesses.push(deallocProcess);
 
@@ -147,7 +169,7 @@ class DeviceObj extends B.BasicObj {
     }
 
     //
-    submitOnce({cmdBufFn = null, queueFamilyIndex = 0, queueIndex = 0, waitSemaphores = [], signalSemaphores = []} = { cmdBufFn: null, queueFamilyIndex: 0, queueIndex: 0, waitSemaphores: [], signalSemaphores: [] }) {
+    submitOnce({cmdBufFn = null, queueFamilyIndex = 0, queueIndex = 0, waitSemaphores = [], signalSemaphores = [], waitDstMask = []} = { cmdBufFn: null, queueFamilyIndex: 0, queueIndex: 0, waitSemaphores: [], signalSemaphores: [] }) {
         // single time command
         const fence = new BigUint64Array(1), cmdBuf = new BigUint64Array(1);
         const queue = this.getQueue(queueFamilyIndex, queueIndex);
@@ -160,7 +182,15 @@ class DeviceObj extends B.BasicObj {
 
         // TODO: submit2 support
         V.vkCreateFence(this.handle[0], new V.VkFenceCreateInfo({ flags: 0 }), null, fence);
-        V.vkQueueSubmit(queue[0], 1, new V.VkSubmitInfo({ commandBufferCount: cmdBuf.length, pCommandBuffers: cmdBuf }), fence[0]);
+        V.vkQueueSubmit(queue[0], 1, new V.VkSubmitInfo({
+            waitSemaphoreCount: waitSemaphores?.length || 0,
+            pWaitSemaphores: waitSemaphores ? new BigUint64Array(waitSemaphores) : null,
+            pWaitDstStageMask: new Uint32Array(waitDstMask),
+            commandBufferCount: cmdBuf.length,
+            pCommandBuffers: cmdBuf,
+            signalSemaphoreCount: signalSemaphores?.length || 0,
+            pSignalSemaphores: signalSemaphores ? new BigUint64Array(signalSemaphores) : null,
+        }), fence[0]);
 
         //
         const deallocProcess = ()=>{
@@ -168,7 +198,7 @@ class DeviceObj extends B.BasicObj {
             if (result != V.VK_NOT_READY) {
                 this.waitingProcesses.splice(this.waitingProcesses.indexOf(deallocProcess), 1); 
             };
-            V.vkDestroyFence(this.handle[0], fence[0], null);
+            //V.vkDestroyFence(this.handle[0], fence[0], null);
             V.vkFreeCommandBuffers(this.handle[0], this.queueFamilies[queueFamilyIndex].cmdPool, cmdBuf.length, cmdBuf);
         };
         this.waitingProcesses.push(deallocProcess);

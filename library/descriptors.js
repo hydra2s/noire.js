@@ -15,7 +15,7 @@ class OutstandingArray {
 
     // TODO: support for multiple
     push(member) {
-        if (this.empty.length > 0) { this.array[this.empty.shift()] = member; } else { this.array.push(member); };
+        let index = -1; if (this.empty.length > 0) { index = this.empty.shift(); this.array[index] = member; } else { index = this.array.length; this.array.push(member); }; return index;
     }
 
     //

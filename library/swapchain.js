@@ -5,9 +5,10 @@ import { default as V } from "../deps/vulkan.node.js/index.js";
 class SwapChainObj extends B.BasicObj {
     constructor(base, cInfo) {
         super(base, null); this.cInfo = cInfo;
-        const physicalDeviceObj = B.Handles[this.cInfo.physicalDevice[0]];
-        const surfaceInfo = physicalDeviceObj.getSurfaceInfo(this.cInfo.window.getSurface());
+        
         const deviceObj = B.Handles[this.base[0]];
+        const physicalDeviceObj = B.Handles[(this.cInfo?.physicalDevice ? this.cInfo?.physicalDevice[0] : null) || this.cInfo?.physicalDevice || deviceObj.base[0]];
+        const surfaceInfo = physicalDeviceObj.getSurfaceInfo(this.cInfo.window.getSurface());
 
         // TODO: full support auto info
         this.pInfo = new V.VkSwapchainCreateInfoKHR({
@@ -20,7 +21,7 @@ class SwapChainObj extends B.BasicObj {
             imageArrayLayers: 1,
             imageUsage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT | V.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | V.VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             imageSharingMode: V.VK_SHARING_MODE_EXCLUSIVE,
-            queueFamilyIndexCount: this.cInfo.queueFamilyIndices.length,
+            queueFamilyIndexCount: this.cInfo.queueFamilyIndices?.length || 0,
             pQueueFamilyIndices: this.cInfo.queueFamilyIndices,
             preTransform: V.VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
             compositeAlpha: V.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
@@ -42,10 +43,59 @@ class SwapChainObj extends B.BasicObj {
             subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: this.pInfo.imageArrayLayers },
         });
 
+
+        // TODO: make general based
         // moooo, korovka...
         this.imageViews = new BigUint64Array(this.amountOfImagesInSwapchain[0]);
+        this.imageTransitionBarrierForPresent = new V.VkImageMemoryBarrier2(this.imageViews.length);
+        this.imageTransitionBarrierForGeneral = new V.VkImageMemoryBarrier2(this.imageViews.length);
+        this.imageTransitionBarrierFromUndefined = new V.VkImageMemoryBarrier2(this.imageViews.length);
+
+        //
         for (let I=0;I<this.amountOfImagesInSwapchain[0];I++) {
             V.vkCreateImageView(this.base[0], this.imageViewInfo.set({image: this.swapchainImages[I]}), null, this.imageViews.addressOffsetOf(I)); // bit-tricky by device address
+            const imageObj = new B.ImageObj(this.base, null); imageObj.handle = new BigUint64Array([this.swapchainImages[I]]); deviceObj.Images[imageObj.handle[0]] = imageObj;
+            const imageViewObj = new B.ImageViewObj(this.base, null); imageViewObj.handle = new BigUint64Array([this.imageViews[I]]); deviceObj.ImageViews[imageViewObj.handle[0]] = imageViewObj;
+
+            //
+            imageViewObj.cInfo = { image: this.swapchainImages[I], subresourceRange: this.imageViewInfo.subresourceRange };
+            imageViewObj.imageViewInfo = this.imageViewInfo.set({image: this.swapchainImages[I]}).serialize();
+
+            //
+            this.imageTransitionBarrierFromUndefined[I] = {
+                srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
+                srcAccessMask: V.VK_ACCESS_2_NONE,
+                dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                dstAccessMask: V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+                oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
+                newLayout: V.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                image: this.swapchainImages[I],
+                subresourceRange: this.imageViewInfo.subresourceRange
+            };
+
+            //
+            this.imageTransitionBarrierForGeneral[I] = {
+                srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                srcAccessMask: V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+                dstStageMask: V.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+                oldLayout: V.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+                image: this.swapchainImages[I],
+                subresourceRange: this.imageViewInfo.subresourceRange
+            };
+
+            //
+            this.imageTransitionBarrierForPresent[I] = {
+                srcStageMask: V.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                srcAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+                dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                dstAccessMask: V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+                oldLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+                newLayout: V.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                image: this.swapchainImages[I],
+                subresourceRange: this.imageViewInfo.subresourceRange
+            };
         }
 
         //
@@ -58,6 +108,29 @@ class SwapChainObj extends B.BasicObj {
         this.imageIndex = new Uint32Array([0]);
         V.vkCreateSemaphore(this.base[0], this.semaphoreInfo, null, this.semaphoreImageAvailable);
         V.vkCreateSemaphore(this.base[0], this.semaphoreInfo, null, this.semaphoreRenderingAvailable);
+
+        //
+        
+    }
+
+    //
+    cmdFromUndefined(cmdBuf) {
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: this.imageTransitionBarrierFromUndefined.length, pImageMemoryBarriers: this.imageTransitionBarrierFromUndefined }));
+    }
+
+    //
+    cmdToGeneral(cmdBuf) {
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: this.imageTransitionBarrierForGeneral.length, pImageMemoryBarriers: this.imageTransitionBarrierForGeneral }));
+    }
+
+    //
+    cmdToPresent(cmdBuf) {
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: this.imageTransitionBarrierForPresent.length, pImageMemoryBarriers: this.imageTransitionBarrierForPresent }));
+    }
+
+    //
+    getImageCount() {
+        return this.swapchainImages.length;
     }
 
     //
@@ -78,7 +151,7 @@ class SwapChainObj extends B.BasicObj {
 
     // TODO: dedicated semaphores support
     present({queue}) {
-        V.vkQueuePresentKHR(queue[0], new V.VkPresentInfoKHR({
+        V.vkQueuePresentKHR(queue[0] || queue, new V.VkPresentInfoKHR({
             waitSemaphoreCount: this.semaphoreRenderingAvailable.length,
             pWaitSemaphores: this.semaphoreRenderingAvailable,
             swapchainCount: this.handle.length,

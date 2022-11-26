@@ -110,7 +110,7 @@ import fs from "fs";
         for await (let R of K.awaitFenceGen(deviceObj.handle[0], fenceI[imageIndex])) { yield R; };
         V.vkDestroyFence(deviceObj.handle[0], fenceI[imageIndex], null); // promise to manually broke fence
 
-        //
+        // TODO: pre-cache command buffer
         fenceI[imageIndex] = deviceObj.submitOnce({
             waitStageMasks: [ V.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ],
             waitSemaphores: swapchainObj.semaphoreImageAvailable,

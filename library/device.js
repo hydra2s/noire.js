@@ -137,7 +137,24 @@ class DeviceObj extends B.BasicObj {
     }
 
     //
-    submitCommands({cmdBuf = [], queueFamilyIndex = 0, queueIndex = 0, waitSemaphores = [], signalSemaphores = [], waitDstMask = []} = { cmdBuf: [], queueFamilyIndex: 0, queueIndex: 0, waitSemaphores: [], signalSemaphores: [] }) {
+    allocatePrimaryCommands(cmdBufFn, cmdCount = 1) {
+        // single time command
+        const cmdBuf = new BigUint64Array(cmdCount);
+        V.vkAllocateCommandBuffers(this.handle[0], new V.VkCommandBufferAllocateInfo({ commandPool: this.queueFamilies[queueFamilyIndex].cmdPool, level: V.VK_COMMAND_BUFFER_LEVEL_PRIMARY, commandBufferCount: cmdBuf.length }), cmdBuf);
+
+        //
+        for (let I=0;I<cmdCount;I++) { 
+            V.vkBeginCommandBuffer(cmdBuf[I], new V.VkCommandBufferBeginInfo({ flags: V.VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT }));
+            cmdBufFn(cmdBuf[I], I); 
+            V.vkEndCommandBuffer(cmdBuf[I])
+        };
+
+        //
+        return cmdBuf;
+    }
+
+    //
+    submitCommands({cmdBuf = [], queueFamilyIndex = 0, queueIndex = 0, waitSemaphores = [], signalSemaphores = [], waitStageMasks = []} = { cmdBuf: [], queueFamilyIndex: 0, queueIndex: 0, waitSemaphores: [], signalSemaphores: [] }) {
         // single time command
         const fence = new BigUint64Array(1);
         const queue = this.getQueue(queueFamilyIndex, queueIndex);
@@ -147,7 +164,7 @@ class DeviceObj extends B.BasicObj {
         V.vkQueueSubmit(queue[0], 1, new V.VkSubmitInfo({ 
             waitSemaphoreCount: waitSemaphores?.length || 0,
             pWaitSemaphores: waitSemaphores ? new BigUint64Array(waitSemaphores) : null,
-            pWaitDstStageMask: new Uint32Array(waitDstMask),
+            pWaitDstStageMask: new Uint32Array(waitStageMasks),
             commandBufferCount: cmdBuf.length,
             pCommandBuffers: cmdBuf,
             signalSemaphoreCount: signalSemaphores?.length || 0,
@@ -169,7 +186,7 @@ class DeviceObj extends B.BasicObj {
     }
 
     //
-    submitOnce({cmdBufFn = null, queueFamilyIndex = 0, queueIndex = 0, waitSemaphores = [], signalSemaphores = [], waitDstMask = []} = { cmdBufFn: null, queueFamilyIndex: 0, queueIndex: 0, waitSemaphores: [], signalSemaphores: [] }) {
+    submitOnce({cmdBufFn = null, queueFamilyIndex = 0, queueIndex = 0, waitSemaphores = [], signalSemaphores = [], waitStageMasks = []} = { cmdBufFn: null, queueFamilyIndex: 0, queueIndex: 0, waitSemaphores: [], signalSemaphores: [] }) {
         // single time command
         const fence = new BigUint64Array(1), cmdBuf = new BigUint64Array(1);
         const queue = this.getQueue(queueFamilyIndex, queueIndex);
@@ -185,7 +202,7 @@ class DeviceObj extends B.BasicObj {
         V.vkQueueSubmit(queue[0], 1, new V.VkSubmitInfo({
             waitSemaphoreCount: waitSemaphores?.length || 0,
             pWaitSemaphores: waitSemaphores ? new BigUint64Array(waitSemaphores) : null,
-            pWaitDstStageMask: new Uint32Array(waitDstMask),
+            pWaitDstStageMask: new Uint32Array(waitStageMasks),
             commandBufferCount: cmdBuf.length,
             pCommandBuffers: cmdBuf,
             signalSemaphoreCount: signalSemaphores?.length || 0,
@@ -196,10 +213,10 @@ class DeviceObj extends B.BasicObj {
         const deallocProcess = ()=>{
             const result = V.vkGetFenceStatus(this.handle[0], fence[0]);
             if (result != V.VK_NOT_READY) {
+                V.vkFreeCommandBuffers(this.handle[0], this.queueFamilies[queueFamilyIndex].cmdPool, cmdBuf.length, cmdBuf);
                 this.waitingProcesses.splice(this.waitingProcesses.indexOf(deallocProcess), 1); 
             };
             //V.vkDestroyFence(this.handle[0], fence[0], null);
-            V.vkFreeCommandBuffers(this.handle[0], this.queueFamilies[queueFamilyIndex].cmdPool, cmdBuf.length, cmdBuf);
         };
         this.waitingProcesses.push(deallocProcess);
 

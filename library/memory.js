@@ -421,7 +421,7 @@ class ImageViewObj extends B.BasicObj {
 
         if (this.cInfo) {
             //
-            const deviceObj = this.base[0];
+            const deviceObj = B.Handles[this.base[0]];
             const imageObj = deviceObj.Images[this.cInfo.image];
 
             //
@@ -436,11 +436,17 @@ class ImageViewObj extends B.BasicObj {
                 const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
                 if (this.cInfo.type == "storage") this.DSC_ID = descriptorsObj.storageImages.push(this.handle[0]);
                 if (this.cInfo.type == "sampled") this.DSC_ID = descriptorsObj.sampledImages.push(this.handle[0]);
+                descriptorsObj.writeDescriptors();
             }
 
             //
             deviceObj.ImageViews[this.handle[0]] = this;
         }
+    }
+
+    createImageView(cInfo) {
+        const deviceObj = B.Handles[this.base[0]]; cInfo.image = this.handle[0];
+        return deviceObj.createImageView(cInfo);
     }
 }
 
@@ -451,7 +457,7 @@ class SamplerObj extends B.BasicObj {
         this.DSC_ID = -1;
 
         //
-        const deviceObj = this.base[0];
+        const deviceObj = B.Handles[this.base[0]];
 
         //
         V.vkCreateSampler(this.base[0], this.samplerInfo = new V.VkSamplerCreateInfo({
@@ -462,6 +468,7 @@ class SamplerObj extends B.BasicObj {
         if (this.cInfo.pipelineLayout) {
             const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
             this.DSC_ID = descriptorsObj.samplers.push(this.handle[0]);
+            descriptorsObj.writeDescriptors();
         }
 
         //

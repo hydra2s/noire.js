@@ -12,7 +12,7 @@ class InstanceObj extends B.BasicObj {
         const IExtensionOpen = new Array(IExt64.length).fill("").map((_, i)=>{ return String.fromAddress(IExt64[i]); });
 
         //
-        this.extensions = [].concat(IExtensionOpen);
+        this.extensions = ["VK_KHR_get_surface_capabilities2"].concat(IExtensionOpen);
         this.layers = ["VK_LAYER_KHRONOS_validation"];
 
         //

@@ -5,10 +5,7 @@ import { default as K } from "./library/kratos.js"
 import fs from "fs";
 
 (async()=>{
-    const instanceObj = new K.InstanceObj({
-    
-    });
-
+    const instanceObj = new K.InstanceObj({  });
     const physicalDevicesObj = instanceObj.enumeratePhysicalDeviceObjs();
     const deviceObj = physicalDevicesObj[0].createDevice({
         queueFamilies: [{
@@ -17,14 +14,9 @@ import fs from "fs";
         }]
     });
 
-    const memoryAllocatorObj = deviceObj.createMemoryAllocator({
-        
-    });
-
-    const descriptorsObj = deviceObj.createDescriptors({
-        
-    });
-
+    //
+    const memoryAllocatorObj = deviceObj.createMemoryAllocator({  });
+    const descriptorsObj = deviceObj.createDescriptors({  });
     const pipelineObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
         code: await fs.promises.readFile("shaders/test.comp.spv")
@@ -52,16 +44,19 @@ import fs from "fs";
     const readData = new Uint32Array(hostBufferObj.map());
     console.log(readData);
 
-
     // // // // // // //
     // THE CONTINUE!  //
     // // // // // // //
 
     //
+    const windowObj = instanceObj.createWindow({ width: 1280, height: 720 });
+    const swapchainObj = deviceObj.createSwapChain({ window: windowObj, pipelineLayout: descriptorsObj.handle[0] });
+
+    //
     const framebufferLayoutObj = deviceObj.createFramebufferLayout({
         colorAttachments: [{
             blend: {},
-            format: V.VK_FORMAT_B8G8R8A8_UNORM,
+            format: swapchainObj.getFormat(),
             dynamicState: {}
         }],
         depthAttachment: {
@@ -75,9 +70,8 @@ import fs from "fs";
     });
 
     //
-    const windowObj = instanceObj.createWindow({ width: 1280, height: 720 });
-    const swapchainObj = deviceObj.createSwapChain({ window: windowObj });
     const graphicsPipelineObj = deviceObj.createGraphicsPipeline({
+        framebufferLayout: framebufferLayoutObj.handle[0],
         pipelineLayout: descriptorsObj.handle[0],
         shaderStages: {
             [V.VK_SHADER_STAGE_VERTEX_BIT]: {code: await fs.promises.readFile("shaders/triangle.vert.spv")},
@@ -92,7 +86,6 @@ import fs from "fs";
     const scissor = new V.VkRect2D({ ["offset:u32[2]"]: [0,0], ["extent:u32[2]"]: windowSize});
 
     //
-    let imageIndex = 0;
     const fenceI = new BigUint64Array(swapchainObj.getImageCount());
     for (let I=0;I<fenceI.length;I++) {
         V.vkCreateFence(deviceObj.handle[0], new V.VkFenceCreateInfo({ flags: V.VK_FENCE_CREATE_SIGNALED_BIT }), null, fenceI.addressOffsetOf(I));
@@ -108,10 +101,9 @@ import fs from "fs";
     });
 
     //
-    const waitStageMask = new Int32Array([ V.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ]);
     const renderGen = async function*() {
         // TODO: dedicated semaphores support
-        imageIndex = swapchainObj.acquireImageIndex();
+        const imageIndex = swapchainObj.acquireImageIndex();
 
         // await fence before rendering (and poll events)
         //await awaitFenceAsync(device[0], fence[imageIndex[0]]);
@@ -120,7 +112,7 @@ import fs from "fs";
 
         //
         fenceI[imageIndex] = deviceObj.submitOnce({
-            waitDstMask: [ V.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ],
+            waitStageMasks: [ V.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ],
             waitSemaphores: swapchainObj.semaphoreImageAvailable,
             signalSemaphores: swapchainObj.semaphoreRenderingAvailable,
             queueFamilyIndex: 0,

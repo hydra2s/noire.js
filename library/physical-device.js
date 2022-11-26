@@ -46,8 +46,14 @@ class PhysicalDeviceObj extends B.BasicObj {
         console.log("Surface Support By Physical Device: " + surf.surfaceSupport);
 
         //
+        V.vkGetPhysicalDeviceSurfaceCapabilities2KHR(this.handle[0], new V.VkPhysicalDeviceSurfaceInfo2KHR({ surface }), surf.surfaceCapabilities2 = new V.VkSurfaceCapabilities2KHR({}));
         V.vkGetPhysicalDeviceSurfacePresentModesKHR(this.handle[0], surf.surface, surf.presentModeCount, null);
         V.vkGetPhysicalDeviceSurfacePresentModesKHR(this.handle[0], surf.surface, surf.presentModeCount, surf.presentModes = new Int32Array(surf.presentModeCount[0]));
+        V.vkGetPhysicalDeviceSurfaceFormats2KHR(this.handle[0], new V.VkPhysicalDeviceSurfaceInfo2KHR({ surface }), surf.formatCount = new Uint32Array(1), null);
+        V.vkGetPhysicalDeviceSurfaceFormats2KHR(this.handle[0], new V.VkPhysicalDeviceSurfaceInfo2KHR({ surface }), surf.formatCount, surf.formats2 = new V.VkSurfaceFormat2KHR(surf.formatCount[0]));
+
+        //
+        surf.surfaceCapabilities = surf.surfaceCapabilities2.surfaceCapabilities;
         return surf;
     }
 

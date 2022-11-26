@@ -137,7 +137,7 @@ class DeviceObj extends B.BasicObj {
     }
 
     //
-    allocatePrimaryCommands(cmdBufFn, cmdCount = 1) {
+    allocatePrimaryCommands(cmdBufFn, cmdCount = 1, queueFamilyIndex = 0) {
         // single time command
         const cmdBuf = new BigUint64Array(cmdCount);
         V.vkAllocateCommandBuffers(this.handle[0], new V.VkCommandBufferAllocateInfo({ commandPool: this.queueFamilies[queueFamilyIndex].cmdPool, level: V.VK_COMMAND_BUFFER_LEVEL_PRIMARY, commandBufferCount: cmdBuf.length }), cmdBuf);

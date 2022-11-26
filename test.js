@@ -81,8 +81,7 @@ import fs from "fs";
 
     //
     const windowSize = windowObj.getWindowSize();
-    const viewport = new V.VkViewport({});
-    viewport[":f32[6]"] = [0, 0, windowSize[0], windowSize[1], 0.0, 1.0];
+    const viewport = new V.VkViewport({}); viewport[":f32[6]"] = [0, 0, windowSize[0], windowSize[1], 0.0, 1.0];
     const scissor = new V.VkRect2D({ ["offset:u32[2]"]: [0,0], ["extent:u32[2]"]: windowSize});
 
     //
@@ -100,7 +99,17 @@ import fs from "fs";
         }
     });
 
+    // 
+    const cmdBufs = deviceObj.allocatePrimaryCommands((cmdBuf, imageIndex)=>{
+        swapchainObj.cmdToGeneral(cmdBuf);
+        graphicsPipelineObj.cmdDraw({
+            cmdBuf, vertexCount: 3, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)])
+        });
+        swapchainObj.cmdToPresent(cmdBuf, 0);
+    }, swapchainObj.getImageCount());
+
     //
+    let lastTime = performance.now();
     const renderGen = async function*() {
         // TODO: dedicated semaphores support
         const imageIndex = swapchainObj.acquireImageIndex();
@@ -110,20 +119,19 @@ import fs from "fs";
         for await (let R of K.awaitFenceGen(deviceObj.handle[0], fenceI[imageIndex])) { yield R; };
         V.vkDestroyFence(deviceObj.handle[0], fenceI[imageIndex], null); // promise to manually broke fence
 
+        //
+        const currentTime = performance.now();
+        //console.log("FPS: " + (1000/(currentTime - lastTime)));
+        lastTime = currentTime;
+
         // TODO: pre-cache command buffer
-        fenceI[imageIndex] = deviceObj.submitOnce({
+        fenceI[imageIndex] = deviceObj.submitCommands({
             waitStageMasks: [ V.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ],
             waitSemaphores: swapchainObj.semaphoreImageAvailable,
             signalSemaphores: swapchainObj.semaphoreRenderingAvailable,
             queueFamilyIndex: 0,
             queueIndex: 0,
-            cmdBufFn: (cmdBuf)=>{
-                swapchainObj.cmdToGeneral(cmdBuf);
-                graphicsPipelineObj.cmdDraw({
-                    cmdBuf, vertexCount: 3, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getCurrentImageView()])
-                });
-                swapchainObj.cmdToPresent(cmdBuf);
-            }
+            cmdBuf: new BigUint64Array([cmdBufs[imageIndex]])
         });
 
         // TODO: dedicated semaphores support

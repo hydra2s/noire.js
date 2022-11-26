@@ -1,0 +1,27 @@
+{
+  "name": "kratos",
+  "version": "1.0.0",
+  "description": "New brank renderer, based on JS and Vulkan API",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hydra2s/kratos.js.git"
+  },
+  "keywords": [
+    "kratos",
+    "js",
+    "vulkan",
+    "api",
+    "renderer"
+  ],
+  "author": "hydra2s",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hydra2s/kratos.js/issues"
+  },
+  "homepage": "https://github.com/hydra2s/kratos.js#readme",
+  "type": "module"
+}

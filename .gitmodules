@@ -1,0 +1,6 @@
+[submodule "deps/typed.js"]
+	path = deps/typed.js
+	url = https://github.com/hydra2s/typed.js.git
+[submodule "deps/vulkan.node.js"]
+	path = deps/vulkan.node.js
+	url = https://github.com/hydra2s/vulkan.node.js.git

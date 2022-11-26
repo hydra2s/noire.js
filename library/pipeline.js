@@ -174,7 +174,7 @@ class GraphicsPipelineObj extends PipelineObj {
     }
 
     // 
-    cmdDraw({cmdBuf, vertexInfo = [], vertexCount = 3, instanceCount = 1, firstVertex = 0, firstInstance = 0, pushConstRaw = null, pushConstByteOffset = 0n, imageViews = [], depthImageView = null, stencilImageView = null, viewport, scissor}) {
+    cmdDraw({cmdBuf, vertexInfo = [], vertexCount = 3, instanceCount = 1, firstVertex = 0, firstInstance = 0, dispatch = {x: 1, y: 1, z: 1}, pushConstRaw = null, pushConstByteOffset = 0n, imageViews = [], depthImageView = null, stencilImageView = null, viewport, scissor}) {
         //
         const memoryBarrier = new V.VkMemoryBarrier2({ 
             srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
@@ -268,7 +268,7 @@ class GraphicsPipelineObj extends PipelineObj {
         V.vkCmdSetScissorWithCount(cmdBuf[0]||cmdBuf, scissor_.length, scissor_);
         V.vkCmdSetViewportWithCount(cmdBuf[0]||cmdBuf, viewport_.length, viewport_);
 
-        // 
+        // TODO: support for Mesh Shaders
         if (vertexInfo && vertexInfo.length) {
             const multiDraw = new V.VkMultiDrawInfoEXT(vertexInfo);
             V.vkCmdDrawMultiEXT(cmdBuf[0]||cmdBuf, multiDraw.length, multiDraw, instanceCount, firstInstance, V.VkMultiDrawInfoEXT.byteLength);

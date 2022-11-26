@@ -105,7 +105,7 @@ class SwapChainObj extends B.BasicObj {
             this.imageTransitionBarrierForGeneral[I] = {
                 srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                 srcAccessMask: V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
-                dstStageMask: V.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                 dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
                 oldLayout: V.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                 newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
@@ -115,7 +115,7 @@ class SwapChainObj extends B.BasicObj {
 
             //
             this.imageTransitionBarrierForPresent[I] = {
-                srcStageMask: V.VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                 srcAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
                 dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                 dstAccessMask: V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,

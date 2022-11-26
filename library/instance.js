@@ -25,9 +25,9 @@ class InstanceObj extends B.BasicObj {
             flags: 0,
             pApplicationInfo: this.appInfo = new V.VkApplicationInfo({
                 pNext: null,
-                pApplicationName: "NVAPI TEST",
+                pApplicationName: "Kratos.js",
                 applicationVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 234),
-                pEngineName: "NVAPI",
+                pEngineName: "Kratos.js",
                 engineVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 234),
                 apiVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 234)
             }),
@@ -41,5 +41,8 @@ class InstanceObj extends B.BasicObj {
         B.Handles[this.handle[0]] = this;
     }
 
-    
+    // TODO: 
+    enumeratePhysicalDevices() {
+        
+    }
 }

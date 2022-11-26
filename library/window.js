@@ -9,7 +9,7 @@ class WindowObj extends B.BasicObj {
         //
         console.log("GLFW Window creation...");
         V.glfwWindowHint(V.GLFW_RESIZABLE, V.GLFW_FALSE);
-        V.glfwCreateWindowSurface(this.base[0], this.window = V.glfwCreateWindow(1280, 720, "Hello Triangle", null, null), null, this.surface = new BigUint64Array(1));
+        V.glfwCreateWindowSurface(this.base[0], this.window = V.glfwCreateWindow(1280, 720, "Kratos.js Window", null, null), null, this.surface = new BigUint64Array(1));
     }
 
     getSurface() {

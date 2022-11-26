@@ -5,13 +5,12 @@ import { default as V } from "../deps/vulkan.node.js/index.js";
 class DeviceObj extends B.BasicObj {
     constructor(base, cInfo) {
 
-        // TODO: full queue family with priorities support
-        const queuePriorities = new Float32Array([1.0]);
-        this.deviceQueueInfo = new V.VkDeviceQueueCreateInfo([{
-            queueFamilyIndex: 0,
-            queueCount: queuePriorities.length,
-            pQueuePriorities: queuePriorities
-        }]);
+        // 
+        this.deviceQueueInfo = new V.VkDeviceQueueCreateInfo(new Array(cInfo.queueFamilies.length).fill({}).map((_, I)=>({
+            queueFamilyIndex: cInfo.queueFamilies[I].index,
+            queueCount: cInfo.queueFamilies[I].queuePriorities.length,
+            pQueuePriorities: new Float32Array(cInfo.queueFamilies[I].queuePriorities),
+        })));
 
         //
         this.deviceLayers = [];
@@ -32,7 +31,7 @@ class DeviceObj extends B.BasicObj {
 
     getQueue(queueFamilyIndex, queueIndex = 0) {
         const queue = new BigUint64Array(1);
-        V.vkGetDeviceQueue(device[0], queueFamilyIndex, 0, queue);
+        V.vkGetDeviceQueue(device[0], queueFamilyIndex, queueIndex, queue);
         return queue;
     }
 }

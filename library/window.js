@@ -22,5 +22,6 @@ class WindowObj extends B.BasicObj {
     }
 }
 
+//
 B.WindowObj = WindowObj;
 export default WindowObj;

@@ -20,7 +20,7 @@ class DeviceObj extends B.BasicObj {
         this.deviceExtensions = ["VK_KHR_swapchain", "VK_KHR_acceleration_structure", "VK_KHR_deferred_host_operations", "VK_KHR_ray_query"];
 
         //
-        V.vkCreateDevice(physicalDevice, this.deviceInfo = new V.VkDeviceCreateInfo({
+        V.vkCreateDevice(this.base[0], this.deviceInfo = new V.VkDeviceCreateInfo({
             pNext: physicalDeviceObj.deviceFeatures,
             queueCreateInfoCount: this.deviceQueueInfo.length,
             pQueueCreateInfos: this.deviceQueueInfo,

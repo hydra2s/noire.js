@@ -26,6 +26,7 @@ class MemoryAllocatorObj extends BasicObj {
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 
         //
+        B.Handles[this.handle.address()] = this;
         deviceObj.Allocators[this.handle.address()] = this;
 
         //
@@ -56,30 +57,24 @@ class DeviceMemoryObj extends BasicObj {
         this.Allocations = {};
 
         //
-        const memoryAllocatorObj = B.Handles[this.base[0]];
+        const memoryAllocatorObj = B.Handles[this.base.address()];
         const deviceObj = B.Handles[memoryAllocatorObj.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 
         //
-        const propertyFlag = cInfo.host ? (
+        const propertyFlag = cInfo.isHost ? (
             V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
             V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
         ) : V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
         //
-        const memAllocFlags = new V.VkMemoryAllocateFlagsInfo({
-            flags: V.VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR
-        });
-
-        //
         V.vkAllocateMemory(deviceObj.handle[0], new V.VkMemoryAllocateInfo({
-            pNext: memAllocFlags,
+            pNext: new V.VkMemoryAllocateFlagsInfo({
+                flags: V.VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR
+            }),
             allocationSize: cInfo.memoryRequirements.size,
             memoryTypeIndex: B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, propertyFlag)
         }), null, this.handle = new BigUint64Array(1));
-
-        //
-        
     }
 }
 
@@ -113,7 +108,7 @@ class BufferObj extends AllocationObj {
         deviceObj.Buffers[this.handle[0]] = this;
 
         //
-        V.vkGetBufferMemoryRequirements2(this.base[0], this.handle[0], this.memoryRequirements2 = new V.VkMemoryRequirements2());
+        V.vkGetBufferMemoryRequirements2(this.base[0], new V.VkBufferMemoryRequirementsInfo2({ $buffer: this.handle[0] }), this.memoryRequirements2 = new V.VkMemoryRequirements2());
         this.memoryRequirements = this.memoryRequirements2.memoryRequirements;
     }
 
@@ -138,9 +133,9 @@ class ImageObj extends AllocationObj {
 
         // TODO: support for external memory allocators
         V.vkCreateImage(this.base[0], this.pInfo = new V.VkImageCreateInfo({
-            imageType: cInfo.extent.z > 1 ? VK_IMAGE_TYPE_3D : (cInfo.extent.y > 1 ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D),
+            imageType: cInfo.extent.depth > 1 ? VK_IMAGE_TYPE_3D : (cInfo.extent.height > 1 ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D),
             format: cInfo.format,
-            extent: {x: cInfo.extent.x || 1, y: cInfo.extent.y || 1, z: cInfo.extent.z || 1},
+            extent: {width: cInfo.extent.width || 1, height: cInfo.extent.height || 1, depth: cInfo.extent.depth || 1},
             mipLevels: cInfo.mipLevels || 1,
             arrayLayers: cInfo.arrayLayers || 1,
             samples: cInfo.samples || V.VK_SAMPLE_COUNT_1_BIT,
@@ -154,7 +149,7 @@ class ImageObj extends AllocationObj {
         deviceObj.Images[this.handle[0]] = this;
 
         //
-        V.vkGetImageMemoryRequirements2(this.base[0], this.handle[0], this.memoryRequirements2 = new V.VkMemoryRequirements2());
+        V.vkGetImageMemoryRequirements2(this.base[0], new V.VkImageMemoryRequirementsInfo2({ image: this.handle[0] }), this.memoryRequirements2 = new V.VkMemoryRequirements2());
         this.memoryRequirements = this.memoryRequirements2.memoryRequirements;
     }
 }

@@ -32,11 +32,12 @@ class DeviceObj extends B.BasicObj {
         B.Handles[this.handle[0]] = this;
 
         //
-        this.Handles = {
+        Object.assign(this, {
             Images: {},
             Buffers: {},
-            Memories: {}
-        };
+            Memories: {},
+            Allocators: {}
+        });
     }
 
     getQueue(queueFamilyIndex, queueIndex = 0) {

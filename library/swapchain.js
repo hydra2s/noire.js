@@ -17,7 +17,7 @@ class SwapChainObj extends B.BasicObj {
             imageColorSpace: V.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,  // needs get info
             ["imageExtent:u32[2]"]: this.cInfo.window.getWindowSize(),
             imageArrayLayers: 1,
-            imageUsage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT,
+            imageUsage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT | V.VK_IMAGE_USAGE_TRANSFER_SRC_BIT | V.VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             imageSharingMode: V.VK_SHARING_MODE_EXCLUSIVE,
             queueFamilyIndexCount: this.cInfo.queueFamilyIndices.length,
             pQueueFamilyIndices: this.cInfo.queueFamilyIndices,

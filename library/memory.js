@@ -2,11 +2,11 @@ import { default as B } from "./basic.js";
 import { default as V } from "../deps/vulkan.node.js/index.js";
 
 //
-class MemoryAllocatorObj extends BasicObj {
+class MemoryAllocatorObj extends B.BasicObj {
     constructor(base, cInfo) {
         super(base, null); this.cInfo = cInfo;
         this.Memories = {};
-        this.handle = new BigUint64Array([0]);
+        this.handle = new BigUint64Array([0n]);
         this.handle[0] = this.handle.address();
         B.Handles[this.handle[0]] = this;
     }
@@ -52,7 +52,7 @@ class MemoryAllocatorObj extends BasicObj {
 }
 
 //
-class DeviceMemoryObj extends BasicObj {
+class DeviceMemoryObj extends B.BasicObj {
     constructor(base, cInfo) {
         super(base, null); this.cInfo = cInfo;
         this.Allocations = {};
@@ -80,7 +80,7 @@ class DeviceMemoryObj extends BasicObj {
 }
 
 //
-class AllocationObj extends BasicObj {
+class AllocationObj extends B.BasicObj {
     constructor(base, cInfo) {
         super(base, null); this.cInfo = cInfo;
         this.memoryOffset = 0n;
@@ -88,7 +88,7 @@ class AllocationObj extends BasicObj {
     }
 }
 
-//
+// TODO: copy operations support
 class BufferObj extends AllocationObj {
     constructor(base, cInfo) {
         super(base, cInfo);
@@ -118,7 +118,7 @@ class BufferObj extends AllocationObj {
     }
 }
 
-//
+// TODO: copy operations support
 class ImageObj extends AllocationObj {
     constructor(base, cInfo) {
         super(base, cInfo);

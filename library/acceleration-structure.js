@@ -2,7 +2,7 @@ import { default as B } from "./basic.js";
 import { default as V } from "../deps/vulkan.node.js/index.js";
 
 // TODO: user-define opaque flags support
-class AccelerationStructure {
+class AccelerationStructure extends B.BasicObj {
     constructor(base, options) {
         super(base, null);
 

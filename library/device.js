@@ -4,6 +4,8 @@ import { default as V } from "../deps/vulkan.node.js/index.js";
 //
 class DeviceObj extends B.BasicObj {
     constructor(base, cInfo) {
+        super(base, null);
+
         //
         const physicalDeviceObj = B.Handles[this.base[0]];
         const instanceObj = B.Handles[physicalDeviceObj.base[0]];
@@ -17,7 +19,7 @@ class DeviceObj extends B.BasicObj {
 
         //
         this.deviceLayers = [];
-        this.deviceExtensions = ["VK_KHR_swapchain", "VK_KHR_acceleration_structure", "VK_KHR_deferred_host_operations", "VK_KHR_ray_query"];
+        this.deviceExtensions = ["VK_KHR_swapchain", "VK_KHR_acceleration_structure", "VK_KHR_deferred_host_operations", "VK_KHR_ray_query", "VK_EXT_conservative_rasterization", "VK_EXT_vertex_input_dynamic_state", "VK_EXT_extended_dynamic_state3", "VK_EXT_robustness2"];
 
         //
         V.vkCreateDevice(this.base[0], this.deviceInfo = new V.VkDeviceCreateInfo({
@@ -70,7 +72,7 @@ class DeviceObj extends B.BasicObj {
     // TODO: pre-compute queues in families
     getQueue(queueFamilyIndex, queueIndex = 0) {
         const queue = new BigUint64Array(1);
-        V.vkGetDeviceQueue(device[0], queueFamilyIndex, queueIndex, queue);
+        V.vkGetDeviceQueue(this.handle[0], queueFamilyIndex, queueIndex, queue);
         return queue;
     }
 
@@ -111,7 +113,7 @@ class DeviceObj extends B.BasicObj {
     }
 
     createMemoryAllocator(cInfo, Type = B.MemoryAllocator) {
-        return new (Type || B.MemoryAllocator)(this.handle, cInfo);
+        return new (Type || B.MemoryAllocatorObj)(this.handle, cInfo);
     }
 
     // for once or temp ops
@@ -128,7 +130,7 @@ class DeviceObj extends B.BasicObj {
 
         // TODO: submit2 support
         V.vkCreateFence(this.handle[0], new V.VkFenceCreateInfo({ flags: 0 }), null, fence);
-        V.vkQueueSubmit(queue[0], 1, new V.VkSubmitInfo({ commandBufferCount: cmdBuf.length, pCommandBuffers: cmdBuf }), fence);
+        V.vkQueueSubmit(queue[0], 1, new V.VkSubmitInfo({ commandBufferCount: cmdBuf.length, pCommandBuffers: cmdBuf }), fence[0]);
 
         //
         const deallocProcess = ()=>{
@@ -158,7 +160,7 @@ class DeviceObj extends B.BasicObj {
 
         // TODO: submit2 support
         V.vkCreateFence(this.handle[0], new V.VkFenceCreateInfo({ flags: 0 }), null, fence);
-        V.vkQueueSubmit(queue[0], 1, new V.VkSubmitInfo({ commandBufferCount: cmdBuf.length, pCommandBuffers: cmdBuf }), fence);
+        V.vkQueueSubmit(queue[0], 1, new V.VkSubmitInfo({ commandBufferCount: cmdBuf.length, pCommandBuffers: cmdBuf }), fence[0]);
 
         //
         const deallocProcess = ()=>{

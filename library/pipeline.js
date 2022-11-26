@@ -16,12 +16,25 @@ class ComputePipelineObj extends PipelineObj {
 
         // 
         const deviceObj = B.Handles[this.base[0]];
-        this.shaderStages = L.createShaderModuleInfo(L.createShaderModule(this.base[0], cInfo.shaderCode), V.VK_SHADER_STAGE_COMPUTE_BIT, cInfo.pName || "main");
-        this.computeCInfo = new V.VkComputePipelineCreateInfo({ stage: this.shaderStages, layout: cInfo.pipelineLayout });
+        this.shaderStages = B.createShaderModuleInfo(B.createShaderModule(this.base[0], cInfo.shaderCode || cInfo.code), V.VK_SHADER_STAGE_COMPUTE_BIT, cInfo.pName || "main");
+        this.computeCInfo = new V.VkComputePipelineCreateInfo({ stage: this.shaderStages, layout: cInfo.pipelineLayout[0] || cInfo.pipelineLayout });
         V.vkCreateComputePipelines(this.base[0], 0n, this.computeCInfo.length, this.computeCInfo, null, this.handle = new BigUint64Array(1));
 
         //
         deviceObj.Pipelines[this.handle[0]] = this;
+    }
+
+    dispatch(cmdBuf, x = 1, y = 1, z = 1, pushConstRaw = null, byteOffset = 0n) {
+        const deviceObj = B.Handles[this.base[0]];
+        const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
+
+        if (pushConstRaw) {
+            V.vkCmdPushConstants(cmdBuf, this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout, V.VK_SHADER_STAGE_ALL, byteOffset, pushConstRaw.byteLength, pushConstRaw);
+        }
+
+        V.vkCmdBindDescriptorSets(cmdBuf, V.VK_PIPELINE_BIND_POINT_COMPUTE, this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout, 0, descriptorsObj.descriptorSets.length, descriptorsObj.descriptorSets, 0, 0n);
+        V.vkCmdBindPipeline(cmdBuf, V.VK_PIPELINE_BIND_POINT_COMPUTE, this.handle[0]);
+        V.vkCmdDispatch(cmdBuf, x, y, z);
     }
 }
 
@@ -29,50 +42,38 @@ class ComputePipelineObj extends PipelineObj {
 class GraphicsPipelineObj extends PipelineObj {
     constructor(base, cInfo) {
         super(base, cInfo);
-        
-        // TODO: graphics pipeline support
-        /*
-        // TODO: better construction!!
-        const shaderStages = new V.VkPipelineShaderStageCreateInfo(2);
-        //shaderStages[0] = L.createShaderModuleInfo(L.createShaderModule(device[0], await fs.promises.readFile("shaders/triangle.vert.spv")), V.VK_SHADER_STAGE_VERTEX_BIT);
-        //shaderStages[1] = L.createShaderModuleInfo(L.createShaderModule(device[0], await fs.promises.readFile("shaders/triangle.frag.spv")), V.VK_SHADER_STAGE_FRAGMENT_BIT);
 
-        //
-        const vertexInputInfo = new V.VkPipelineVertexInputStateCreateInfo({
-            vertexBindingDescriptionCount: 1,
-            pVertexBindingDescriptions: posVertexBindingDescr,
-            vertexAttributeDescriptionCount: 1,
-            pVertexAttributeDescriptions: posVertexAttrDescr
+        // TODO: array based support
+        const stageKeys = Object.keys(cInfo.shaderStages);
+        this.shaderStages = new V.VkPipelineShaderStageCreateInfo(stageKeys.length);
+        let N = 0; for (let stage in cInfo.shaderStages) {
+            this.shaderStages[N++] = B.createShaderModuleInfo(B.createShaderModule(device[0], cInfo.shaderStages[stage].code), parseInt(stage), cInfo.shaderStages[stage].pName || "main");
+        }
+
+        // prefer dynamic states
+        this.vertexInputInfo = new V.VkPipelineVertexInputStateCreateInfo({
+            vertexBindingDescriptionCount: 0,
+            pVertexBindingDescriptions: null,
+            vertexAttributeDescriptionCount: 0,
+            pVertexAttributeDescriptions: null
         });
 
         //
-        const inputAssemblyStateInfo = new V.VkPipelineInputAssemblyStateCreateInfo({
+        this.inputAssemblyStateInfo = new V.VkPipelineInputAssemblyStateCreateInfo({
             topology: V.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
             primitiveRestartEnable: false
         });
 
-        //
-        const viewport = new V.VkViewport({
-            //x: 0, y: 0, width: windowSize[0], height: windowSize[1], minDepth: 0.0, maxDepth: 1.0
-        });
-        viewport[":f32[6]"] = [0, 0, windowSize[0], windowSize[1], 0.0, 1.0];
-
-        //
-        const scissor = new V.VkRect2D({
-            ["offset:u32[2]"]: [0,0],
-            ["extent:u32[2]"]: windowSize
+        // prefer dynamic states support
+        this.viewportStateInfo = new V.VkPipelineViewportStateCreateInfo({
+            viewportCount: 0,
+            pViewports: null,
+            scissorCount: 0,
+            pScissors: null
         });
 
         //
-        const viewportStateInfo = new V.VkPipelineViewportStateCreateInfo({
-            viewportCount: 1,
-            pViewports: viewport,
-            scissorCount: 1,
-            pScissors: scissor
-        });
-
-        //
-        const rasterizationInfo = new V.VkPipelineRasterizationStateCreateInfo({
+        this.rasterizationInfo = new V.VkPipelineRasterizationStateCreateInfo({
             depthClampEnable: false,
             rasterizerDiscardEnable: false,
             polygonMode: V.VK_POLYGON_MODE_FILL,
@@ -86,7 +87,7 @@ class GraphicsPipelineObj extends PipelineObj {
         });
 
         //
-        const multisampleInfo = new V.VkPipelineMultisampleStateCreateInfo({
+        this.multisampleInfo = new V.VkPipelineMultisampleStateCreateInfo({
             rasterizationSamples: V.VK_SAMPLE_COUNT_1_BIT,
             minSampleShading: 1.0,
             pSampleMask: null,
@@ -94,8 +95,8 @@ class GraphicsPipelineObj extends PipelineObj {
             alphaToOneEnable: false,
         });
 
-        //
-        const colorBlendAttachment = new V.VkPipelineColorBlendAttachmentState({
+        // TODO: support for framebuffer layouts
+        this.colorBlendAttachment = new V.VkPipelineColorBlendAttachmentState([{
             blendEnable: true,
             srcColorBlendFactor: V.VK_BLEND_FACTOR_SRC_ALPHA,
             dstColorBlendFactor: V.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
@@ -109,48 +110,53 @@ class GraphicsPipelineObj extends PipelineObj {
                 V.VK_COLOR_COMPONENT_B_BIT |
                 V.VK_COLOR_COMPONENT_A_BIT
             )
-        });
+        }]);
 
         //
-        const colorBlendInfo = new V.VkPipelineColorBlendStateCreateInfo({
+        this.colorBlendInfo = new V.VkPipelineColorBlendStateCreateInfo({
             logicOpEnable: false,
             logicOp: V.VK_LOGIC_OP_NO_OP,
-            attachmentCount: 1,
-            pAttachments: colorBlendAttachment,
+            attachmentCount: this.colorBlendAttachment.length,
+            pAttachments: this.colorBlendAttachment,
             blendConstants: [0.0, 0.0, 0.0, 0.0]
         });
 
-        //
-        const attachmentFormats = new Uint32Array([V.VK_FORMAT_B8G8R8A8_UNORM]);
-        const dynamicRenderingPipelineInfo = new V.VkPipelineRenderingCreateInfoKHR({
-            colorAttachmentCount: attachmentFormats.length,
-            pColorAttachmentFormats: attachmentFormats
+        // TODO: support for framebuffer layouts
+        this.attachmentFormats = new Uint32Array( cInfo.formats );
+        this.dynamicRenderingPipelineInfo = new V.VkPipelineRenderingCreateInfoKHR({
+            colorAttachmentCount: this.attachmentFormats.length,
+            pColorAttachmentFormats: this.attachmentFormats
         });
 
         //
-        const graphicsPipelineInfo = new V.VkGraphicsPipelineCreateInfo({
-            pNext: dynamicRenderingPipelineInfo,
-            stageCount: shaderStages.length,
-            pStages: shaderStages,
-            pVertexInputState: vertexInputInfo,
-            pInputAssemblyState: inputAssemblyStateInfo,
+        this.dynamicStates = new Uint32Array([V.VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT, V.VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT, V.VK_DYNAMIC_STATE_VERTEX_INPUT_EXT, V.VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE ]);
+        this.dynamicStateInfo = new V.VkPipelineDynamicStateCreateInfo({
+            dynamicStateCount: this.dynamicStates.length,
+            pDynamicStates: this.dynamicStates
+        });
+
+        //
+        this.graphicsPipelineInfo = new V.VkGraphicsPipelineCreateInfo({
+            pNext: this.dynamicRenderingPipelineInfo,
+            stageCount: this.shaderStages.length,
+            pStages: this.shaderStages,
+            pVertexInputState: this.vertexInputInfo,
+            pInputAssemblyState: this.inputAssemblyStateInfo,
             pTessellationState: null,
-            pViewportState: viewportStateInfo,
-            pRasterizationState: rasterizationInfo,
-            pMultisampleState: multisampleInfo,
+            pViewportState: this.viewportStateInfo,
+            pRasterizationState: this.rasterizationInfo,
+            pMultisampleState: this.multisampleInfo,
             pDepthStencilState: null,
-            pColorBlendState: colorBlendInfo,
+            pColorBlendState: this.colorBlendInfo,
             pDynamicState: null,
-            layout: pipelineLayout[0],
+            layout: cInfo.pipelineLayout[0] || cInfo.pipelineLayout,
             subpass: 0,
             basePipelineHandle: null,
             basePipelineIndex: -1,
         });
 
         //
-        const pipeline = new BigUint64Array(1);
-        V.vkCreateGraphicsPipelines(device[0], 0n, 1, graphicsPipelineInfo, null, pipeline);
-        */
+        V.vkCreateGraphicsPipelines(this.base[0], 0n, 1, this.graphicsPipelineInfo, null, this.handle = new BigUint64Array(1));
 
         //
         deviceObj.Pipelines[this.handle[0]] = this;

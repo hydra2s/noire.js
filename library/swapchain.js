@@ -35,7 +35,7 @@ class SwapChainObj extends B.BasicObj {
         V.vkGetSwapchainImagesKHR(this.base[0], this.handle[0], this.amountOfImagesInSwapchain, this.swapchainImages = new BigUint64Array(this.amountOfImagesInSwapchain[0]));
 
         //
-        const imageViewInfo = new V.VkImageViewCreateInfo({
+        this.imageViewInfo = new V.VkImageViewCreateInfo({
             sType : V.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             viewType : V.VK_IMAGE_VIEW_TYPE_2D,
             format : this.pInfo.imageFormat,
@@ -45,11 +45,47 @@ class SwapChainObj extends B.BasicObj {
         // moooo, korovka...
         this.imageViews = new BigUint64Array(this.amountOfImagesInSwapchain[0]);
         for (let I=0;I<this.amountOfImagesInSwapchain[0];I++) {
-            V.vkCreateImageView(this.base[0], imageViewInfo.set({image: this.swapchainImages[I]}), null, this.imageViews.addressOffsetOf(I)); // bit-tricky by device address
+            V.vkCreateImageView(this.base[0], this.imageViewInfo.set({image: this.swapchainImages[I]}), null, this.imageViews.addressOffsetOf(I)); // bit-tricky by device address
         }
 
         //
         deviceObj.SwapChains[this.handle[0]] = this;
+
+        //
+        this.semaphoreImageAvailable = new BigUint64Array(1); 
+        this.semaphoreRenderingAvailable = new BigUint64Array(1);
+        this.semaphoreInfo = new V.VkSemaphoreCreateInfo({});
+        this.imageIndex = new Uint32Array([0]);
+        V.vkCreateSemaphore(this.base[0], this.semaphoreInfo, null, this.semaphoreImageAvailable);
+        V.vkCreateSemaphore(this.base[0], this.semaphoreInfo, null, this.semaphoreRenderingAvailable);
+    }
+
+    //
+    getCurrentImage() {
+        return this.swapchainImages[this.imageIndex[0]];
+    }
+
+    //
+    getCurrentImageView() {
+        return this.imageViews[this.imageIndex[0]];
+    }
+
+    // TODO: dedicated semaphores support
+    acquireImageIndex() {
+        V.vkAcquireNextImageKHR(this.base[0], this.handle[0], BigInt(Number.MAX_SAFE_INTEGER), this.semaphoreImageAvailable[0], 0n, this.imageIndex);
+        return this.imageIndex[0];
+    }
+
+    // TODO: dedicated semaphores support
+    present({queue}) {
+        V.vkQueuePresentKHR(queue[0], new V.VkPresentInfoKHR({
+            waitSemaphoreCount: this.semaphoreRenderingAvailable.length,
+            pWaitSemaphores: this.semaphoreRenderingAvailable,
+            swapchainCount: this.handle.length,
+            pSwapchains: this.handle,
+            pImageIndices: this.imageIndex,
+            pResults: null,
+        }));
     }
 }
 

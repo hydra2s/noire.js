@@ -57,7 +57,7 @@ class OutstandingArrayHandler {
             return Target[index].bind(Target);
         } else 
         if (index == "length") {
-            return Target.array[index];
+            return Target.array[index] || 0;
         }
     }
 
@@ -92,6 +92,7 @@ class DescriptorsObj extends B.BasicObj {
 
         //
         V.vkCreateDescriptorPool(this.base[0], this.poolInfo = new V.VkDescriptorPoolCreateInfo({
+            flags: V.VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
             poolSizeCount: this.imagePoolSize.length,
             pPoolSizes: this.imagePoolSize,
             maxSets: 4
@@ -130,7 +131,7 @@ class DescriptorsObj extends B.BasicObj {
 
         //
         this.descriptorSetLayoutCreateInfoBindingFlags = new V.VkDescriptorSetLayoutBindingFlagsCreateInfoEXT({ bindingCount: this.descriptorSetBindingFlags.length, pBindingFlags: this.descriptorSetBindingFlags });
-        this.descriptorSetLayoutCreateInfo = new V.VkDescriptorSetLayoutCreateInfo({ pNext: this.descriptorSetLayoutCreateInfoBindingFlags, bindingCount: this.descriptorSetBindings.length, pBindings: this.descriptorSetBindings });
+        this.descriptorSetLayoutCreateInfo = new V.VkDescriptorSetLayoutCreateInfo({ pNext: this.descriptorSetLayoutCreateInfoBindingFlags, flags: V.VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT, bindingCount: this.descriptorSetBindings.length, pBindings: this.descriptorSetBindings });
         V.vkCreateDescriptorSetLayout(this.base[0], this.descriptorSetLayoutCreateInfo, null, this.descriptorLayout = new BigUint64Array(1));
 
         //
@@ -164,11 +165,25 @@ class DescriptorsObj extends B.BasicObj {
 
         // create BARZ buffer
         this.uniformBuffer = B.createTypedBuffer(physicalDeviceObj.handle[0], this.base[0], V.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, this.uniformBufferSize, "BAR");
+
+        //
+        this.writeDescriptors();
     }
 
-    // TODO: update buffer cmd
-    cmdUpdateUniform(cmdBuf, rawData) {
-        
+    cmdUpdateUniform(cmdBuf, rawData, byteOffset = 0n, queueFamilyIndex = ~0) {
+        this.bufferBarrier = new V.VkBufferMemoryBarrier2({ 
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | V.VK_PIPELINE_STAGE_2_HOST_BIT,
+            srcAccessMask: V.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            srcQueueFamilyIndex,
+            dstQueueFamilyIndex,
+            buffer: this.uniformBuffer,
+            offset: byteOffset,
+            size: rawData.byteLength
+        });
+        V.vkCmdUpdateBuffer(cmdBuf[0]||cmdBuf, this.uniformBuffer, byteOffset, rawData.byteLength, rawData);
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: this.bufferBarrier.length, pBufferMemoryBarriers: this.bufferBarrier }));
     }
 
     writeDescriptors() {
@@ -197,31 +212,46 @@ class DescriptorsObj extends B.BasicObj {
         });
 
         //
-        this.writeDescriptorInfo = new V.VkWriteDescriptorSet([{
-            dstBinding: 0,
-            dstSet: this.descriptorSets[0],
-            descriptorCount: this.sampledImageBinding.length,
-            descriptorType: V.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-            pImageInfo: this.sampledImageBinding
-        }, {
-            dstBinding: 1,
-            dstSet: this.descriptorSets[0],
-            descriptorCount: this.samplerBinding.length,
-            descriptorType: V.VK_DESCRIPTOR_TYPE_SAMPLER,
-            pImageInfo: this.samplerBinding
-        }, {
-            dstBinding: 2,
-            dstSet: this.descriptorSets[0],
-            descriptorCount: this.storageImageBinding.length,
-            descriptorType: V.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-            pImageInfo: this.storageImageBinding
-        }, {
+        let writes = [{
             dstBinding: 3,
             dstSet: this.descriptorSets[0],
             descriptorCount: Math.min(this.uniformBinding.length, 1),
             descriptorType: V.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             pBufferInfo: this.uniformBinding
-        }]);
+        }];
+
+        if (this.storageImages.length > 0) {
+            writes.push({
+                dstBinding: 2,
+                dstSet: this.descriptorSets[0],
+                descriptorCount: this.storageImageBinding.length,
+                descriptorType: V.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                pImageInfo: this.storageImageBinding
+            });
+        }
+
+        if (this.samplers.length > 0) { 
+            writes.push({
+                dstBinding: 1,
+                dstSet: this.descriptorSets[0],
+                descriptorCount: this.samplerBinding.length,
+                descriptorType: V.VK_DESCRIPTOR_TYPE_SAMPLER,
+                pImageInfo: this.samplerBinding
+            });
+        }
+
+        if (this.sampledImages.length > 0) {
+            writes.push({
+                dstBinding: 0,
+                dstSet: this.descriptorSets[0],
+                descriptorCount: this.sampledImageBinding.length,
+                descriptorType: V.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                pImageInfo: this.sampledImageBinding
+            });
+        }
+
+        //
+        this.writeDescriptorInfo = new V.VkWriteDescriptorSet(writes);
 
         //
         V.vkUpdateDescriptorSets(this.base[0], this.writeDescriptorInfo.length, this.writeDescriptorInfo, 0, null);

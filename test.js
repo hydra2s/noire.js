@@ -30,13 +30,27 @@ import fs from "fs";
         code: await fs.promises.readFile("shaders/test.comp.spv")
     });
 
-    deviceObj.submitOnce({
+    //
+    const bufferObj = memoryAllocatorObj.allocateMemory({  }, deviceObj.createBuffer({ size: 256*4 }));
+    const hostBufferObj = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: 256*4 }));
+
+    //
+    const fence = deviceObj.submitOnce({
         queueFamilyIndex: 0,
         queueIndex: 0,
         cmdBufFn: (cmdBuf)=>{
-            pipelineObj.dispatch(cmdBuf, 1, 1, 1);
+            const pushData = new BigUint64Array([bufferObj.getDeviceAddress()]);
+            pipelineObj.dispatch(cmdBuf, 1, 1, 1, pushData);
+            bufferObj.cmdCopyToBuffer(cmdBuf, hostBufferObj.handle[0], [{srcOffset: 0, dstOffset: 0, size: 256*4}]);
         }
     });
+
+    //
+    await B.awaitFenceAsync(deviceObj.handle[0], fence[0]);
+
+    //
+    const readData = new Uint32Array(hostBufferObj.map());
+    console.log(readData);
 
     
 })();

@@ -19,7 +19,7 @@ class MemoryAllocatorObj extends B.BasicObj {
         }
 
         //
-        const deviceMemory = new DeviceMemoryObj(this.handle[0], cInfo);
+        const deviceMemory = new DeviceMemoryObj(this.handle, cInfo);
         const memoryOffset = 0n; // TODO: support for allocation offsets and VMA
 
         //
@@ -38,16 +38,19 @@ class MemoryAllocatorObj extends B.BasicObj {
 
         //
         if (allocationObj?.isBuffer) {
-            V.vkBindBufferMemory(deviceObj.handle[0], allocation.handle[0], deviceMemory.handle[0], memoryOffset);
+            V.vkBindBufferMemory(deviceObj.handle[0], allocationObj.handle[0], deviceMemory.handle[0], memoryOffset);
         } else
         if (allocationObj?.isImage) {
-            V.vkBindImageMemory(deviceObj.handle[0], allocation.handle[0], deviceMemory.handle[0], memoryOffset);
+            V.vkBindImageMemory(deviceObj.handle[0], allocationObj.handle[0], deviceMemory.handle[0], memoryOffset);
         }
 
         //
         this.Memories[deviceMemory.handle[0]] = deviceMemory;
         deviceObj.Memories[deviceMemory.handle[0]] = deviceMemory;
         deviceMemory.Allocations[memoryOffset] = allocationObj;
+
+        //
+        return allocationObj;
     }
 }
 
@@ -63,19 +66,38 @@ class DeviceMemoryObj extends B.BasicObj {
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 
         //
-        const propertyFlag = cInfo.isHost ? (
+        const propertyFlag = cInfo.isBAR ? (V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT|V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) : (cInfo.isHost ? (
             V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
             V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        ) : V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        ) : V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
         //
-        V.vkAllocateMemory(deviceObj.handle[0], new V.VkMemoryAllocateInfo({
+        V.vkAllocateMemory(deviceObj.handle[0], this.allocInfo = new V.VkMemoryAllocateInfo({
             pNext: new V.VkMemoryAllocateFlagsInfo({
                 flags: V.VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR
             }),
             allocationSize: cInfo.memoryRequirements.size,
             memoryTypeIndex: B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, propertyFlag)
         }), null, this.handle = new BigUint64Array(1));
+    }
+
+    map(byteLength = 0n, byteOffset = 0n) {
+        const memoryAllocatorObj = B.Handles[this.base[0]];
+        //const deviceObj = B.Handles[memoryAllocatorObj.base[0]];
+        //const physicalDeviceObj = B.Handles[deviceObj.base[0]];
+
+        //
+        const dataPtr = new BigUint64Array(1);
+        V.vkMapMemory(memoryAllocatorObj.base[0], this.handle[0], BigInt(byteOffset), BigInt(byteLength) || BigInt(this.allocInfo.allocationSize), 0, dataPtr);
+        return ArrayBuffer.fromAddress(dataPtr[0], parseInt(BigInt(byteLength) || BigInt(this.allocInfo.allocationSize)));
+    }
+
+    unmap() {
+        const memoryAllocatorObj = B.Handles[this.base[0]];
+        //const deviceObj = B.Handles[memoryAllocatorObj.base[0]];
+        //const physicalDeviceObj = B.Handles[deviceObj.base[0]];
+
+        V.vkUnmapMemory(memoryAllocatorObj.base[0], this.handle[0]);
     }
 }
 
@@ -86,9 +108,22 @@ class AllocationObj extends B.BasicObj {
         this.memoryOffset = 0n;
         this.deviceMemory = null;
     }
+
+    map(byteLength = 0, byteOffset = 0) {
+        const deviceObj = B.Handles[this.base[0]];
+        const deviceMemoryObj = deviceObj.Memories[this.deviceMemory[0]];
+
+        return deviceMemoryObj.map(BigInt(byteLength), BigInt(this.memoryOffset) + BigInt(byteOffset));
+    }
+
+    unmap() {
+        const deviceObj = B.Handles[this.base[0]];
+        const deviceMemoryObj = deviceObj.Memories[this.deviceMemory[0]];
+        deviceMemoryObj.unmap();
+    }
 }
 
-// TODO: copy operations support
+// 
 class BufferObj extends AllocationObj {
     constructor(base, cInfo) {
         super(base, cInfo);
@@ -101,7 +136,7 @@ class BufferObj extends AllocationObj {
         // TODO: support for external memory allocators
         V.vkCreateBuffer(this.base[0], this.pInfo = new V.VkBufferCreateInfo({
             size: cInfo.byteSize || cInfo.byteLength || cInfo.size,
-            usage: cInfo.usage | V.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | V.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | V.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            usage: (cInfo.usage || 0) | V.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | V.VK_BUFFER_USAGE_TRANSFER_SRC_BIT | V.VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             sharingMode: V.VK_SHARING_MODE_EXCLUSIVE,
             queueFamilyIndexCount: cInfo.queueFamilyIndices?.length || 0,
             pQueueFamilyIndices: cInfo.queueFamilyIndices
@@ -116,9 +151,151 @@ class BufferObj extends AllocationObj {
     getDeviceAddress() {
         return B.getBufferDeviceAddress(this.base[0], this.handle[0]);
     }
+
+    cmdCopyFromImage(cmdBuf, image, regions, imageLayout = V.VK_IMAGE_LAYOUT_GENERAL) {
+        //
+        const memoryBarrierTemplate = { 
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+            srcAccessMask: 0,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        };
+
+        // TODO: single object support
+        const regionsCp = new V.VkBufferImageCopy2(regions.length);
+        const srcMemoryBarrier = new V.VkImageMemoryBarrier2(regions.length);
+        const dstMemoryBarrier = new V.VkBufferMemoryBarrier2(regions.length);
+        for (let I=0;I<regions.length;I++) {
+            regionsCp[I] = {bufferOffset: 0, bufferRowLength: 0, bufferImageHeight: 0, imageOffset: {x:0,y:0,z:0}, imageExtent:{width:1,height:1,depth:1}, imageSubresource:{aspectMask:V.VK_IMAGE_ASPECT_COLOR_BIT,mipLevel:0,baseArrayLayer:0,layerCount:1}, ...(regions[I].serialize ? regions[I].serialize() : regions[I])};
+            dstMemoryBarrier[I] = {...memoryBarrierTemplate, srcAccessMask: V.VK_ACCESS_2_TRANSFER_WRITE_BIT, $buffer: this.handle[0], offset: regionsCp[I].bufferOffset, size: ~0n, };
+            srcMemoryBarrier[I] = {...memoryBarrierTemplate, 
+                srcAccessMask: V.VK_ACCESS_2_TRANSFER_READ_BIT, 
+                image: image[0] || image, 
+                subresourceRange: {aspectMask: regionsCp[I].imageSubresource.aspectMask, baseMipLevel: regionsCp[I].imageSubresource.mipLevel, levelCount: 1, baseArrayLayer: regionsCp[I].imageSubresource.baseArrayLayer, layerCount: regionsCp[I].imageSubresource.layerCount}, 
+                oldLayout: imageLayout, 
+                newLayout: imageLayout
+            };
+        }
+
+        // TODO: needs or no pre-barrier?
+        V.vkCmdCopyImageToBuffer2(cmdBuf[0]||cmdBuf, new V.VkCopyBufferInfo2({
+            srcImage: image[0] || image, 
+            srcImageLayout: imageLayout,
+            dstBuffer: this.handle[0],
+            regionCount: regionsCp.length,
+            pRegions: regionsCp
+        }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: srcMemoryBarrier.length, pImageMemoryBarriers: srcMemoryBarrier }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: dstMemoryBarrier.length, pBufferMemoryBarriers: dstMemoryBarrier }));
+    }
+
+    cmdCopyToImage(cmdBuf, image, regions, imageLayout = V.VK_IMAGE_LAYOUT_GENERAL) {
+        //
+        const memoryBarrierTemplate = { 
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+            srcAccessMask: 0,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        };
+
+        // TODO: single object support
+        const regionsCp = new V.VkBufferImageCopy2(regions.length);
+        const srcMemoryBarrier = new V.VkBufferMemoryBarrier2(regions.length);
+        const dstMemoryBarrier = new V.VkImageMemoryBarrier2(regions.length);
+        for (let I=0;I<regions.length;I++) {
+            regionsCp[I] = {bufferOffset: 0, bufferRowLength: 0, bufferImageHeight: 0, imageOffset: {x:0,y:0,z:0}, imageExtent:{width:1,height:1,depth:1}, imageSubresource:{aspectMask:V.VK_IMAGE_ASPECT_COLOR_BIT,mipLevel:0,baseArrayLayer:0,layerCount:1}, ...(regions[I].serialize ? regions[I].serialize() : regions[I])};
+            srcMemoryBarrier[I] = {...memoryBarrierTemplate, srcAccessMask: V.VK_ACCESS_2_TRANSFER_READ_BIT , $buffer: this.handle[0], offset: regionsCp[I].bufferOffset, size: ~0n },
+            dstMemoryBarrier[I] = {...memoryBarrierTemplate, 
+                srcAccessMask: V.VK_ACCESS_2_TRANSFER_WRITE_BIT, 
+                image: image[0] || image, 
+                subresourceRange: {aspectMask: regionsCp[I].imageSubresource.aspectMask, baseMipLevel: regionsCp[I].imageSubresource.mipLevel, levelCount: 1, baseArrayLayer: regionsCp[I].imageSubresource.baseArrayLayer, layerCount: regionsCp[I].imageSubresource.layerCount}, 
+                oldLayout: imageLayout, 
+                newLayout: imageLayout
+            }
+        }
+
+        // TODO: needs or no pre-barrier?
+        V.vkCmdCopyBufferToImage2(cmdBuf[0]||cmdBuf, new V.VkCopyBufferInfo2({
+            srcBuffer: this.handle[0],
+            dstImage: image[0] || image, 
+            dstImageLayout: imageLayout,
+            regionCount: regionsCp.length,
+            pRegions: regionsCp
+        }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: srcMemoryBarrier.length, pBufferMemoryBarriers: srcMemoryBarrier }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: dstMemoryBarrier.length, pImageMemoryBarriers: dstMemoryBarrier }));
+    }
+
+    cmdCopyToBuffer(cmdBuf, buffer, regions) {
+        //
+        const memoryBarrierTemplate = { 
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+            srcAccessMask: 0,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        };
+
+        // TODO: single object support
+        const regionsCp = new V.VkBufferCopy2(regions.length);
+        const srcMemoryBarrier = new V.VkBufferMemoryBarrier2(regions.length);
+        const dstMemoryBarrier = new V.VkBufferMemoryBarrier2(regions.length);
+        for (let I=0;I<regions.length;I++) {
+            regionsCp[I] = {srcOffset: 0, dstOffset: 0, size: ~0n, ...(regions[I].serialize ? regions[I].serialize() : regions[I])};
+            srcMemoryBarrier[I] = {...memoryBarrierTemplate, srcAccessMask: V.VK_ACCESS_2_TRANSFER_READ_BIT , $buffer: this.handle[0], offset: regionsCp[I].srcOffset, size: regionsCp[I].size },
+            dstMemoryBarrier[I] = {...memoryBarrierTemplate, srcAccessMask: V.VK_ACCESS_2_TRANSFER_WRITE_BIT, $buffer: buffer[0] || buffer, offset: regionsCp[I].dstOffset, size: regionsCp[I].size }
+        }
+
+        //
+        V.vkCmdCopyBuffer2(cmdBuf[0]||cmdBuf, new V.VkCopyBufferInfo2({
+            srcBuffer: this.handle[0],
+            dstBuffer: buffer[0] || buffer, 
+            regionCount: regionsCp.length,
+            pRegions: regionsCp
+        }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: srcMemoryBarrier.length, pBufferMemoryBarriers: srcMemoryBarrier }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: dstMemoryBarrier.length, pBufferMemoryBarriers: dstMemoryBarrier }));
+    }
+
+    cmdCopyFromBuffer(cmdBuf, buffer, regions) {
+        //
+        const memoryBarrierTemplate = { 
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+            srcAccessMask: 0,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        };
+
+        // TODO: single object support
+        const regionsCp = new V.VkBufferCopy2(regions.length);
+        const srcMemoryBarrier = new V.VkBufferMemoryBarrier2(regions.length);
+        const dstMemoryBarrier = new V.VkBufferMemoryBarrier2(regions.length);
+        for (let I=0;I<regions.length;I++) {
+            regionsCp[I] = {srcOffset: 0, dstOffset: 0, size: ~0n, ...(regions[I].serialize ? regions[I].serialize() : regions[I])};
+            srcMemoryBarrier[I] = {...memoryBarrierTemplate, srcAccessMask: V.VK_ACCESS_2_TRANSFER_READ_BIT , $buffer: buffer[0] || buffer, offset: regionsCp[I].srcOffset, size: regionsCp[I].size },
+            dstMemoryBarrier[I] = {...memoryBarrierTemplate, srcAccessMask: V.VK_ACCESS_2_TRANSFER_WRITE_BIT, $buffer: this.handle[0], offset: regionsCp[I].dstOffset, size: regionsCp[I].size }
+        }
+
+        //
+        V.vkCmdCopyBuffer2(cmdBuf[0]||cmdBuf, new V.VkCopyBufferInfo2({
+            srcBuffer: buffer[0] || buffer,
+            dstBuffer: this.handle[0], 
+            regionCount: regionsCp.length,
+            pRegions: regionsCp
+        }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: srcMemoryBarrier.length, pBufferMemoryBarriers: srcMemoryBarrier }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: dstMemoryBarrier.length, pBufferMemoryBarriers: dstMemoryBarrier }));
+    }
 }
 
-// TODO: copy operations support
+// TODO: copy operations support between images
 class ImageObj extends AllocationObj {
     constructor(base, cInfo) {
         super(base, cInfo);
@@ -153,6 +330,85 @@ class ImageObj extends AllocationObj {
         V.vkGetImageMemoryRequirements2(this.base[0], new V.VkImageMemoryRequirementsInfo2({ image: this.handle[0] }), this.memoryRequirements2 = new V.VkMemoryRequirements2());
         this.memoryRequirements = this.memoryRequirements2.memoryRequirements;
     }
+
+    cmdCopyToBuffer(cmdBuf, buffer, regions, imageLayout = V.VK_IMAGE_LAYOUT_GENERAL) {
+        //
+        const memoryBarrierTemplate = { 
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+            srcAccessMask: 0,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        };
+
+        // TODO: single object support
+        const regionsCp = new V.VkBufferImageCopy2(regions.length);
+        const srcMemoryBarrier = new V.VkImageMemoryBarrier2(regions.length);
+        const dstMemoryBarrier = new V.VkBufferMemoryBarrier2(regions.length);
+        for (let I=0;I<regions.length;I++) {
+            regionsCp[I] = {bufferOffset: 0, bufferRowLength: 0, bufferImageHeight: 0, imageOffset: {x:0,y:0,z:0}, imageExtent:{width:1,height:1,depth:1}, imageSubresource:{aspectMask:V.VK_IMAGE_ASPECT_COLOR_BIT,mipLevel:0,baseArrayLayer:0,layerCount:1}, ...(regions[I].serialize ? regions[I].serialize() : regions[I])};
+            dstMemoryBarrier[I] = {...memoryBarrierTemplate, srcAccessMask: V.VK_ACCESS_2_TRANSFER_WRITE_BIT, $buffer: buffer[0] || buffer, offset: regionsCp[I].bufferOffset, size: ~0n, };
+            srcMemoryBarrier[I] = {...memoryBarrierTemplate, 
+                srcAccessMask: V.VK_ACCESS_2_TRANSFER_READ_BIT, 
+                image: this.handle[0], 
+                subresourceRange: {aspectMask: regionsCp[I].imageSubresource.aspectMask, baseMipLevel: regionsCp[I].imageSubresource.mipLevel, levelCount: 1, baseArrayLayer: regionsCp[I].imageSubresource.baseArrayLayer, layerCount: regionsCp[I].imageSubresource.layerCount}, 
+                oldLayout: imageLayout, 
+                newLayout: imageLayout
+            };
+        }
+
+        // TODO: needs or no pre-barrier?
+        V.vkCmdCopyImageToBuffer2(cmdBuf[0]||cmdBuf, new V.VkCopyBufferInfo2({
+            srcImage: buffer[0] || buffer, 
+            srcImageLayout: imageLayout,
+            dstBuffer: this.handle[0],
+            regionCount: regionsCp.length,
+            pRegions: regionsCp
+        }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: srcMemoryBarrier.length, pImageMemoryBarriers: srcMemoryBarrier }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: dstMemoryBarrier.length, pBufferMemoryBarriers: dstMemoryBarrier }));
+    }
+
+    cmdCopyFromBuffer(cmdBuf, buffer, regions, imageLayout = V.VK_IMAGE_LAYOUT_GENERAL) {
+        //
+        const memoryBarrierTemplate = { 
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+            srcAccessMask: 0,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        };
+
+        // TODO: single object support
+        const regionsCp = new V.VkBufferImageCopy2(regions.length);
+        const srcMemoryBarrier = new V.VkBufferMemoryBarrier2(regions.length);
+        const dstMemoryBarrier = new V.VkImageMemoryBarrier2(regions.length);
+        for (let I=0;I<regions.length;I++) {
+            regionsCp[I] = {bufferOffset: 0, bufferRowLength: 0, bufferImageHeight: 0, imageOffset: {x:0,y:0,z:0}, imageExtent:{width:1,height:1,depth:1}, imageSubresource:{aspectMask:V.VK_IMAGE_ASPECT_COLOR_BIT,mipLevel:0,baseArrayLayer:0,layerCount:1}, ...(regions[I].serialize ? regions[I].serialize() : regions[I])};
+            srcMemoryBarrier[I] = {...memoryBarrierTemplate, srcAccessMask: V.VK_ACCESS_2_TRANSFER_READ_BIT , $buffer: buffer[0] || buffer, offset: regionsCp[I].bufferOffset, size: ~0n },
+            dstMemoryBarrier[I] = {...memoryBarrierTemplate, 
+                srcAccessMask: V.VK_ACCESS_2_TRANSFER_WRITE_BIT, 
+                image: this.handle[0], 
+                subresourceRange: {aspectMask: regionsCp[I].imageSubresource.aspectMask, baseMipLevel: regionsCp[I].imageSubresource.mipLevel, levelCount: 1, baseArrayLayer: regionsCp[I].imageSubresource.baseArrayLayer, layerCount: regionsCp[I].imageSubresource.layerCount}, 
+                oldLayout: imageLayout, 
+                newLayout: imageLayout
+            }
+        }
+
+        // TODO: needs or no pre-barrier?
+        V.vkCmdCopyBufferToImage2(cmdBuf[0]||cmdBuf, new V.VkCopyBufferInfo2({
+            srcBuffer: buffer[0] || buffer,
+            dstImage: this.handle[0], 
+            dstImageLayout: imageLayout,
+            regionCount: regionsCp.length,
+            pRegions: regionsCp
+        }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: srcMemoryBarrier.length, pBufferMemoryBarriers: srcMemoryBarrier }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: dstMemoryBarrier.length, pImageMemoryBarriers: dstMemoryBarrier }));
+    }
+
 }
 
 //

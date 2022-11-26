@@ -29,12 +29,22 @@ class ComputePipelineObj extends PipelineObj {
         const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
 
         if (pushConstRaw) {
-            V.vkCmdPushConstants(cmdBuf, this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout, V.VK_SHADER_STAGE_ALL, byteOffset, pushConstRaw.byteLength, pushConstRaw);
+            V.vkCmdPushConstants(cmdBuf[0]||cmdBuf, this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout, V.VK_SHADER_STAGE_ALL, byteOffset, pushConstRaw.byteLength, pushConstRaw);
         }
 
-        V.vkCmdBindDescriptorSets(cmdBuf, V.VK_PIPELINE_BIND_POINT_COMPUTE, this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout, 0, descriptorsObj.descriptorSets.length, descriptorsObj.descriptorSets, 0, 0n);
-        V.vkCmdBindPipeline(cmdBuf, V.VK_PIPELINE_BIND_POINT_COMPUTE, this.handle[0]);
-        V.vkCmdDispatch(cmdBuf, x, y, z);
+        const memoryBarrier = new V.VkMemoryBarrier2({ 
+            srcStageMask: V.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            srcAccessMask: V.VK_ACCESS_2_SHADER_READ_BIT | V.VK_ACCESS_2_SHADER_WRITE_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        });
+
+        V.vkCmdBindDescriptorSets(cmdBuf[0]||cmdBuf, V.VK_PIPELINE_BIND_POINT_COMPUTE, this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout, 0, descriptorsObj.descriptorSets.length, descriptorsObj.descriptorSets, 0, 0n);
+        V.vkCmdBindPipeline(cmdBuf[0]||cmdBuf, V.VK_PIPELINE_BIND_POINT_COMPUTE, this.handle[0]);
+        V.vkCmdDispatch(cmdBuf[0]||cmdBuf, x, y, z);
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ memoryBarrierCount: memoryBarrier.length, pMemoryBarriers: memoryBarrier }));
     }
 }
 
@@ -160,6 +170,21 @@ class GraphicsPipelineObj extends PipelineObj {
 
         //
         deviceObj.Pipelines[this.handle[0]] = this;
+    }
+
+    // TODO: draw commands support
+    cmdDraw() {
+        //
+        const memoryBarrier = new V.VkMemoryBarrier2({ 
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+            srcAccessMask: V.VK_ACCESS_2_SHADER_READ_BIT | V.VK_ACCESS_2_SHADER_WRITE_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        });
+
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ memoryBarrierCount: memoryBarrier.length, pMemoryBarriers: memoryBarrier }));
     }
 }
 

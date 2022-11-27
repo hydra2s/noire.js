@@ -50,11 +50,11 @@ class AccelerationStructure extends B.BasicObj {
 
         // 
         const asPrimitiveCount = new Uint32Array(this.asLevel == V.VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR ? [options.primitiveCount] : new Array(options.geometries.length).fill({}).map((_, I)=>(options.geometries[I].primitiveCount)));
-        const asBuildSizesInfo = new V.VkAccelerationStructureBuildSizesInfoKHR({});
-        V.vkGetAccelerationStructureBuildSizesKHR(this.device, V.VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, asBuildSizeGeometryInfo, asPrimitiveCount, asBuildSizesInfo);
+        this.asBuildSizesInfo = new V.VkAccelerationStructureBuildSizesInfoKHR({});
+        V.vkGetAccelerationStructureBuildSizesKHR(this.device, V.VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, asBuildSizeGeometryInfo, asPrimitiveCount, this.asBuildSizesInfo);
 
         //
-        this.buffer = B.createTypedBuffer(this.physicalDevice, this.device, V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | V.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, asBuildSizesInfo.accelerationStructureSize);
+        this.buffer = B.createTypedBuffer(this.physicalDevice, this.device, V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | V.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, this.asBuildSizesInfo.accelerationStructureSize);
         this.bufferBarrier = this.asLevel == V.VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR ? new V.VkBufferMemoryBarrier2({
             srcStageMask: V.VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
             srcAccessMask: V.VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
@@ -64,7 +64,7 @@ class AccelerationStructure extends B.BasicObj {
             dstQueueFamilyIndex: 0,
             $buffer: this.buffer,
             offset: 0,
-            size: asBuildSizesInfo.accelerationStructureSize
+            size: this.asBuildSizesInfo.accelerationStructureSize
         }) : new V.VkBufferMemoryBarrier2({
             srcStageMask: V.VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
             srcAccessMask: V.VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | V.VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR,
@@ -74,18 +74,18 @@ class AccelerationStructure extends B.BasicObj {
             dstQueueFamilyIndex: 0,
             $buffer: this.buffer,
             offset: 0,
-            size: asBuildSizesInfo.accelerationStructureSize
+            size: this.asBuildSizesInfo.accelerationStructureSize
         });
 
         //
         V.vkCreateAccelerationStructureKHR(this.device, new V.VkAccelerationStructureCreateInfoKHR({
             $buffer: this.buffer,
-            size: asBuildSizesInfo.accelerationStructureSize,
+            size: this.asBuildSizesInfo.accelerationStructureSize,
             type: this.asLevel
         }), null, this.handle = new BigUint64Array(1));
 
         //
-        this.scratchMemory = B.createTypedBuffer(this.physicalDevice, this.device, V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | V.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, asBuildSizesInfo.buildScratchSize);
+        this.scratchMemory = B.createTypedBuffer(this.physicalDevice, this.device, V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | V.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, this.asBuildSizesInfo.buildScratchSize);
         this.scratchBarrier = new V.VkBufferMemoryBarrier2({
             srcStageMask: V.VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
             srcAccessMask: V.VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
@@ -95,15 +95,18 @@ class AccelerationStructure extends B.BasicObj {
             dstQueueFamilyIndex: 0,
             $buffer: this.scratchMemory,
             offset: 0,
-            size: asBuildSizesInfo.buildScratchSize
+            size: this.asBuildSizesInfo.buildScratchSize
         });
 
         //
-        B.Handles[this.handle[0]] = this;
+        deviceObj.AccelerationStructures[this.handle[0]] = this;
     }
 
     getDeviceAddress() {
-        return B.getAcceelerationStructureAddress(this.device, this.handle[0]);
+        const deviceObj = B.Handles[this.base[0]];
+        const address = this.deviceAddress || (this.deviceAddress = B.getAcceelerationStructureAddress(this.device, this.handle[0]));
+        deviceObj.AccelerationStructureAddresses.insert([parseInt(address), parseInt(address + this.asBuildSizesInfo.accelerationStructureSize)], this.handle[0]);
+        return address;
     }
 
     cmdBuild(cmdBuf, geometries) {
@@ -146,7 +149,7 @@ class TopLevelAccelerationStructure extends AccelerationStructure {
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 
-        //
+        // TODO: replace by general based buffers
         this.instanced = options.instanced?.length ? new V.VkAccelerationStructureInstanceKHR(options.instanced) : null;
         this.instanceBuffer = B.createInstanceBuffer(physicalDeviceObj.handle[0], deviceObj.handle[0], this.instanced);
 

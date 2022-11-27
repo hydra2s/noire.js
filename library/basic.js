@@ -116,13 +116,17 @@ const createInstanceBuffer = (physicalDevice, device, instances) => {
 }
 
 //
-const getBufferDeviceAddress = (device, $buffer)=>{
-    return V.vkGetBufferDeviceAddress(device, new V.VkBufferDeviceAddressInfo({ $buffer })); // conflict-less
+const getBufferDeviceAddress = (device, $buffer, byteLength = 1n)=>{
+    const deviceAddress = V.vkGetBufferDeviceAddress(device, new V.VkBufferDeviceAddressInfo({ $buffer }));
+    Handles[device].BufferAddresses.insert([parseInt(deviceAddress), parseInt(deviceAddress+byteLength)], $buffer);
+    return deviceAddress; // conflict-less
 }
 
 //
-const getAcceelerationStructureAddress = (device, accelerationStructure)=>{
-    return V.vkGetAccelerationStructureDeviceAddressKHR(device, new V.VkAccelerationStructureDeviceAddressInfoKHR({ accelerationStructure }));
+const getAcceelerationStructureAddress = (device, accelerationStructure, byteLength = 1n)=>{
+    const deviceAddress = V.vkGetAccelerationStructureDeviceAddressKHR(device, new V.VkAccelerationStructureDeviceAddressInfoKHR({ accelerationStructure }));
+    Handles[device].AccelerationStructureAddresses.insert([parseInt(deviceAddress), parseInt(deviceAddress+byteLength)], accelerationStructure);
+    return deviceAddress;
 }
 
 

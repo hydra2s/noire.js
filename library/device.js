@@ -1,5 +1,6 @@
 import { default as B } from "./basic.js";
 import { default as V } from "../deps/vulkan.node.js/index.js";
+import IntervalTree from '@flatten-js/interval-tree'
 
 //
 class DeviceObj extends B.BasicObj {
@@ -35,6 +36,7 @@ class DeviceObj extends B.BasicObj {
 
         //
         Object.assign(this, {
+            AccelerationStructures: {},
             Images: {},
             Buffers: {},
             Memories: {},
@@ -43,7 +45,9 @@ class DeviceObj extends B.BasicObj {
             SwapChains: {},
             Pipelines: {},
             ImageViews: {},
-            Samplers: {}
+            Samplers: {},
+            BufferAddresses: new IntervalTree.default(),
+            AccelerationStructureAddresses: new IntervalTree.default()
         });
 
         //
@@ -69,6 +73,14 @@ class DeviceObj extends B.BasicObj {
             }), null, this.cmdPools.addressOffsetOf(N));
             this.queueFamilies[I].cmdPool = this.cmdPools[N++];
         }
+    }
+
+    getBufferHandleByAddress(address) {
+        return this.BufferAddresses.search([address, address])[0];
+    }
+
+    getAccelerationStructureHandleByAddress(address) {
+        return this.AccelerationStructureAddresses.search([address, address])[0];
     }
 
     // TODO: pre-compute queues in families

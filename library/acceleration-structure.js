@@ -59,8 +59,8 @@ class AccelerationStructure extends B.BasicObj {
             srcAccessMask: V.VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
             dstStageMask: V.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
             dstAccessMask: V.VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | V.VK_ACCESS_2_SHADER_READ_BIT,
-            srcQueueFamilyIndex: 0,
-            dstQueueFamilyIndex: 0,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
             $buffer: this.buffer,
             offset: 0,
             size: this.asBuildSizesInfo.accelerationStructureSize
@@ -69,8 +69,8 @@ class AccelerationStructure extends B.BasicObj {
             srcAccessMask: V.VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | V.VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR,
             dstStageMask: V.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
             dstAccessMask: V.VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | V.VK_ACCESS_2_SHADER_READ_BIT,
-            srcQueueFamilyIndex: 0,
-            dstQueueFamilyIndex: 0,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
             $buffer: this.buffer,
             offset: 0,
             size: this.asBuildSizesInfo.accelerationStructureSize
@@ -90,8 +90,8 @@ class AccelerationStructure extends B.BasicObj {
             srcAccessMask: V.VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
             dstStageMask: V.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | V.VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
             dstAccessMask: V.VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | V.VK_ACCESS_2_SHADER_READ_BIT | V.VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR,
-            srcQueueFamilyIndex: 0,
-            dstQueueFamilyIndex: 0,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
             $buffer: this.scratchMemory,
             offset: 0,
             size: this.asBuildSizesInfo.buildScratchSize

@@ -48,6 +48,9 @@ class GltfLoaderObj extends B.BasicObj {
     }
 
     async load(file) {
+        const deviceObj = B.Handles[this.base[0]];
+        const physicalDeviceObj = B.Handles[deviceObj.base[0]];
+        const memoryAllocatorObj = B.Handles[this.cInfo.memoryAllocator[0] || this.cInfo.memoryAllocator];
         const fileData = await fs.promises.readFile(file);
         const ext = getFileExtension(file);
         let parsedData = null;

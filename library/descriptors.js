@@ -75,7 +75,7 @@ class DescriptorsObj extends B.BasicObj {
         super(base, null); this.cInfo = cInfo;
 
         //
-        this.ENABLE_DESCRIPTOR_BUFFER = false;
+        this.ENABLE_DESCRIPTOR_BUFFER = true;//false;
         this.uniformBufferSize = 65536;
 
         //
@@ -272,7 +272,7 @@ class DescriptorsObj extends B.BasicObj {
                     imageView: this.storageImages[I],
                     imageLayout: V.VK_IMAGE_LAYOUT_GENERAL
                 }).address() }), P.storageImageDescriptorSize, RMAP + BigInt(this.storageDescriptorOffset[0]) + BigInt(I)*BigInt(P.storageImageDescriptorSize));
-                console.log(new Uint8Array(ArrayBuffer.fromAddress(RMAP + BigInt(this.storageDescriptorOffset[0]) + BigInt(I)*BigInt(P.storageImageDescriptorSize), P.storageImageDescriptorSize)));
+                //console.log(new Uint8Array(ArrayBuffer.fromAddress(RMAP + BigInt(this.storageDescriptorOffset[0]) + BigInt(I)*BigInt(P.storageImageDescriptorSize), P.storageImageDescriptorSize)));
             }
 
             //
@@ -287,7 +287,7 @@ class DescriptorsObj extends B.BasicObj {
                 $address: this.uniformBuffer.getDeviceAddress(),
                 range: this.uniformBufferSize
             }).address() }), P.uniformBufferDescriptorSize, UMAP + BigInt(this.uniformDescriptorOffset[0]));
-            console.log(new Uint8Array(ArrayBuffer.fromAddress(UMAP + BigInt(this.uniformDescriptorOffset[0]), P.uniformBufferDescriptorSize)));
+            //console.log(new Uint8Array(ArrayBuffer.fromAddress(UMAP + BigInt(this.uniformDescriptorOffset[0]), P.uniformBufferDescriptorSize)));
 
             //ArrayBuffer.fromAddress(UMAP + BigInt(this.uniformDescriptorOffset[0]), 4).set(new Uint32Array([128]).buffer);
             //console.log(new Uint8Array(ArrayBuffer.fromAddress(UMAP + BigInt(this.uniformDescriptorOffset[0]), P.uniformBufferDescriptorSize)));

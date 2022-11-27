@@ -116,6 +116,7 @@ import fs from "fs";
     //
     const topLevel = deviceObj.createTopLevelAccelerationStructure({
         opaque: false,
+        memoryAllocator: memoryAllocatorObj.handle[0],
         instanced: [{
             instanceCustomIndex: 0,
             mask: 0xFF,

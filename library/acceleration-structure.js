@@ -4,14 +4,13 @@ import { default as V } from "../deps/vulkan.node.js/index.js";
 // TODO: user-define opaque flags support
 class AccelerationStructure extends B.BasicObj {
     constructor(base, options) {
-        super(base, null);
+        super(base, null); this.cInfo = options;
 
         //
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 
         //
-        this.cInfo = options;
         this.physicalDevice = physicalDeviceObj.handle[0];
         this.device = deviceObj.handle[0];
         this.asLevel = options.asLevel;
@@ -136,6 +135,7 @@ class AccelerationStructure extends B.BasicObj {
 class TopLevelAccelerationStructure extends AccelerationStructure {
     constructor(base, options) {
         super(base, {
+            memoryAllocator: options.memoryAllocator,
             asLevel: V.VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
             opaque: options.opaque,
             instanced: options.instanced?.length ? {} : options.instanced,
@@ -145,27 +145,42 @@ class TopLevelAccelerationStructure extends AccelerationStructure {
         //
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
+        const memoryAllocatorObj = B.Handles[this.cInfo.memoryAllocator[0] || this.cInfo.memoryAllocator];
 
-        // TODO: replace by general based buffers
-        this.instanced = options.instanced?.length ? new V.VkAccelerationStructureInstanceKHR(options.instanced) : null;
-        this.instanceBuffer = B.createInstanceBuffer(physicalDeviceObj.handle[0], deviceObj.handle[0], this.instanced);
+        // 
+        this.instanced = options.instanced?.length ? new V.VkAccelerationStructureInstanceKHR(options.instanced) : new V.VkAccelerationStructureInstanceKHR(options.primitiveCount);
+        this.instanceBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: (options.instanced?.length || options.primitiveCount) * V.VkAccelerationStructureInstanceKHR.byteLength }));
+        this.instanceBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: (options.instanced?.length || options.primitiveCount) * V.VkAccelerationStructureInstanceKHR.byteLength, usage: V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR }));
+        this.instanceBuffer.map().set(ArrayBuffer.fromAddress(this.instanced.address(), (options.instanced?.length || options.primitiveCount) * V.VkAccelerationStructureInstanceKHR.byteLength));
 
         //
-        if (this.instanceBuffer) {
-            this.asGeometryInfo["geometry:VkAccelerationStructureGeometryInstancesDataKHR"].data = B.getBufferDeviceAddress(deviceObj.handle[0], this.instanceBuffer);
+        if (this.instanceBuffer && options.instanced?.length && !options.instanced.data) {
+            this.asGeometryInfo["geometry:VkAccelerationStructureGeometryInstancesDataKHR"].data = this.instanceBufferGPU.getDeviceAddress();
         }
     }
 
-    // TODO: support for upload instance data
-    uploadInstanceData() {
-        
+    cmdBuild(cmdBuf, geometries) {
+        if (this.instanceBuffer) {
+            this.instanceBuffer.cmdCopyToBuffer(cmdBuf, this.instanceBufferGPU.handle[0], [{srcOffset: 0, dstOffset: 0, size: this.instanceBuffer.cInfo.size}]);
+        }
+        super.cmdBuild(cmdBuf, geometries);
+    }
+
+    // 
+    uploadInstanceData(instanced) {
+        if (instanced?.length) {
+            this.instanced = new V.VkAccelerationStructureInstanceKHR(instanced);
+            this.instanceBuffer.map().set(ArrayBuffer.fromAddress(this.instanced.address(), instanced.length * V.VkAccelerationStructureInstanceKHR.byteLength));
+        }
     }
 };
 
 //
 class BottomLevelAccelerationStructure extends AccelerationStructure {
     constructor(base, options) {
-        super(base, {asLevel: V.VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR, ...options});
+        super(base, {
+            asLevel: V.VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR, ...options
+        });
     }
 };
 

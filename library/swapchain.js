@@ -139,9 +139,6 @@ class SwapChainObj extends B.BasicObj {
         this.imageIndex = new Uint32Array([0]);
         V.vkCreateSemaphore(this.base[0], this.semaphoreInfo, null, this.semaphoreImageAvailable);
         V.vkCreateSemaphore(this.base[0], this.semaphoreInfo, null, this.semaphoreRenderingAvailable);
-
-        //
-        
     }
 
     //
@@ -160,12 +157,8 @@ class SwapChainObj extends B.BasicObj {
     }
 
     //
-    getImageCount() {
-        return this.swapchainImages.length;
-    }
-
-    //
     getFormat() { return this.pInfo.imageFormat; }
+    getImageCount() { return this.swapchainImages.length; }
     getColorSpace() { return this.pInfo.imageColorSpace; }
     getImages() { return this.swapchainImages; }
     getImageViews() { return this.imageViews; }

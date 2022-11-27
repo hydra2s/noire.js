@@ -206,7 +206,7 @@ class GraphicsPipelineObj extends PipelineObj {
         const hasDepth = framebufferLayoutObj.depthFormat && depthImageView;
         const hasStencil = framebufferLayoutObj.stencilFormat && stencilImageView;
 
-        //
+        // TODO: manually image layout
         const depthAttachmentClear = hasDepth ? new V.VkClearAttachment({ aspectMask: deviceObj.ImageViews[depthImageView].cInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.depthAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
         const depthDynamicRendering = hasDepth ? new V.VkRenderingAttachmentInfo({ ...framebufferLayoutObj.depthAttachmentDynamicRenderInfo, imageView: depthImageView, imageLayout: depthImageView == stencilImageView ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL }) : null;
         const depthTransitionBarrier = hasDepth ? new V.VkImageMemoryBarrier2({
@@ -222,7 +222,7 @@ class GraphicsPipelineObj extends PipelineObj {
             subresourceRange: deviceObj.ImageViews[depthImageView].cInfo.subresourceRange
         }) : null;
 
-        //
+        // TODO: manually image layout
         const stencilAttachmentClear = hasStencil ? new V.VkClearAttachment({ aspectMask: deviceObj.ImageViews[stencilImageView].cInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.stencilAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
         const stencilDynamicRendering = hasStencil ? new V.VkRenderingAttachmentInfo({ ...framebufferLayoutObj.stencilAttachmentDynamicRenderInfo, imageView: stencilImageView, imageLayout: depthImageView == stencilImageView ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL }) : null;
         const stencilTransitionBarrier = hasStencil ? new V.VkImageMemoryBarrier2({

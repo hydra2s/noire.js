@@ -75,7 +75,7 @@ class DescriptorsObj extends B.BasicObj {
         super(base, null); this.cInfo = cInfo;
 
         //
-        this.ENABLE_DESCRIPTOR_BUFFER = false;//true;
+        this.ENABLE_DESCRIPTOR_BUFFER = false;
         this.uniformBufferSize = 65536;
 
         //
@@ -288,6 +288,9 @@ class DescriptorsObj extends B.BasicObj {
                 range: this.uniformBufferSize
             }).address() }), P.uniformBufferDescriptorSize, UMAP + BigInt(this.uniformDescriptorOffset[0]));
             console.log(new Uint8Array(ArrayBuffer.fromAddress(UMAP + BigInt(this.uniformDescriptorOffset[0]), P.uniformBufferDescriptorSize)));
+
+            //ArrayBuffer.fromAddress(UMAP + BigInt(this.uniformDescriptorOffset[0]), 4).set(new Uint32Array([128]).buffer);
+            //console.log(new Uint8Array(ArrayBuffer.fromAddress(UMAP + BigInt(this.uniformDescriptorOffset[0]), P.uniformBufferDescriptorSize)));
 
             //
             this. uniformDescriptorBuffer.unmap();

@@ -26,10 +26,10 @@ class InstanceObj extends B.BasicObj {
             pApplicationInfo: this.appInfo = new V.VkApplicationInfo({
                 pNext: null,
                 pApplicationName: "Kratos.js",
-                applicationVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 234),
+                applicationVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 235),
                 pEngineName: "Kratos.js",
-                engineVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 234),
-                apiVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 234)
+                engineVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 235),
+                apiVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 235)
             }),
             enabledLayerCount: this.layers.length,
             ppEnabledLayerNames: this.layers,

@@ -20,7 +20,16 @@ class DeviceObj extends B.BasicObj {
 
         //
         this.deviceLayers = [];
-        this.deviceExtensions = ["VK_KHR_swapchain", "VK_KHR_acceleration_structure", "VK_KHR_deferred_host_operations", "VK_KHR_ray_query", "VK_EXT_conservative_rasterization", "VK_EXT_vertex_input_dynamic_state", "VK_EXT_extended_dynamic_state3", "VK_EXT_robustness2"];
+        this.deviceExtensions = ["VK_KHR_swapchain", "VK_KHR_deferred_host_operations", "VK_KHR_acceleration_structure", "VK_KHR_ray_query", "VK_EXT_conservative_rasterization", "VK_EXT_vertex_input_dynamic_state", "VK_EXT_extended_dynamic_state3", "VK_EXT_robustness2", "VK_EXT_descriptor_buffer"];
+
+        //
+        this.deviceExtensions.forEach((E,I)=>{
+            let found = false;
+            for (let K=0;K<physicalDeviceObj.extensions.length;K++) {
+                if (String.fromAddress(physicalDeviceObj.extensions[K].addressOffsetOf("extensionName")) == E) { found = true; };
+                if (!found) { this.deviceExtensions.splice(I,1); };
+            }
+        });
 
         //
         V.vkCreateDevice(this.base[0], this.deviceInfo = new V.VkDeviceCreateInfo({

@@ -16,7 +16,7 @@ import fs from "fs";
 
     //
     const memoryAllocatorObj = deviceObj.createMemoryAllocator({  });
-    const descriptorsObj = deviceObj.createDescriptors({  });
+    const descriptorsObj = deviceObj.createDescriptors({ memoryAllocator: memoryAllocatorObj.handle[0] });
     const pipelineObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
         code: await fs.promises.readFile("shaders/test.comp.spv")

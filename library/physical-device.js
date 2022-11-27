@@ -8,7 +8,8 @@ class PhysicalDeviceObj extends B.BasicObj {
         const instanceObj = B.Handles[base[0]];
 
         //
-        this.deviceVertexInputFeatures = new V.VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT({});
+        this.deviceDescriptorBufferFeatures = new V.VkPhysicalDeviceDescriptorBufferFeaturesEXT({});
+        this.deviceVertexInputFeatures = new V.VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT({ pNext: this.deviceDescriptorBufferFeatures });
         this.deviceRobustness2Features = new V.VkPhysicalDeviceRobustness2FeaturesEXT({ pNext: this.deviceVertexInputFeatures });
         this.deviceRayQueryFeatures = new V.VkPhysicalDeviceRayQueryFeaturesKHR({ pNext: this.deviceRobustness2Features });
         this.deviceAccelerationStructureFeaturs = new V.VkPhysicalDeviceAccelerationStructureFeaturesKHR({pNext: this.deviceRayQueryFeatures});
@@ -16,7 +17,8 @@ class PhysicalDeviceObj extends B.BasicObj {
         this.deviceFeatures12 = new V.VkPhysicalDeviceVulkan12Features({pNext: this.deviceFeatures11});
         this.deviceFeatures13 = new V.VkPhysicalDeviceVulkan13Features({pNext: this.deviceFeatures12});
         this.deviceFeatures = new V.VkPhysicalDeviceFeatures2({pNext: this.deviceFeatures13});
-        this.deviceProperties = new V.VkPhysicalDeviceProperties2();
+        this.deviceDescriptorBufferProperties = new V.VkPhysicalDeviceDescriptorBufferPropertiesEXT({});
+        this.deviceProperties = new V.VkPhysicalDeviceProperties2({ pNext: this.deviceDescriptorBufferProperties });
 
         //
         V.vkGetPhysicalDeviceProperties2(this.handle[0], this.deviceProperties);

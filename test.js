@@ -1,6 +1,6 @@
 import { default as B } from "./library/basic.js";
 import { default as V } from "./deps/vulkan.node.js/index.js";
-import { default as K } from "./library/kratos.js"
+import { default as K } from "./library/noire.js"
 
 import fs from "fs";
 

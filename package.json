@@ -1,5 +1,5 @@
 {
-  "name": "kratos",
+  "name": "noire",
   "version": "1.0.0",
   "description": "New brank renderer, based on JS and Vulkan API",
   "main": "index.js",
@@ -8,10 +8,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hydra2s/kratos.js.git"
+    "url": "git+https://github.com/hydra2s/noire.js.git"
   },
   "keywords": [
-    "kratos",
+    "noire",
     "js",
     "vulkan",
     "api",
@@ -20,9 +20,9 @@
   "author": "hydra2s",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/hydra2s/kratos.js/issues"
+    "url": "https://github.com/hydra2s/noire.js/issues"
   },
-  "homepage": "https://github.com/hydra2s/kratos.js#readme",
+  "homepage": "https://github.com/hydra2s/noire.js#readme",
   "type": "module",
   "dependencies": {
     "@flatten-js/interval-tree": "^1.0.19"

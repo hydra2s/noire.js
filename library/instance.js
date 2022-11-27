@@ -25,9 +25,9 @@ class InstanceObj extends B.BasicObj {
             flags: 0,
             pApplicationInfo: this.appInfo = new V.VkApplicationInfo({
                 pNext: null,
-                pApplicationName: "Kratos.js",
+                pApplicationName: "Noire.js",
                 applicationVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 233),
-                pEngineName: "Kratos.js",
+                pEngineName: "Noire.js",
                 engineVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 233),
                 apiVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 233)
             }),

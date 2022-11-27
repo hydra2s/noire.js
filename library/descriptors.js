@@ -76,6 +76,27 @@ class DescriptorsObj extends B.BasicObj {
 
         //
         this.uniformBufferSize = 65536;
+        this.imagePoolSize = new V.VkDescriptorPoolSize([{
+            type: V.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+            descriptorCount: 256
+        }, {
+            type: V.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            descriptorCount: 256
+        }, {
+            type: V.VK_DESCRIPTOR_TYPE_SAMPLER,
+            descriptorCount: 256
+        }, {
+            type: V.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            descriptorCount: 1
+        }]);
+
+        //
+        V.vkCreateDescriptorPool(this.base[0], this.poolInfo = new V.VkDescriptorPoolCreateInfo({
+            flags: V.VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
+            poolSizeCount: this.imagePoolSize.length,
+            pPoolSizes: this.imagePoolSize,
+            maxSets: 4
+        }), null, this.descriptorPool = new BigUint64Array(1));
 
         //
         this.resourceDescriptorSetBindings = new V.VkDescriptorSetLayoutBinding([{
@@ -149,6 +170,14 @@ class DescriptorsObj extends B.BasicObj {
             pPushConstantRanges: this.pConstRange
         }), null, this.handle = new BigUint64Array(1));
 
+        // 
+        this.allocInfo = new V.VkDescriptorSetAllocateInfo({
+            descriptorPool: this.descriptorPool[0],
+            descriptorSetCount: this.descriptorLayout.length, 
+            pSetLayouts: this.descriptorLayout
+        });
+        V.vkAllocateDescriptorSets(this.base[0], this.allocInfo, this.descriptorSets = new BigUint64Array(this.descriptorLayout.length));
+
         //
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
@@ -163,6 +192,7 @@ class DescriptorsObj extends B.BasicObj {
         this.storageImages = new Proxy(new OutstandingArray(), new OutstandingArrayHandler());
         this.uniformBuffer = B.createTypedBuffer(physicalDeviceObj.handle[0], this.base[0], V.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, this.uniformBufferSize, "BAR");
 
+        /*
         // TODO: create dedicated image storage buffer
         V.vkGetDescriptorSetLayoutSizeEXT(this.base[0], this.descriptorLayout[0], this.resourceDescriptorSetLayoutSize = new BigUint64Array(1));
         V.vkGetDescriptorSetLayoutSizeEXT(this.base[0], this.descriptorLayout[1], this.samplerDescriptorSetLayoutSize = new BigUint64Array(1));
@@ -179,7 +209,7 @@ class DescriptorsObj extends B.BasicObj {
         V.vkGetDescriptorSetLayoutBindingOffsetEXT(this.base[0], this.descriptorLayout[0], 0, this.sampledDescriptorOffset = new BigUint64Array(1));
         V.vkGetDescriptorSetLayoutBindingOffsetEXT(this.base[0], this.descriptorLayout[1], 0, this.samplerDescriptorOffset = new BigUint64Array(1));
         V.vkGetDescriptorSetLayoutBindingOffsetEXT(this.base[0], this.descriptorLayout[2], 0, this.uniformDescriptorOffset = new BigUint64Array(1));
-
+*/
         //
         this.writeDescriptors();
     }
@@ -201,12 +231,80 @@ class DescriptorsObj extends B.BasicObj {
     }
 
     writeDescriptors() {
-        
-
         //
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 
+        //
+        this.sampledImageBinding = new V.VkDescriptorImageInfo(new Array(Math.min(this.sampledImages.length, 256)).fill({}).map((_, I)=>({
+            imageView: this.sampledImages[I],
+            imageLayout: V.VK_IMAGE_LAYOUT_GENERAL
+        })));
+
+        //
+        this.storageImageBinding = new V.VkDescriptorImageInfo(new Array(Math.min(this.storageImages.length, 256)).fill({}).map((_, I)=>({
+            imageView: this.storageImages[I],
+            imageLayout: V.VK_IMAGE_LAYOUT_GENERAL
+        })));
+
+        //
+        this.samplerBinding = new V.VkDescriptorImageInfo(new Array(Math.min(this.samplers.length, 256)).fill({}).map((_, I)=>({
+            sampler: this.samplers[I]
+        })));
+
+        //
+        this.uniformBinding = new V.VkDescriptorBufferInfo({
+            $buffer: this.uniformBuffer,
+            offset: 0,
+            range: this.uniformBufferSize
+        });
+
+        //
+        let writes = [{
+            dstBinding: 0,
+            dstSet: this.descriptorSets[2],
+            descriptorCount: Math.min(this.uniformBinding.length, 1),
+            descriptorType: V.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            pBufferInfo: this.uniformBinding
+        }];
+
+        if (this.storageImages.length > 0) {
+            writes.push({
+                dstBinding: 1,
+                dstSet: this.descriptorSets[0],
+                descriptorCount: this.storageImageBinding.length,
+                descriptorType: V.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                pImageInfo: this.storageImageBinding
+            });
+        }
+
+        if (this.samplers.length > 0) { 
+            writes.push({
+                dstBinding: 0,
+                dstSet: this.descriptorSets[1],
+                descriptorCount: this.samplerBinding.length,
+                descriptorType: V.VK_DESCRIPTOR_TYPE_SAMPLER,
+                pImageInfo: this.samplerBinding
+            });
+        }
+
+        if (this.sampledImages.length > 0) {
+            writes.push({
+                dstBinding: 0,
+                dstSet: this.descriptorSets[0],
+                descriptorCount: this.sampledImageBinding.length,
+                descriptorType: V.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                pImageInfo: this.sampledImageBinding
+            });
+        }
+
+        //
+        this.writeDescriptorInfo = new V.VkWriteDescriptorSet(writes);
+
+        //
+        V.vkUpdateDescriptorSets(this.base[0], this.writeDescriptorInfo.length, this.writeDescriptorInfo, 0, null);
+
+        /*
         //
         this.sampledImageData = new VkDescriptorImageInfo(this.sampledImages.length);
         this.storageImageData = new VkDescriptorImageInfo(this.storageImages.length);
@@ -223,35 +321,32 @@ class DescriptorsObj extends B.BasicObj {
         V.vkGetBufferOpaqueCaptureDescriptorDataEXT(this.base[0], new V.VkBufferCaptureDescriptorDataInfoEXT({ $buffer: this.uniformBuffer }), this.uniformBufferData);
 
         //
-        let storageOffset = this.storageDescriptorOffset[0];
         for (let I=0;I<this.storageImages.length;I++) {
             V.vkGetBufferOpaqueCaptureDescriptorDataEXT(this.base[0], new V.VkImageViewCaptureDescriptorDataInfoEXT({ imageView: this.storageImages[I] }), this.storageImageData.addressOffsetOf(I));
-            V.vkGetDescriptorEXT(this.base[0], new V.VkDescriptorGetInfoEXT({ type: V.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, data: this.storageImageData.addressOffsetOf(I) }), P.storageImageDescriptorSize, RMAP + storageOffset);
-            storageOffset += P.storageImageDescriptorSize;
+            V.vkGetDescriptorEXT(this.base[0], new V.VkDescriptorGetInfoEXT({ type: V.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, data: this.storageImageData.addressOffsetOf(I) }), P.storageImageDescriptorSize, RMAP + this.storageDescriptorOffset[0] + I*P.storageImageDescriptorSize);
         }
 
         //
-        let sampledOffset = this.sampledDescriptorOffset[0];
         for (let I=0;I<this.sampledImages.length;I++) {
             V.vkGetBufferOpaqueCaptureDescriptorDataEXT(this.base[0], new V.VkImageViewCaptureDescriptorDataInfoEXT({ imageView: this.sampledImages[I] }), this.sampledImageData.addressOffsetOf(I));
-            V.vkGetDescriptorEXT(this.base[0], new V.VkDescriptorGetInfoEXT({ type: V.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, data: this.sampledImageData.addressOffsetOf(I) }), P.sampledImageDescriptorSize, RMAP + sampledOffset);
-            sampledOffset += P.sampledImageDescriptorSize;
+            V.vkGetDescriptorEXT(this.base[0], new V.VkDescriptorGetInfoEXT({ type: V.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, data: this.sampledImageData.addressOffsetOf(I) }), P.sampledImageDescriptorSize, RMAP + this.sampledDescriptorOffset[0] + I*P.sampledImageDescriptorSize);
         }
 
         //
-        let samplerOffset = this.samplerDescriptorOffset[0];
         for (let I=0;I<this.samplers.length;I++) {
             V.vkGetBufferOpaqueCaptureDescriptorDataEXT(this.base[0], new V.VkSamplerCaptureDescriptorDataInfoEXT({ sampler: this.samplers[I] }), this.samplerData.addressOffsetOf(I));
-            V.vkGetDescriptorEXT(this.base[0], new V.VkDescriptorGetInfoEXT({ type: V.VK_DESCRIPTOR_TYPE_SAMPLER, data: this.samplerData.addressOffsetOf(I) }), P.samplerDescriptorSize, SMAP + samplerOffset);
-            samplerOffset += P.samplerDescriptorSize;
+            V.vkGetDescriptorEXT(this.base[0], new V.VkDescriptorGetInfoEXT({ type: V.VK_DESCRIPTOR_TYPE_SAMPLER, data: this.samplerData.addressOffsetOf(I) }), P.samplerDescriptorSize, SMAP + this.samplerDescriptorOffset[0] + I*P.samplerDescriptorSize);
         }
 
         //
         V.vkGetBufferOpaqueCaptureDescriptorDataEXT(this.base[0], new V.VkBufferCaptureDescriptorDataInfoEXT({ $buffer: this.uniformBuffer }), this.uniformBufferData.addressOffsetOf(I));
         V.vkGetDescriptorEXT(this.base[0], new V.VkDescriptorGetInfoEXT({ type: V.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, data: this.uniformBufferData.addressOffsetOf(I) }), P.uniformBufferDescriptorSize, UMAP + this.uniformDescriptorOffset[0]);
+        */
     }
 
     cmdBindBuffers(cmdBuf, pipelineBindPoint) {
+        V.vkCmdBindDescriptorSets(cmdBuf[0]||cmdBuf, pipelineBindPoint, this.handle[0], 0, this.descriptorSets.length, this.descriptorSets, 0, 0n);
+        /*
         const bufferBindings = new V.VkDescriptorBufferBindingInfoEXT([
             { address: this.resourceDescriptorBuffer.getDeviceAddress(), usage: V.VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT },
             { address: this.samplerDescriptorBuffer.getDeviceAddress(), usage: V.VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT },
@@ -260,7 +355,7 @@ class DescriptorsObj extends B.BasicObj {
         const bufferIndices = new Uint32Array([0, 1, 2]);
         const offsets = new BigUint64Array([ 0n, 0n, 0n ]);
         V.vkCmdBindDescriptorBuffersEXT(cmdBuf, bufferBindings.length, bufferBindings);
-        V.vkCmdSetDescriptorBufferOffsetsEXT(cmdBuf, pipelineBindPoint, this.handle[0], 0, bufferIndices.length, bufferIndices, offsets);
+        V.vkCmdSetDescriptorBufferOffsetsEXT(cmdBuf, pipelineBindPoint, this.handle[0], 0, bufferIndices.length, bufferIndices, offsets);*/
     }
 }
 

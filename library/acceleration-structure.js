@@ -103,10 +103,7 @@ class AccelerationStructure extends B.BasicObj {
     }
 
     getDeviceAddress() {
-        const deviceObj = B.Handles[this.base[0]];
-        const address = this.deviceAddress || (this.deviceAddress = B.getAcceelerationStructureAddress(this.device, this.handle[0]));
-        deviceObj.AccelerationStructureAddresses.insert([parseInt(address), parseInt(address + this.asBuildSizesInfo.accelerationStructureSize)], this.handle[0]);
-        return address;
+        return this.deviceAddress || (this.deviceAddress = B.getAcceelerationStructureAddress(this.device, this.handle[0], this.asBuildSizesInfo.accelerationStructureSize));
     }
 
     cmdBuild(cmdBuf, geometries) {

@@ -149,10 +149,7 @@ class BufferObj extends AllocationObj {
     }
 
     getDeviceAddress() {
-        const deviceObj = B.Handles[this.base[0]];
-        const address = this.deviceAddress || (this.deviceAddress = B.getBufferDeviceAddress(this.base[0], this.handle[0]));
-        deviceObj.BufferAddresses.insert([parseInt(address), parseInt(address + this.pInfo.size)], this.handle[0]);
-        return address;
+        return this.deviceAddress || (this.deviceAddress = B.getBufferDeviceAddress(this.base[0], this.handle[0], this.pInfo.size));
     }
 
     cmdCopyFromImage(cmdBuf, image, regions, imageLayout = V.VK_IMAGE_LAYOUT_GENERAL) {

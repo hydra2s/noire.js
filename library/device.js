@@ -38,7 +38,8 @@ class DeviceObj extends B.BasicObj {
             "VK_EXT_shader_atomic_float",
             "VK_KHR_shader_clock",
             "VK_KHR_ray_tracing_maintenance1",
-            "VK_KHR_workgroup_memory_explicit_layout"
+            "VK_KHR_workgroup_memory_explicit_layout",
+            "VK_EXT_mutable_descriptor_type"
             //"VK_EXT_shader_atomic_float2" // broken support in NVIDIA
         ];
 

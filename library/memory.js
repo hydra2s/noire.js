@@ -434,8 +434,7 @@ class ImageViewObj extends B.BasicObj {
             //
             if (this.cInfo.pipelineLayout) {
                 const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
-                if (this.cInfo.type == "storage") this.DSC_ID = descriptorsObj.storageImages.push(this.handle[0]);
-                if (this.cInfo.type == "sampled") this.DSC_ID = descriptorsObj.sampledImages.push(this.handle[0]);
+                this.DSC_ID = descriptorsObj.resourceImages.push(this.handle[0]);
                 descriptorsObj.writeDescriptors();
             }
 

@@ -160,12 +160,12 @@ import fs from "fs";
     // 
     const cmdBufs = deviceObj.allocatePrimaryCommands((cmdBuf, imageIndex)=>{
         swapchainObj.cmdToGeneral(cmdBuf);
-        graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 0, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) }); // clear
-        graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 3, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) });
+        //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 0, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) }); // clear
+        //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 3, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) });
 
-        //const AB = new ArrayBuffer(16), U64 = new BigUint64Array(AB, 0, 1), U32 = new Uint32Array(AB, 8, 1);
-        //U64[0] = topLevel.getDeviceAddress(), U32[0] = swapchainObj.getStorageDescId(imageIndex);
-        //triangleObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/4), 1, AB);
+        const AB = new ArrayBuffer(16), U64 = new BigUint64Array(AB, 0, 1), U32 = new Uint32Array(AB, 8, 1);
+        U64[0] = topLevel.getDeviceAddress(), U32[0] = swapchainObj.getStorageDescId(imageIndex);
+        triangleObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/4), 1, AB);
 
         swapchainObj.cmdToPresent(cmdBuf);
     }, swapchainObj.getImageCount(), 0);
@@ -188,7 +188,7 @@ import fs from "fs";
 
         // 
         fenceI[imageIndex] = deviceObj.submitCommands({
-            waitStageMasks: [ /*V.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT*/V.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT ],
+            waitStageMasks: [ V.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ],
             waitSemaphores: swapchainObj.semaphoreImageAvailable,
             signalSemaphores: swapchainObj.semaphoreRenderingAvailable,
             queueFamilyIndex: 0,

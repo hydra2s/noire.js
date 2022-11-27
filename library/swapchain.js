@@ -85,9 +85,9 @@ class SwapChainObj extends B.BasicObj {
             const imageViewObj = new B.ImageViewObj(this.base, null); imageViewObj.handle = new BigUint64Array([this.imageViews[I]]); deviceObj.ImageViews[imageViewObj.handle[0]] = imageViewObj;
 
             //
-            imageViewObj.cInfo = { image: this.swapchainImages[I], subresourceRange: this.imageViewInfo.subresourceRange };
+            imageViewObj.cInfo = { image: this.swapchainImages[I], subresourceRange: this.imageViewInfo.subresourceRange, type: "storage" };
             imageViewObj.imageViewInfo = this.imageViewInfo.set({image: this.swapchainImages[I]}).serialize();
-            imageViewObj.DSC_ID = descriptorsObj.storageImages.push(this.imageViews[I]);
+            imageViewObj.DSC_ID = descriptorsObj.resourceImages.push(this.imageViews[I]);
 
             //
             this.imageTransitionBarrierFromUndefined[I] = {

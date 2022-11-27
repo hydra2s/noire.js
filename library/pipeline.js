@@ -201,30 +201,37 @@ class GraphicsPipelineObj extends PipelineObj {
         const deviceObj = B.Handles[this.base[0]];
         const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
         const framebufferLayoutObj = B.Handles[(this.cInfo.framebufferLayout ? this.cInfo.framebufferLayout[0] : null) || this.cInfo.framebufferLayout] || B.DefaulFramebufferLayoutObj;
-        const dynamicRenderingInfo = new V.VkRenderingAttachmentInfo(Math.min(imageViews.length, framebufferLayoutObj.colorAttachmentDynamicRenderInfo.length));
 
         //
-        let layerCount = deviceObj?.ImageViews[imageViews[0]]?.cInfo?.subresourceRange?.layerCount || 1;
-        const colorTransitionBarrier = new V.VkImageMemoryBarrier2(Math.min(imageViews.length, framebufferLayoutObj.colorAttachmentDynamicRenderInfo.length));
-        const depthTransitionBarrier = depthImageView ? new V.VkImageMemoryBarrier2({
+        const hasDepth = framebufferLayoutObj.depthFormat && depthImageView;
+        const hasStencil = framebufferLayoutObj.stencilFormat && stencilImageView;
+
+        //
+        const depthAttachmentClear = hasDepth ? new V.VkClearAttachment({ aspectMask: deviceObj.ImageViews[depthImageView].cInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.depthAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
+        const depthDynamicRendering = hasDepth ? new V.VkRenderingAttachmentInfo({ ...framebufferLayoutObj.depthAttachmentDynamicRenderInfo, imageView: depthImageView, imageLayout: depthImageView == stencilImageView ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL }) : null;
+        const depthTransitionBarrier = hasDepth ? new V.VkImageMemoryBarrier2({
             srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
             srcAccessMask: V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
             dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
             dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
-            oldLayout: depthImageView == stencilImageView ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-            newLayout: depthImageView == stencilImageView ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            oldLayout: depthDynamicRendering.imageLayout,
+            newLayout: depthDynamicRendering.imageLayout,
             srcQueueFamilyIndex: ~0,
             dstQueueFamilyIndex: ~0,
             image: deviceObj.ImageViews[depthImageView].cInfo.image,
             subresourceRange: deviceObj.ImageViews[depthImageView].cInfo.subresourceRange
         }) : null;
-        const stencilTransitionBarrier = stencilImageView ? new V.VkImageMemoryBarrier2({
+
+        //
+        const stencilAttachmentClear = hasStencil ? new V.VkClearAttachment({ aspectMask: deviceObj.ImageViews[stencilImageView].cInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.stencilAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
+        const stencilDynamicRendering = hasStencil ? new V.VkRenderingAttachmentInfo({ ...framebufferLayoutObj.stencilAttachmentDynamicRenderInfo, imageView: stencilImageView, imageLayout: depthImageView == stencilImageView ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL }) : null;
+        const stencilTransitionBarrier = hasStencil ? new V.VkImageMemoryBarrier2({
             srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
             srcAccessMask: V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
             dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
             dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
-            oldLayout: depthImageView == stencilImageView ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL,
-            newLayout: depthImageView == stencilImageView ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL,
+            oldLayout: stencilDynamicRendering.imageLayout,
+            newLayout: stencilDynamicRendering.imageLayout,
             srcQueueFamilyIndex: ~0,
             dstQueueFamilyIndex: ~0,
             image: deviceObj.ImageViews[stencilImageView].cInfo.image,
@@ -232,21 +239,21 @@ class GraphicsPipelineObj extends PipelineObj {
         }) : null;
 
         //
-        const colorAttachmentClear = new V.VkClearAttachment(colorTransitionBarrier.length);
-        const depthAttachmentClear = depthTransitionBarrier ? new V.VkClearAttachment({ aspectMask: deviceObj.ImageViews[depthImageView].cInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.depthAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
-        const stencilAttachmentClear = stencilTransitionBarrier ? new V.VkClearAttachment({ aspectMask: deviceObj.ImageViews[stencilImageView].cInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.stencilAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
-
-        //
         const viewport_ = new V.VkViewport(viewport);
         const scissor_ = new V.VkRect2D(scissor);
 
         //
+        const colorDynamicRendering = new V.VkRenderingAttachmentInfo(Math.min(imageViews.length, framebufferLayoutObj.colorAttachmentDynamicRenderInfo.length));
+        const colorTransitionBarrier = new V.VkImageMemoryBarrier2(Math.min(imageViews.length, framebufferLayoutObj.colorAttachmentDynamicRenderInfo.length));
+        const colorAttachmentClear = new V.VkClearAttachment(colorTransitionBarrier.length);
+
+        //
+        let layerCount = deviceObj?.ImageViews[imageViews[0]]?.cInfo?.subresourceRange?.layerCount || 1;
         for (let I=0;I<colorTransitionBarrier.length;I++) {
             colorAttachmentClear[I] = { aspectMask: deviceObj.ImageViews[imageViews[I]].cInfo.subresourceRange.aspectMask, colorAttachment: I, ["clearValue:f32[4]"]: framebufferLayoutObj.colorAttachmentDynamicRenderInfo[I]["clearValue:f32[4]"] };
-            dynamicRenderingInfo[I] = {
+            colorDynamicRendering[I] = {
                 ...framebufferLayoutObj.colorAttachmentDynamicRenderInfo[I],
-                imageView: imageViews[I],
-                imageLayout: V.VK_IMAGE_LAYOUT_GENERAL
+                imageView: imageViews[I]
             };
 
             //
@@ -255,8 +262,8 @@ class GraphicsPipelineObj extends PipelineObj {
                 srcAccessMask: V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
                 dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                 dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
-                oldLayout: V.VK_IMAGE_LAYOUT_GENERAL,
-                newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+                oldLayout: colorDynamicRendering[I].imageLayout,
+                newLayout: colorDynamicRendering[I].imageLayout,
                 srcQueueFamilyIndex: ~0,
                 dstQueueFamilyIndex: ~0,
                 image: deviceObj.ImageViews[imageViews[I]].cInfo.image,
@@ -272,15 +279,16 @@ class GraphicsPipelineObj extends PipelineObj {
             renderArea: scissor_[0], 
             layerCount, 
             viewMask: 0x0, 
-            colorAttachmentCount: dynamicRenderingInfo.length, 
-            pColorAttachments: dynamicRenderingInfo,
-            pDepthAttachment: framebufferLayoutObj.depthFormat ? new V.VkRenderingAttachmentInfo({ ...framebufferLayoutObj.depthAttachmentDynamicRenderInfo, imageView: depthImageView, imageLayout: depthImageView == stencilImageView ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL }) : null,
-            pStencilAttachment: framebufferLayoutObj.stencilFormat ? new V.VkRenderingAttachmentInfo({ ...framebufferLayoutObj.stencilAttachmentDynamicRenderInfo, imageView: stencilImageView, imageLayout: depthImageView == stencilImageView ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL }) : null,
+            colorAttachmentCount: colorDynamicRendering.length, 
+            pColorAttachments: colorDynamicRendering,
+            pDepthAttachment: depthDynamicRendering,
+            pStencilAttachment: stencilDynamicRendering,
         }));
         if (pushConstRaw) {
             V.vkCmdPushConstants(cmdBuf[0]||cmdBuf, this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout, V.VK_SHADER_STAGE_ALL, pushConstByteOffset, pushConstRaw.byteLength, pushConstRaw);
         }
 
+        //
         descriptorsObj.cmdBindBuffers(cmdBuf[0]||cmdBuf, V.VK_PIPELINE_BIND_POINT_GRAPHICS);
         V.vkCmdBindPipeline(cmdBuf[0]||cmdBuf, V.VK_PIPELINE_BIND_POINT_GRAPHICS, this.handle[0]);
         V.vkCmdSetVertexInputEXT(cmdBuf[0]||cmdBuf, 0, null, 0, null);
@@ -313,8 +321,8 @@ class GraphicsPipelineObj extends PipelineObj {
         };
 
         V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: colorTransitionBarrier.length, pImageMemoryBarriers: colorTransitionBarrier }));
-        if (  depthTransitionBarrier) V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount:   depthTransitionBarrier.length, pImageMemoryBarriers:   depthTransitionBarrier }));
-        if (stencilTransitionBarrier) V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: stencilTransitionBarrier.length, pImageMemoryBarriers: stencilTransitionBarrier }));
+        if (  hasDepth) V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount:   depthTransitionBarrier.length, pImageMemoryBarriers:   depthTransitionBarrier }));
+        if (hasStencil) V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: stencilTransitionBarrier.length, pImageMemoryBarriers: stencilTransitionBarrier }));
     }
 }
 

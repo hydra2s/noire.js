@@ -91,11 +91,57 @@ import fs from "fs";
     }
 
     //
+    const vertices = new Float32Array([
+        0.0, -0.5,
+        0.5,  0.5,
+        -0.5,  0.5 
+    ]);
+
+    //
+    const vertexBuffer = K.createVertexBuffer(physicalDevicesObj[0].handle[0], deviceObj.handle[0], vertices);
+    const bottomLevel = deviceObj.createBottomLevelAccelerationStructure({
+        geometries: [{
+            opaque: false,
+            primitiveCount: 1,
+            geometry: {
+                vertexFormat: V.VK_FORMAT_R32G32_SFLOAT,
+                vertexData: K.getBufferDeviceAddress(deviceObj.handle[0], vertexBuffer),
+                vertexStride: 8,
+                maxVertex: 3
+            }
+        }]
+    });
+
+    //
+    const topLevel = deviceObj.createTopLevelAccelerationStructure({
+        opaque: false,
+        instanced: [{
+            instanceCustomIndex: 0,
+            mask: 0xFF,
+            instanceShaderBindingTableRecordOffset: 0,
+            flags: 0,
+            accelerationStructureReference: bottomLevel.getDeviceAddress()
+        }]
+    });
+
+    //
     deviceObj.submitOnce({
         queueFamilyIndex: 0,
         queueIndex: 0,
         cmdBufFn: (cmdBuf)=>{
             swapchainObj.cmdFromUndefined(cmdBuf);
+            bottomLevel.cmdBuild(cmdBuf, [{
+                primitiveCount: 1,
+                primitiveOffset: 0,
+                firstVertex: 0,
+                transformOffset: 0
+            }]);
+            topLevel.cmdBuild(cmdBuf, [{
+                primitiveCount: 1,
+                primitiveOffset: 0,
+                firstVertex: 0,
+                transformOffset: 0
+            }]);
         }
     });
 

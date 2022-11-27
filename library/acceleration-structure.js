@@ -54,7 +54,7 @@ class AccelerationStructure extends B.BasicObj {
         V.vkGetAccelerationStructureBuildSizesKHR(this.device, V.VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, asBuildSizeGeometryInfo, asPrimitiveCount, asBuildSizesInfo);
 
         //
-        this.buffer = createTypedBuffer(this.physicalDevice, this.device, V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | V.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, asBuildSizesInfo.accelerationStructureSize);
+        this.buffer = B.createTypedBuffer(this.physicalDevice, this.device, V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | V.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, asBuildSizesInfo.accelerationStructureSize);
         this.bufferBarrier = this.asLevel == V.VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR ? new V.VkBufferMemoryBarrier2({
             srcStageMask: V.VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
             srcAccessMask: V.VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
@@ -115,7 +115,7 @@ class AccelerationStructure extends B.BasicObj {
             dstAccelerationStructure: this.handle[0],
             geometryCount: this.asGeometryInfo.length,
             pGeometries: this.asGeometryInfo,
-            scratchData: getBufferDeviceAddress(this.device, this.scratchMemory)
+            scratchData: B.getBufferDeviceAddress(this.device, this.scratchMemory)
         });
         const asBuildRangeInfo = new V.VkAccelerationStructureBuildRangeInfoKHR(new Array(geometries.length).fill({}).map((_, I)=>({
             primitiveCount: 1,
@@ -148,8 +148,12 @@ class TopLevelAccelerationStructure extends AccelerationStructure {
 
         //
         this.instanced = options.instanced?.length ? new V.VkAccelerationStructureInstanceKHR(options.instanced) : null;
-        this.instanceBuffer = createInstanceBuffer(physicalDeviceObj.handle[0], deviceObj.handle[0], this.instanced);
-        this.asGeometryInfo["geometry:VkAccelerationStructureGeometryInstancesDataKHR"].data = getBufferDeviceAddress(deviceObj.handle[0], this.instanceBuffer);
+        this.instanceBuffer = B.createInstanceBuffer(physicalDeviceObj.handle[0], deviceObj.handle[0], this.instanced);
+
+        //
+        if (this.instanceBuffer) {
+            this.asGeometryInfo["geometry:VkAccelerationStructureGeometryInstancesDataKHR"].data = B.getBufferDeviceAddress(deviceObj.handle[0], this.instanceBuffer);
+        }
     }
 
     // TODO: support for upload instance data

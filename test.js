@@ -27,7 +27,7 @@ import fs from "fs";
     const hostBufferObj = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: 256*4 }));
 
     //
-    const fence = deviceObj.submitOnce({
+    const fenceC = deviceObj.submitOnce({
         queueFamilyIndex: 0,
         queueIndex: 0,
         cmdBufFn: (cmdBuf)=>{
@@ -38,7 +38,7 @@ import fs from "fs";
     });
 
     //
-    await B.awaitFenceAsync(deviceObj.handle[0], fence[0]);
+    await B.awaitFenceAsync(deviceObj.handle[0], fenceC[0]);
 
     //
     const readData = new Uint32Array(hostBufferObj.map());
@@ -125,7 +125,7 @@ import fs from "fs";
     });
 
     //
-    deviceObj.submitOnce({
+    const fenceB = deviceObj.submitOnce({
         queueFamilyIndex: 0,
         queueIndex: 0,
         cmdBufFn: (cmdBuf)=>{
@@ -144,6 +144,9 @@ import fs from "fs";
             }]);
         }
     });
+
+    //
+    await B.awaitFenceAsync(deviceObj.handle[0], fenceB[0]);
 
     // 
     const cmdBufs = deviceObj.allocatePrimaryCommands((cmdBuf, imageIndex)=>{

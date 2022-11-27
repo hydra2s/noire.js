@@ -93,7 +93,13 @@ class GraphicsPipelineObj extends PipelineObj {
         });
 
         //
+        this.conservativeRasterInfo = new V.VkPipelineRasterizationConservativeStateCreateInfoEXT({
+            conservativeRasterizationMode: V.VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT
+        });
+
+        //
         this.rasterizationInfo = new V.VkPipelineRasterizationStateCreateInfo({
+            pNext: this.conservativeRasterInfo,
             depthClampEnable: false,
             rasterizerDiscardEnable: false,
             polygonMode: V.VK_POLYGON_MODE_FILL,

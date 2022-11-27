@@ -29,18 +29,18 @@ class DeviceObj extends B.BasicObj {
             "VK_EXT_extended_dynamic_state3",
             "VK_EXT_robustness2", 
             "VK_EXT_vertex_input_dynamic_state",
-            "VK_EXT_descriptor_buffer\0",
+            "VK_EXT_descriptor_buffer\0", // needs termination code here
         ];
 
         //for (let K=0;K<physicalDeviceObj.extensions.length;K++) {
-            //console.log(String.fromAddress(physicalDeviceObj.extensions[K].addressOffsetOf("extensionName")));
+            //console.log(physicalDeviceObj.extensions[K].extensionName);
         //}
 
         //
         this.deviceExtensions = this.deviceExtensions.filter((E)=>{
             let found = false;
             for (let K=0;K<physicalDeviceObj.extensions.length;K++) {
-                const X = String.fromAddress(physicalDeviceObj.extensions[K].addressOffsetOf("extensionName"));
+                const X = String.fromAddress(physicalDeviceObj.extensions[K].extensionName.address());
                 if (X.indexOf(E) >= 0 || E.indexOf(X) >= 0) { found = true; break; };
             }
             return found;

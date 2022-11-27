@@ -7,16 +7,26 @@ class PhysicalDeviceObj extends B.BasicObj {
         super(base, handle);
         const instanceObj = B.Handles[base[0]];
 
-        //
-        this.deviceDescriptorBufferFeatures = new V.VkPhysicalDeviceDescriptorBufferFeaturesEXT({});
+        // TODO: unify into one object
+        this.deviceWorkgroupMemoryExplicitFeatures = new V.VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR();
+        this.deviceRayTracingMaintenance1Features = new V.VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR({ pNext: this.deviceWorkgroupMemoryExplicitFeatures });
+        this.deviceShaderClockFeatures = new V.VkPhysicalDeviceShaderClockFeaturesKHR({ pNext: this.deviceRayTracingMaintenance1Features });
+        this.deviceImageAtomicInt64Features = new V.VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT({ pNext: this.deviceShaderClockFeatures });
+        this.deviceAtomicFloat2Features = new V.VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT({ pNext: this.deviceImageAtomicInt64Features });
+        this.deviceAtomicFloatFeatures = new V.VkPhysicalDeviceShaderAtomicFloatFeaturesEXT({ pNext: this.deviceAtomicFloat2Features });
+        this.devicePipelineRobustnessFeatures = new V.VkPhysicalDevicePipelineRobustnessFeaturesEXT({ pNext: this.deviceAtomicFloatFeatures });
+        this.deviceMultiDrawFeatures = new V.VkPhysicalDeviceMultiDrawFeaturesEXT({ pNext: this.devicePipelineRobustnessFeatures });
+        this.deviceBarycentricFeatures = new V.VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR({ pNext: this.deviceMultiDrawFeatures });
+        this.deviceMeshShaderFeatures = new V.VkPhysicalDeviceMeshShaderFeaturesEXT({ pNext: this.deviceMeshShaderFeatures });
+        this.deviceDescriptorBufferFeatures = new V.VkPhysicalDeviceDescriptorBufferFeaturesEXT({ pNext: this.deviceMeshShaderFeatures });
         this.deviceVertexInputFeatures = new V.VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT({ pNext: this.deviceDescriptorBufferFeatures });
         this.deviceRobustness2Features = new V.VkPhysicalDeviceRobustness2FeaturesEXT({ pNext: this.deviceVertexInputFeatures });
         this.deviceRayQueryFeatures = new V.VkPhysicalDeviceRayQueryFeaturesKHR({ pNext: this.deviceRobustness2Features });
-        this.deviceAccelerationStructureFeaturs = new V.VkPhysicalDeviceAccelerationStructureFeaturesKHR({pNext: this.deviceRayQueryFeatures});
-        this.deviceFeatures11 = new V.VkPhysicalDeviceVulkan11Features({pNext: this.deviceAccelerationStructureFeaturs});
-        this.deviceFeatures12 = new V.VkPhysicalDeviceVulkan12Features({pNext: this.deviceFeatures11});
-        this.deviceFeatures13 = new V.VkPhysicalDeviceVulkan13Features({pNext: this.deviceFeatures12});
-        this.deviceFeatures = new V.VkPhysicalDeviceFeatures2({pNext: this.deviceFeatures13});
+        this.deviceAccelerationStructureFeaturs = new V.VkPhysicalDeviceAccelerationStructureFeaturesKHR({ pNext: this.deviceRayQueryFeatures });
+        this.deviceFeatures11 = new V.VkPhysicalDeviceVulkan11Features({ pNext: this.deviceAccelerationStructureFeaturs });
+        this.deviceFeatures12 = new V.VkPhysicalDeviceVulkan12Features({ pNext: this.deviceFeatures11});
+        this.deviceFeatures13 = new V.VkPhysicalDeviceVulkan13Features({ pNext: this.deviceFeatures12});
+        this.deviceFeatures = new V.VkPhysicalDeviceFeatures2({ pNext: this.deviceFeatures13 });
         this.deviceDescriptorBufferProperties = new V.VkPhysicalDeviceDescriptorBufferPropertiesEXT({});
         this.deviceProperties = new V.VkPhysicalDeviceProperties2({ pNext: this.deviceDescriptorBufferProperties });
 

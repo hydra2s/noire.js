@@ -244,7 +244,7 @@ class DescriptorsObj extends B.BasicObj {
 
         //
         for (let I=0;I<Math.min(this.samplers.length, 256);I++) {
-            V.vkGetDescriptorEXT(this.base[0], new V.VkDescriptorGetInfoEXT({ type: V.VK_DESCRIPTOR_TYPE_SAMPLER, data: this.samplers.addressOffsetOf(I) }), P.samplerDescriptorSize, SMAP + BigInt(this.samplerDescriptorOffset[0]) + BigInt(I)*BigInt(P.samplerDescriptorSize));
+            V.vkGetDescriptorEXT(this.base[0], new V.VkDescriptorGetInfoEXT({ type: V.VK_DESCRIPTOR_TYPE_SAMPLER, data: new BigUint64Array([this.samplers[I]]) }), P.samplerDescriptorSize, SMAP + BigInt(this.samplerDescriptorOffset[0]) + BigInt(I)*BigInt(P.samplerDescriptorSize));
         }
 
         //

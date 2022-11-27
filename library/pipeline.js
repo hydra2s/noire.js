@@ -17,7 +17,11 @@ class ComputePipelineObj extends PipelineObj {
         // 
         const deviceObj = B.Handles[this.base[0]];
         this.shaderStages = B.createShaderModuleInfo(B.createShaderModule(this.base[0], cInfo.shaderCode || cInfo.code), V.VK_SHADER_STAGE_COMPUTE_BIT, cInfo.pName || "main");
-        this.computeCInfo = new V.VkComputePipelineCreateInfo({ stage: this.shaderStages, layout: cInfo.pipelineLayout[0] || cInfo.pipelineLayout });
+        this.computeCInfo = new V.VkComputePipelineCreateInfo({ 
+            flags: V.VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
+            stage: this.shaderStages, 
+            layout: cInfo.pipelineLayout[0] || cInfo.pipelineLayout 
+        });
         V.vkCreateComputePipelines(this.base[0], 0n, this.computeCInfo.length, this.computeCInfo, null, this.handle = new BigUint64Array(1));
 
         //
@@ -153,6 +157,7 @@ class GraphicsPipelineObj extends PipelineObj {
         //
         V.vkCreateGraphicsPipelines(this.base[0], 0n, 1, this.graphicsPipelineInfo = new V.VkGraphicsPipelineCreateInfo({
             pNext: this.dynamicRenderingPipelineInfo,
+            flags: V.VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
             stageCount: this.shaderStages.length,
             pStages: this.shaderStages,
             pVertexInputState: this.vertexInputInfo,

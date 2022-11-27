@@ -13,7 +13,7 @@ class InstanceObj extends B.BasicObj {
 
         //
         this.extensions = ["VK_KHR_get_surface_capabilities2"].concat(IExtensionOpen);
-        this.layers = ["VK_LAYER_KHRONOS_validation"];
+        this.layers = [/*"VK_LAYER_KHRONOS_validation"*/];
 
         //
         V.vkEnumerateInstanceLayerProperties(this.amountOfLayers = new Uint32Array(1), null);
@@ -26,10 +26,10 @@ class InstanceObj extends B.BasicObj {
             pApplicationInfo: this.appInfo = new V.VkApplicationInfo({
                 pNext: null,
                 pApplicationName: "Kratos.js",
-                applicationVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 235),
+                applicationVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 233),
                 pEngineName: "Kratos.js",
-                engineVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 235),
-                apiVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 235)
+                engineVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 233),
+                apiVersion: V.VK_MAKE_API_VERSION(0, 1, 3, 233)
             }),
             enabledLayerCount: this.layers.length,
             ppEnabledLayerNames: this.layers,

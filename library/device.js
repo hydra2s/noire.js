@@ -26,9 +26,10 @@ class DeviceObj extends B.BasicObj {
             "VK_KHR_acceleration_structure", 
             "VK_KHR_ray_query", 
             "VK_EXT_conservative_rasterization", 
-            "VK_EXT_extended_dynamic_state3", 
+            "VK_EXT_extended_dynamic_state3",
             "VK_EXT_robustness2", 
-            "VK_EXT_descriptor_buffer"
+            "VK_EXT_vertex_input_dynamic_state",
+            "VK_EXT_descriptor_buffer\0",
         ];
 
         //for (let K=0;K<physicalDeviceObj.extensions.length;K++) {
@@ -39,7 +40,8 @@ class DeviceObj extends B.BasicObj {
         this.deviceExtensions = this.deviceExtensions.filter((E)=>{
             let found = false;
             for (let K=0;K<physicalDeviceObj.extensions.length;K++) {
-                if (String.fromAddress(physicalDeviceObj.extensions[K].addressOffsetOf("extensionName")).indexOf(E) >= 0) { found = true; break; };
+                const X = String.fromAddress(physicalDeviceObj.extensions[K].addressOffsetOf("extensionName"));
+                if (X.indexOf(E) >= 0 || E.indexOf(X) >= 0) { found = true; break; };
             }
             return found;
         });

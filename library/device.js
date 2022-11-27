@@ -20,15 +20,28 @@ class DeviceObj extends B.BasicObj {
 
         //
         this.deviceLayers = [];
-        this.deviceExtensions = ["VK_KHR_swapchain", "VK_KHR_deferred_host_operations", "VK_KHR_acceleration_structure", "VK_KHR_ray_query", "VK_EXT_conservative_rasterization", "VK_EXT_vertex_input_dynamic_state", "VK_EXT_extended_dynamic_state3", "VK_EXT_robustness2", "VK_EXT_descriptor_buffer"];
+        this.deviceExtensions = [
+            "VK_KHR_swapchain", 
+            "VK_KHR_deferred_host_operations", 
+            "VK_KHR_acceleration_structure", 
+            "VK_KHR_ray_query", 
+            "VK_EXT_conservative_rasterization", 
+            "VK_EXT_extended_dynamic_state3", 
+            "VK_EXT_robustness2", 
+            "VK_EXT_descriptor_buffer"
+        ];
+
+        //for (let K=0;K<physicalDeviceObj.extensions.length;K++) {
+            //console.log(String.fromAddress(physicalDeviceObj.extensions[K].addressOffsetOf("extensionName")));
+        //}
 
         //
-        this.deviceExtensions.forEach((E,I)=>{
+        this.deviceExtensions = this.deviceExtensions.filter((E)=>{
             let found = false;
             for (let K=0;K<physicalDeviceObj.extensions.length;K++) {
-                if (String.fromAddress(physicalDeviceObj.extensions[K].addressOffsetOf("extensionName")) == E) { found = true; };
-                if (!found) { this.deviceExtensions.splice(I,1); };
+                if (String.fromAddress(physicalDeviceObj.extensions[K].addressOffsetOf("extensionName")).indexOf(E) >= 0) { found = true; break; };
             }
+            return found;
         });
 
         //

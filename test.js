@@ -33,7 +33,7 @@ import fs from "fs";
         cmdBufFn: (cmdBuf)=>{
             const pushData = new BigUint64Array([bufferObj.getDeviceAddress()]);
             descriptorsObj.cmdUpdateUniform(cmdBuf, new Uint32Array([128]), 0n);
-            pipelineObj.dispatch(cmdBuf, 1, 1, 1, pushData);
+            pipelineObj.cmdDispatch(cmdBuf, 1, 1, 1, pushData);
             bufferObj.cmdCopyToBuffer(cmdBuf, hostBufferObj.handle[0], [{srcOffset: 0, dstOffset: 0, size: 256*4}]);
         }
     });

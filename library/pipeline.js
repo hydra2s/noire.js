@@ -28,7 +28,7 @@ class ComputePipelineObj extends PipelineObj {
         deviceObj.Pipelines[this.handle[0]] = this;
     }
 
-    dispatch(cmdBuf, x = 1, y = 1, z = 1, pushConstRaw = null, pushConstByteOffset = 0n) {
+    cmdDispatch(cmdBuf, x = 1, y = 1, z = 1, pushConstRaw = null, pushConstByteOffset = 0n) {
         const deviceObj = B.Handles[this.base[0]];
         const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
 

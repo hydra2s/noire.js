@@ -121,7 +121,7 @@ void main() {
         nrMaterial materialData = nrMaterial(geometryData.materialAddress);
 
         //
-        imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.xy), vec4(/*1.f - bary.x - bary.y, bary.xy*/ texelFetch(textures[materialData.diffuse.tex], ivec2(gl_GlobalInvocationID.xy), 0).xyz, 1.f));
+        imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.xy), vec4(/*1.f - bary.x - bary.y, bary.xy*/ texture(sampler2D(textures[materialData.diffuse.tex], samplers[materialData.diffuse.sam]), vec2(gl_GlobalInvocationID.xy)/720.0).xyz, 1.f));
     } else {
         imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.xy), vec4(0, 0, 0, 1));
     }

@@ -188,7 +188,15 @@ class GltfLoaderObj extends B.BasicObj {
 
         // 
         const textureDescIndices = new Array(rawData.images.length).fill(-1);
-        const samplerDescIndices = [];
+        const samplerDescIndices = rawData.samplers.map((S)=>(deviceObj.createSampler({
+            samplerInfo: {
+                magFilter: V.VK_FILTER_LINEAR,
+                minFilter: V.VK_FILTER_LINEAR,
+                addressModeU: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                addressModeV: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                addressModeW: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            }
+        }).DSC_ID));
 
         // 
         const meshes = []; // bottom levels
@@ -200,14 +208,13 @@ class GltfLoaderObj extends B.BasicObj {
             textureDescIndices[L] = await this.load(I.uri);
         }));
 
-        // TODO: samplers support
-
-
         //
         rawData.materials.map((M)=>{
             const material = {}; materials.push(material);
+            const X = M.pbrMetallicRoughness.baseColorTexture.index;
             material.diffuse = {
-                tex: textureDescIndices[M.pbrMetallicRoughness.baseColorTexture.index] || -1,
+                tex: textureDescIndices[rawData.textures[X].source] || -1,
+                sam: samplerDescIndices[rawData.textures[X].sampler] || -1,
                 col: [0.0, 0.0, 0.0, 1.0]
             }
         });

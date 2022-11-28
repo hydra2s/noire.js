@@ -48,9 +48,9 @@ import fs from "fs";
     });
 
     //
-    await gltfLoaderA.load("Cube.gltf")
+    await gltfLoaderA.load("Cube.gltf");
+    //console.log(await gltfLoaderA.load("Cube.gltf"));
     //console.log();
-
 
     //
     const readData = new Uint32Array(hostBufferObj.map());

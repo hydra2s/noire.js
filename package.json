@@ -28,6 +28,7 @@
     "@flatten-js/interval-tree": "^1.0.19",
     "@petamoriken/float16": "^3.6.6",
     "bmp-js": "^0.1.0",
+    "gl-matrix": "^3.4.3",
     "gm": "^1.25.0",
     "hdr": "^0.6.1",
     "ktx-parse": "^0.4.5"

@@ -3,6 +3,7 @@ import { default as V } from "../deps/vulkan.node.js/index.js";
 import path from 'path';
 import fs from 'fs';
 import { default as L } from "./texture-loader.js"
+import { default as $M } from "gl-matrix"
 
 //
 const nrBinding = new Proxy(V.CStructView, new V.CStruct("nrBinding", {
@@ -159,7 +160,6 @@ class GltfLoaderObj extends B.BasicObj {
 
         // 
         const meshes = []; // bottom levels
-        const nodes = []; // top levels
         const materials = []; //
         const geometries = [];
 
@@ -269,7 +269,7 @@ class GltfLoaderObj extends B.BasicObj {
                 cmdBufFn: (cmdBuf)=>{
                     geometryBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, geometryBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: geometriesData.byteLength }]);
                     bottomLevel.cmdBuild(cmdBuf, mesh.geometries.map((G,I)=>({
-                        primitiveCount: G.primitiveCount,
+                        primitiveCount: geometries[G].primitiveCount,
                         primitiveOffset: 0,
                         firstVertex: 0,
                         transformOffset: 0
@@ -282,26 +282,26 @@ class GltfLoaderObj extends B.BasicObj {
             mesh.accelerationStructure = bottomLevel;
         }));
 
-        // commit mesh buffers
-        await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
-            queueFamilyIndex: 0,
-            queueIndex: 0,
-            cmdBufFn: (cmdBuf)=>{
-                meshBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, meshBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: nrMesh.byteLength * rawData.meshes.length }]);
-            }
-        }));
-
-        // TODO: implement nodes of GLTF, top levels of AS
+        // 
         const parseNode = (node, matrix)=>{
             let $node = [];
+
+            //
+            if (node.matrix?.length >= 16) { $M.mat4.multiply(matrix, new Float32Array(matrix), node.matrix); };
+            if (node.translation?.length >= 3) { $M.mat4.translate(matrix, new Float32Array(matrix), node.translation); };
+            if (node.scale?.length >= 3) { $M.mat4.scale(matrix, new Float32Array(matrix), node.scale); };
+            if (node.rotation?.length >= 4) { $M.mat4.multiply(matrix, new Float32Array(matrix), $M.mat4.fromQuat(new Float32Array(16), node.rotation)); };
+
+            //
             if (node.children) {
                 $node = [...$node, ...node.children.map((idx)=>{
                     return parseNode(rawData.nodes[idx], matrix);
                 })];
             } else {
-                $node = [{
+                const MTX = new Float32Array(16); $M.mat4.transpose(MTX, new Float32Array(matrix));
+                $node = [...$node, {
                     instance: {
-                        "transform:f32[12]": [1.0, 0.0, 0.0, 0.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 1.0, 0.0],
+                        "transform:f32[12]": MTX.subarray(0, 12),
                         instanceCustomIndex: 0,
                         mask: 0xFF,
                         instanceShaderBindingTableRecordOffset: 0,
@@ -309,7 +309,7 @@ class GltfLoaderObj extends B.BasicObj {
                         accelerationStructureReference: meshes[node.mesh].accelerationStructure.getDeviceAddress()
                     },
                     node: {
-                        "transform:f32[12]": [1.0, 0.0, 0.0, 0.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 1.0, 0.0],
+                        "transform:f32[12]": MTX.subarray(0, 12),
                         meshBuffer: meshes[node.mesh].meshDeviceAddress
                     }
                 }];
@@ -326,7 +326,42 @@ class GltfLoaderObj extends B.BasicObj {
         ]));
 
         //
+        const nodeData = new nrNode(instancedData.map((ID)=>(ID.node)));
+        const nodeAccelerationStructure = deviceObj.createTopLevelAccelerationStructure({
+            opaque: true,
+            memoryAllocator: memoryAllocatorObj.handle[0],
+            instanced: instancedData.map((ID)=>(ID.instance))
+        });
+
+        // 
+        const nodeBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: nrNode.byteLength * nodeData.length }));
+        const nodeBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrNode.byteLength * nodeData.length }));
+
+        // TODO: optimize accesses
+        nodeBuffer.map().set(nodeData.buffer);
+        nodeBuffer.unmap();
+
+        // commit mesh buffers
+        await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
+            queueFamilyIndex: 0,
+            queueIndex: 0,
+            cmdBufFn: (cmdBuf)=>{
+                meshBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, meshBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: nrMesh.byteLength * rawData.meshes.length }]);
+                nodeBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, nodeBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: nrNode.byteLength * nodeData.length }]);
+                nodeAccelerationStructure.cmdBuild(cmdBuf, [{
+                    primitiveCount: instancedData.length,
+                    primitiveOffset: 0,
+                    firstVertex: 0,
+                    transformOffset: 0
+                }]);
+            }
+        }));
+
+        //
         return {
+            nodeAccelerationStructure,
+            nodeBuffer,
+            nodeBufferGPU,
             instancedData,
             geometryBuffers,
             geometryBuffersGPU,
@@ -335,7 +370,7 @@ class GltfLoaderObj extends B.BasicObj {
             textureDescIndices,
             samplerDescIndices,
             materials,
-            nodes,
+            nodeData,
             meshes,
             materialBuffer,
             materialBufferGPU,

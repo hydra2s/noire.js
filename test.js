@@ -48,7 +48,7 @@ import fs from "fs";
     });
 
     //
-    await gltfLoaderA.load("Cube.gltf");
+    const gltfModel = await gltfLoaderA.load("Cube.gltf");
     //console.log(await gltfLoaderA.load("Cube.gltf"));
     //console.log();
 
@@ -175,6 +175,7 @@ import fs from "fs";
         //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 3, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) });
 
         const AB = new ArrayBuffer(16), U64 = new BigUint64Array(AB, 0, 1), U32 = new Uint32Array(AB, 8, 1);
+        //U64[0] = gltfModel.nodeAccelerationStructure.getDeviceAddress(), U32[0] = swapchainObj.getStorageDescId(imageIndex);
         U64[0] = topLevel.getDeviceAddress(), U32[0] = swapchainObj.getStorageDescId(imageIndex);
         triangleObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/4), 1, AB);
 

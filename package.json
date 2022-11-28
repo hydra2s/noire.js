@@ -25,6 +25,8 @@
   "homepage": "https://github.com/hydra2s/noire.js#readme",
   "type": "module",
   "dependencies": {
-    "@flatten-js/interval-tree": "^1.0.19"
+    "@flatten-js/interval-tree": "^1.0.19",
+    "bmp-js": "^0.1.0",
+    "gm": "^1.25.0"
   }
 }

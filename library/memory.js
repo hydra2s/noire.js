@@ -16,6 +16,8 @@ class MemoryAllocatorObj extends B.BasicObj {
         if (allocationObj) {
             cInfo.memoryRequirements2 = allocationObj.memoryRequirements2;
             cInfo.memoryRequirements = allocationObj.memoryRequirements;
+            cInfo.isImage = allocationObj.isImage;
+            cInfo.isBuffer = allocationObj.isBuffer;
         }
 
         //
@@ -68,16 +70,17 @@ class DeviceMemoryObj extends B.BasicObj {
         //
         const propertyFlag = cInfo.isBAR ? (V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT|V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) : (cInfo.isHost ? (
             V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+            V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+            V.VK_MEMORY_PROPERTY_HOST_CACHED_BIT
         ) : V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
         //
         V.vkAllocateMemory(deviceObj.handle[0], this.allocInfo = new V.VkMemoryAllocateInfo({
             pNext: new V.VkMemoryAllocateFlagsInfo({
-                flags: V.VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR
+                flags: cInfo.isBuffer ? V.VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR : 0
             }),
             allocationSize: cInfo.memoryRequirements.size,
-            memoryTypeIndex: B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, propertyFlag)
+            memoryTypeIndex: B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, propertyFlag, cInfo.isHost ? V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0)
         }), null, this.handle = new BigUint64Array(1));
     }
 
@@ -180,7 +183,7 @@ class BufferObj extends AllocationObj {
         }
 
         // TODO: needs or no pre-barrier?
-        V.vkCmdCopyImageToBuffer2(cmdBuf[0]||cmdBuf, new V.VkCopyBufferInfo2({
+        V.vkCmdCopyImageToBuffer2(cmdBuf[0]||cmdBuf, new V.VkCopyImageToBufferInfo2({
             srcImage: image[0] || image, 
             srcImageLayout: imageLayout,
             dstBuffer: this.handle[0],
@@ -219,7 +222,7 @@ class BufferObj extends AllocationObj {
         }
 
         // TODO: needs or no pre-barrier?
-        V.vkCmdCopyBufferToImage2(cmdBuf[0]||cmdBuf, new V.VkCopyBufferInfo2({
+        V.vkCmdCopyBufferToImage2(cmdBuf[0]||cmdBuf, new V.VkCopyBufferToImageInfo2({
             srcBuffer: this.handle[0],
             dstImage: image[0] || image, 
             dstImageLayout: imageLayout,
@@ -312,7 +315,7 @@ class ImageObj extends AllocationObj {
 
             // TODO: support for external memory allocators
             V.vkCreateImage(this.base[0], this.pInfo = new V.VkImageCreateInfo({
-                imageType: cInfo.extent.depth > 1 ? VK_IMAGE_TYPE_3D : (cInfo.extent.height > 1 ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D),
+                imageType: cInfo.extent.depth > 1 ? V.VK_IMAGE_TYPE_3D : (cInfo.extent.height > 1 ? V.VK_IMAGE_TYPE_2D : V.VK_IMAGE_TYPE_1D),
                 format: cInfo.format,
                 extent: {width: cInfo.extent.width || 1, height: cInfo.extent.height || 1, depth: cInfo.extent.depth || 1},
                 mipLevels: cInfo.mipLevels || 1,
@@ -361,7 +364,7 @@ class ImageObj extends AllocationObj {
         }
 
         // TODO: needs or no pre-barrier?
-        V.vkCmdCopyImageToBuffer2(cmdBuf[0]||cmdBuf, new V.VkCopyBufferInfo2({
+        V.vkCmdCopyImageToBuffer2(cmdBuf[0]||cmdBuf, new V.VkCopyImageToBufferInfo2({
             srcImage: buffer[0] || buffer, 
             srcImageLayout: imageLayout,
             dstBuffer: this.handle[0],
@@ -400,7 +403,7 @@ class ImageObj extends AllocationObj {
         }
 
         // TODO: needs or no pre-barrier?
-        V.vkCmdCopyBufferToImage2(cmdBuf[0]||cmdBuf, new V.VkCopyBufferInfo2({
+        V.vkCmdCopyBufferToImage2(cmdBuf[0]||cmdBuf, new V.VkCopyBufferToImageInfo2({
             srcBuffer: buffer[0] || buffer,
             dstImage: this.handle[0], 
             dstImageLayout: imageLayout,
@@ -432,14 +435,14 @@ class ImageViewObj extends B.BasicObj {
             }).set({image: this.cInfo.image}), null, this.handle = new BigUint64Array(1));
 
             //
+            deviceObj.ImageViews[this.handle[0]] = this;
+
+            //
             if (this.cInfo.pipelineLayout) {
                 const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
                 this.DSC_ID = descriptorsObj.resourceImages.push(this.handle[0]);
                 descriptorsObj.writeDescriptors();
             }
-
-            //
-            deviceObj.ImageViews[this.handle[0]] = this;
         }
     }
 
@@ -464,14 +467,14 @@ class SamplerObj extends B.BasicObj {
         }), null, this.handle = new BigUint64Array(1));
 
         //
+        deviceObj.Samplers[this.handle[0]] = this;
+
+        //
         if (this.cInfo.pipelineLayout) {
             const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
             this.DSC_ID = descriptorsObj.samplers.push(this.handle[0]);
             descriptorsObj.writeDescriptors();
         }
-
-        //
-        deviceObj.Samplers[this.handle[0]] = this;
     }
 }
 

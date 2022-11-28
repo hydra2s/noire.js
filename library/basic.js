@@ -22,13 +22,14 @@ const createShaderModule = (device, shaderSrc) => {
 }
 
 //
-const getMemoryTypeIndex = (physicalDevice, typeFilter, propertyFlag) => {
+const getMemoryTypeIndex = (physicalDevice, typeFilter, propertyFlag, ignoreFlags = 0) => {
     let memoryProperties = new V.VkPhysicalDeviceMemoryProperties();
     V.vkGetPhysicalDeviceMemoryProperties(physicalDevice, memoryProperties);
     for (let I = 0; I < memoryProperties.memoryTypeCount; ++I) {
         if (
         (typeFilter & (1 << I)) &&
-        (memoryProperties.memoryTypes[I].propertyFlags & propertyFlag) === propertyFlag
+        (memoryProperties.memoryTypes[I].propertyFlags & propertyFlag) === propertyFlag &&
+        (memoryProperties.memoryTypes[I].propertyFlags & ignoreFlags) == 0
         ) {
         return I;
         }

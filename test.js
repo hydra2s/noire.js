@@ -42,6 +42,17 @@ import fs from "fs";
     await B.awaitFenceAsync(deviceObj.handle[0], fenceC[0]);
 
     //
+    const gltfLoaderA = new K.GltfLoaderObj(deviceObj.handle, {
+        pipelineLayout: descriptorsObj.handle[0],
+        memoryAllocator: memoryAllocatorObj.handle[0],
+    });
+
+    //
+    await gltfLoaderA.load("Cube.gltf")
+    //console.log();
+
+
+    //
     const readData = new Uint32Array(hostBufferObj.map());
     console.log(readData);
 

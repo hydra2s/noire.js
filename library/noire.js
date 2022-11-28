@@ -10,6 +10,7 @@ import { default as M } from "./memory.js"
 import { default as P } from "./pipeline.js"
 import { default as A } from "./acceleration-structure.js"
 import { default as F } from "./framebuffer.js"
+import { default as G } from "./gltf-loader.js";
 
 //
-export default { InstanceObj, PhysicalDeviceObj, DeviceObj, WindowObj, DescriptorsObj, SwapChainObj, ...M, ...P, ...A, ...B, ...V, ...F };
+export default { InstanceObj, PhysicalDeviceObj, DeviceObj, WindowObj, DescriptorsObj, SwapChainObj, ...M, ...P, ...A, ...B, ...V, ...F, ...G };

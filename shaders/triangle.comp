@@ -6,6 +6,9 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int32 : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_buffer_reference : enable
+#extension GL_EXT_buffer_reference2 : enable
+#extension GL_EXT_samplerless_texture_functions : enable
 
 //
 layout (set = 0, binding = 0) uniform texture2D textures[];
@@ -33,6 +36,66 @@ vec3 divW(in vec4 v) {
 }
 
 //
+layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrMesh {
+    uint64_t address;
+    uint32_t geometryCount;
+    uint32_t flags;
+};
+
+//
+layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrNode {
+    mat3x4 transform;
+    uint64_t meshBuffer;
+    uint32_t meshIndex;
+    uint32_t _;
+};
+
+//
+/*layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrBinding {
+    uint64_t address;
+    uint32_t length;
+    uint32_t range;
+    uint32_t stride;
+    uint32_t format;
+};*/
+
+//
+//layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrTexBinding {
+    //vec4 col; int32_t tex, sam;
+//};
+
+struct nrBinding {
+    uint64_t address;
+    uint32_t length;
+    uint32_t range;
+    uint32_t stride;
+    uint32_t format;
+};
+
+//
+struct nrTexBinding { vec4 col; int32_t tex, sam; };
+
+//
+layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrGeometry {
+    nrBinding vertex;
+    nrBinding indice;
+    nrBinding normal;
+    nrBinding colors;
+    nrBinding tangent;
+    nrBinding texcoord;
+    uint32_t primitiveCount;
+    uint32_t _;
+    uint64_t materialAddress;
+};
+
+//
+layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrMaterial {
+    nrTexBinding diffuse;
+    nrTexBinding normal;
+    nrTexBinding PBR;
+};
+
+//
 void main() {
     const vec3 bOrigin = divW(vec4(vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.0 - 1.0, 0.0, 1.0) * inverse(modelView) * inverse(perspective));//vec3(vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.f - 1.f, -1);
     const vec3 eOrigin = divW(vec4(vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.0 - 1.0, 1.0, 1.0) * inverse(modelView) * inverse(perspective));
@@ -50,7 +113,15 @@ void main() {
     //
     if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) {
         const vec2 bary = rayQueryGetIntersectionBarycentricsEXT(rayQuery, true);
-        imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.xy), vec4(1.f - bary.x - bary.y, bary.xy, 1));
+
+        //
+        nrNode nodeData = nrNode(nodeBuffer) + rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
+        nrMesh meshData = nrMesh(nodeData.meshBuffer);
+        nrGeometry geometryData = nrGeometry(meshData.address) + rayQueryGetIntersectionGeometryIndexEXT (rayQuery, true);
+        nrMaterial materialData = nrMaterial(geometryData.materialAddress);
+
+        //
+        imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.xy), vec4(/*1.f - bary.x - bary.y, bary.xy*/ texelFetch(textures[materialData.diffuse.tex], ivec2(gl_GlobalInvocationID.xy), 0).xyz, 1.f));
     } else {
         imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.xy), vec4(0, 0, 0, 1));
     }

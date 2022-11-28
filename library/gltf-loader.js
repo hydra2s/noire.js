@@ -8,7 +8,7 @@ import { default as $M } from "gl-matrix"
 //
 const nrBinding = new Proxy(V.CStructView, new V.CStruct("nrBinding", {
     $address: "u64",
-    length: "u32",
+    $length: "u32",
     range: "u32",
     stride: "u32",
     format: "u32"
@@ -37,13 +37,14 @@ const nrGeometry = new Proxy(V.CStructView, new V.CStruct("nrGeometry", {
 // in top level of AS
 const nrNode = new Proxy(V.CStructView, new V.CStruct("nrNode", {
     transform: "f32[12]",
-    //accStruct: "u64",
-    meshBuffer: "u64"
+    meshBuffer: "u64",
+    meshIndex: "u32",
+    _: "u32"
 }));
 
 //
 const nrTexBinding = new Proxy(V.CStructView, new V.CStruct("nrTexBinding", {
-    col: "f32[4]", tex: "i32", _: "u32"
+    col: "f32[4]", tex: "i32", sam: "i32"
 }));
 
 //
@@ -126,7 +127,7 @@ class GltfLoaderObj extends B.BasicObj {
 
         //
         const materialBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: nrMaterial.byteLength * rawData.materials.length }));
-        const materialBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrMaterial.byteLength * rawData.materials.length }));
+        const materialBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrMaterial.byteLength * rawData.materials.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR }));
         const buffersGPU = [];
         const buffers = [];
         const bindings = [];
@@ -178,7 +179,7 @@ class GltfLoaderObj extends B.BasicObj {
             //
             bindings.push({
                 $address: buffersGPU[B.buffer].getDeviceAddress() + BigInt(A?.byteOffset||0) + BigInt(B?.byteOffset||0),
-                length: _blength / _bstride,
+                $length: _blength / _bstride,
                 range: _blength,
                 stride: _bstride,
                 format: (cnt | is16bit | isInt)
@@ -217,17 +218,8 @@ class GltfLoaderObj extends B.BasicObj {
         materialBuffer.unmap();
 
         //
-        await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
-            queueFamilyIndex: 0,
-            queueIndex: 0,
-            cmdBufFn: (cmdBuf)=>{
-                materialBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, materialBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: materialData.byteLength }]);
-            }
-        }));
-
-        //
         const meshBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: nrMesh.byteLength * rawData.meshes.length }));
-        const meshBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrMesh.byteLength * rawData.meshes.length }));
+        const meshBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrMesh.byteLength * rawData.meshes.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT }));
 
         //
         const geometryBuffers = [];
@@ -246,7 +238,7 @@ class GltfLoaderObj extends B.BasicObj {
                     tangent: bindings[P.attributes["TANGENT"]],
                     texcoord: bindings[P.attributes["TEXCOORD_0"]],
                     indice: bindings[P.indices],
-                    primitiveCount: (bindings[P.indices]?.length || bindings[P.attributes["POSITION"]]?.length || 3) / 3,
+                    primitiveCount: (bindings[P.indices]?.$length || bindings[P.attributes["POSITION"]]?.$length || 3) / 3,
                     materialAddress: materialBufferGPU.getDeviceAddress() + BigInt(nrMaterial.byteLength * P.material)
                 });
 
@@ -257,7 +249,7 @@ class GltfLoaderObj extends B.BasicObj {
 
             // TODO: unified geometry buffer
             const geometryBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: nrGeometry.byteLength * mesh.geometryCount }));
-            const geometryBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrGeometry.byteLength * mesh.geometryCount }));
+            const geometryBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrGeometry.byteLength * mesh.geometryCount, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT }));
 
             // TODO: optimize accesses
             const geometriesData = new nrGeometry(mesh.geometryCount);
@@ -284,7 +276,7 @@ class GltfLoaderObj extends B.BasicObj {
                     vertexFormat: V.VK_FORMAT_R32G32B32_SFLOAT, // currently, only supported FVEC3
                     vertexData: geometries[G].vertex?.$address,
                     vertexStride: geometries[G].vertex.stride,
-                    maxVertex: geometries[G].vertex.length
+                    maxVertex: geometries[G].vertex.$length
                 }
             }));
 
@@ -341,7 +333,8 @@ class GltfLoaderObj extends B.BasicObj {
                     },
                     node: {
                         "transform:f32[12]": MTX.subarray(0, 12),
-                        meshBuffer: meshes[node.mesh].meshDeviceAddress
+                        meshBuffer: meshes[node.mesh].meshDeviceAddress,
+                        meshIndex: node.mesh
                     }
                 }];
             }
@@ -377,6 +370,7 @@ class GltfLoaderObj extends B.BasicObj {
             queueFamilyIndex: 0,
             queueIndex: 0,
             cmdBufFn: (cmdBuf)=>{
+                materialBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, materialBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: materialData.byteLength }]);
                 meshBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, meshBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: nrMesh.byteLength * rawData.meshes.length }]);
                 nodeBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, nodeBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: nrNode.byteLength * nodeData.length }]);
                 nodeAccelerationStructure.cmdBuild(cmdBuf, [{

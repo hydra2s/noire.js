@@ -47,6 +47,7 @@ class TextureLoaderObj extends B.BasicObj {
 
         //
         let subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 };
+        let componentMapping = { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A };
 
         //
         let status = 0;
@@ -84,7 +85,8 @@ class TextureLoaderObj extends B.BasicObj {
             status = await new Promise(async (r,rj)=>{
                 const bmpData = bmp.decode(await fs.promises.readFile(relative + file));
                 texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: bmpData.width, height: bmpData.height, depth: 1}, format: V.VK_FORMAT_A8B8G8R8_UNORM_PACK32, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
-                
+                componentMapping = { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A };
+
                 // 
                 texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: bmpData.width * bmpData.height * bmpData.bitPP * 4 }));
                 texBuf.map().set(bmpData.data);
@@ -100,7 +102,8 @@ class TextureLoaderObj extends B.BasicObj {
                 status = await new Promise(async(r,rj)=>{
                 gmi(relative + file).toBuffer('BMP', async (err, buffer) => {
                     const bmpData = bmp.decode(buffer);
-                    texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: bmpData.width, height: bmpData.height, depth: 1}, format: V.VK_FORMAT_A8B8G8R8_UNORM_PACK32, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                    texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: bmpData.width, height: bmpData.height, depth: 1}, format: V.VK_FORMAT_B8G8R8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                    componentMapping = { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A };
 
                     //
                     texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: bmpData.width * bmpData.height * bmpData.bitPP * 4 }));
@@ -163,7 +166,8 @@ class TextureLoaderObj extends B.BasicObj {
             image: texImage.handle[0],
             format : texImage.cInfo.format,
             pipelineLayout: this.cInfo.pipelineLayout,
-            subresourceRange: subresource
+            subresourceRange: subresource,
+            components: componentMapping
         }).DSC_ID;
 
         //

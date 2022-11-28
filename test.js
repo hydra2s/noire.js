@@ -9,7 +9,8 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     perspective: "f32[16]",
     modelView: "f32[16]",
     accelerationStructure: "u64",
-    nodeBuffer: "u64"
+    nodeBuffer: "u64",
+    instanceCount: "u32"
 }));
 
 //
@@ -57,7 +58,6 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     });
 
     //
-    const gltfModel = await gltfLoaderA.load("Cube.gltf");
     //console.log(await gltfLoaderA.load("Cube.gltf"));
     //console.log();
 
@@ -124,6 +124,7 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     await B.awaitFenceAsync(deviceObj.handle[0], fenceB[0]);
 
     //
+    const gltfModel = await gltfLoaderA.load("Cube.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
         code: await fs.promises.readFile("shaders/triangle.comp.spv")
@@ -134,7 +135,8 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
         perspective: $M.mat4.transpose(new Float32Array(16), $M.mat4.perspective(new Float32Array(16), 60 / 180 * Math.PI, windowSize[0]/windowSize[1], 0.0001, 10000.0)),
         modelView: $M.mat4.transpose(new Float32Array(16), $M.mat4.lookAt(new Float32Array(16), [0.0, 0.0, -1.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0])),
         accelerationStructure: gltfModel.nodeAccelerationStructure.getDeviceAddress(),
-        nodeBuffer: gltfModel.nodeBufferGPU.getDeviceAddress()
+        nodeBuffer: gltfModel.nodeBufferGPU.getDeviceAddress(),
+        instanceCount: gltfModel.nodeData.length
     });
 
     // 

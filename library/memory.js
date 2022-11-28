@@ -432,6 +432,7 @@ class ImageViewObj extends B.BasicObj {
                 viewType : this.cInfo.viewType || V.VK_IMAGE_VIEW_TYPE_2D, // TODO: automatic view type
                 format : imageObj.cInfo.format,
                 subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: this.cInfo.mipLevel || 0, levelCount: 1, baseArrayLayer: 0, layerCount: imageObj.cInfo.arrayLayers, ...this.cInfo.subresourceRange },
+                components: cInfo.components || { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A }
             }).set({image: this.cInfo.image}), null, this.handle = new BigUint64Array(1));
 
             //

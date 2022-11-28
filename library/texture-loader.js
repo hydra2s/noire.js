@@ -31,6 +31,7 @@ const XYZtoRGB = ([X, Y, Z]) => {
 class TextureLoaderObj extends B.BasicObj {
     constructor(base, cInfo) {
         super(base, null); this.cInfo = cInfo;
+        this.hdrloader = new HDR.loader();
     }
 
     async load(file, relative = "./") {
@@ -40,13 +41,21 @@ class TextureLoaderObj extends B.BasicObj {
         const ext = path.extname(file);
         let parsedData = null;
 
+        //
+        let texImage = null;
+        let texBuf = null;
+
+        //
+        let subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 };
+
+        //
+        let status = 0;
         switch(ext) {
             case ".hdr":
             const self = this;
 
-            var hdrloader = new HDR.loader();
-            parsedData = new Promise(async (r,rj)=>{
-                hdrloader.on('load', async function() {
+            status = new Promise(async (r,rj)=>{
+                this.hdrloader.on('load', async function() {
                     const image = this;
 
                     // covnert into fp16 + RGB from XYZ
@@ -57,198 +66,107 @@ class TextureLoaderObj extends B.BasicObj {
                     }
 
                     //
-                    const texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R16G16B16A16_SFLOAT, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
-                    const texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 2 }));
-                    texBuf.map().set(fp16data);
+                    texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R16G16B16A16_SFLOAT, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                    
+                    //
+                    texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 2 }));
+                    texBuf.map().set(fp16data.buffer);
                     texBuf.unmap();
 
-                    //
-                    const subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 };
-                    const texBarrier = new V.VkImageMemoryBarrier2({
-                        srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
-                        srcAccessMask: V.VK_ACCESS_2_NONE,
-                        dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-                        dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
-                        oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
-                        newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
-                        srcQueueFamilyIndex: ~0,
-                        dstQueueFamilyIndex: ~0,
-                        image: texImage.handle[0],
-                        subresourceRange: subresource,
-                    });
-
-                    //
-                    await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
-                        queueFamilyIndex: 0,
-                        queueIndex: 0,
-                        cmdBufFn: (cmdBuf)=>{
-                            V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: texBarrier.length, pImageMemoryBarriers: texBarrier }));
-                            texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ 
-                                imageExtent: texImage.cInfo.extent,
-                                imageSubresource: { aspectMask:subresource.aspectMask, mipLevel:subresource.baseMipLevel, baseArrayLayer:subresource.baseArrayLayer, layerCount:subresource.layerCount }
-                            }]);
-                        }
-                    }));
-
-                    //
-                    r(deviceObj.createImageView({
-                        image: texImage.handle[0],
-                        format : texImage.cInfo.format,
-                        pipelineLayout: this.cInfo.pipelineLayout,
-                        subresourceRange: subresource
-                    }).DSC_ID);
+                    r(1);
                 });
             });
-            fs.createReadStream(relative + file).pipe(hdrloader);
-            parsedData = await parsedData;
+            fs.createReadStream(relative + file).pipe(this.hdrloader);
+            status = await status;
             break;
 
             case ".bmp": 
-            parsedData = await new Promise(async (r,rj)=>{
+            status = await new Promise(async (r,rj)=>{
                 const bmpData = bmp.decode(await fs.promises.readFile(relative + file));
-                const texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: bmpData.width, height: bmpData.height, depth: 1}, format: V.VK_FORMAT_A8B8G8R8_UNORM_PACK32, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
-                const texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: bmpData.width * bmpData.height * bmpData.bitPP * 4 }));
+                texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: bmpData.width, height: bmpData.height, depth: 1}, format: V.VK_FORMAT_A8B8G8R8_UNORM_PACK32, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                
+                // 
+                texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: bmpData.width * bmpData.height * bmpData.bitPP * 4 }));
                 texBuf.map().set(bmpData.data);
                 texBuf.unmap();
 
-                //
-                const subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 };
-                const texBarrier = new V.VkImageMemoryBarrier2({
-                    srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
-                    srcAccessMask: V.VK_ACCESS_2_NONE,
-                    dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-                    dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
-                    oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
-                    newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
-                    srcQueueFamilyIndex: ~0,
-                    dstQueueFamilyIndex: ~0,
-                    image: texImage.handle[0],
-                    subresourceRange: subresource,
-                });
-
-                //
-                await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
-                    queueFamilyIndex: 0,
-                    queueIndex: 0,
-                    cmdBufFn: (cmdBuf)=>{
-                        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: texBarrier.length, pImageMemoryBarriers: texBarrier }));
-                        texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ 
-                            imageExtent: texImage.cInfo.extent,
-                            imageSubresource: { aspectMask:subresource.aspectMask, mipLevel:subresource.baseMipLevel, baseArrayLayer:subresource.baseArrayLayer, layerCount:subresource.layerCount }
-                        }]);
-                    }
-                }));
-
-                //
-                r(deviceObj.createImageView({
-                    image: texImage.handle[0],
-                    format : texImage.cInfo.format,
-                    pipelineLayout: this.cInfo.pipelineLayout,
-                    subresourceRange: subresource
-                }).DSC_ID);
+                r(1);
             });
             break;
 
             case ".png":
             case ".jpg":
             case ".jng":
-            parsedData = await new Promise(async(r,rj)=>{
+                status = await new Promise(async(r,rj)=>{
                 gmi(relative + file).toBuffer('BMP', async (err, buffer) => {
                     const bmpData = bmp.decode(buffer);
-                    const texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: bmpData.width, height: bmpData.height, depth: 1}, format: V.VK_FORMAT_A8B8G8R8_UNORM_PACK32, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
-                    const texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: bmpData.width * bmpData.height * bmpData.bitPP * 4 }));
+                    texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: bmpData.width, height: bmpData.height, depth: 1}, format: V.VK_FORMAT_A8B8G8R8_UNORM_PACK32, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+
+                    //
+                    texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: bmpData.width * bmpData.height * bmpData.bitPP * 4 }));
                     texBuf.map().set(bmpData.data);
                     texBuf.unmap();
 
-                    //
-                    const subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 };
-                    const texBarrier = new V.VkImageMemoryBarrier2({
-                        srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
-                        srcAccessMask: V.VK_ACCESS_2_NONE,
-                        dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-                        dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
-                        oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
-                        newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
-                        srcQueueFamilyIndex: ~0,
-                        dstQueueFamilyIndex: ~0,
-                        image: texImage.handle[0],
-                        subresourceRange: subresource,
-                    });
-
-                    //
-                    await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
-                        queueFamilyIndex: 0,
-                        queueIndex: 0,
-                        cmdBufFn: (cmdBuf)=>{
-                            V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: texBarrier.length, pImageMemoryBarriers: texBarrier }));
-                            texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ 
-                                imageExtent: texImage.cInfo.extent,
-                                imageSubresource: { aspectMask:subresource.aspectMask, mipLevel:subresource.baseMipLevel, baseArrayLayer:subresource.baseArrayLayer, layerCount:subresource.layerCount }
-                            }]);
-                        }
-                    }));
-
-                    //
-                    r(deviceObj.createImageView({
-                        image: texImage.handle[0],
-                        format : texImage.cInfo.format,
-                        pipelineLayout: this.cInfo.pipelineLayout,
-                        subresourceRange: subresource
-                    }).DSC_ID);
+                    r(1);
                 })
             });
             break;
 
             case "ktx2":
             case "ktx":
-            parsedData = await new Promise(async(r,rj)=>{
+            status = await new Promise(async(r,rj)=>{
                 const container = read(await fs.promises.readFile(relative + file));
-                const texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth }, mipLevels: container.levels.length, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
-
-                //
-                const subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: container.layerCount };
-                const texBarrier = new V.VkImageMemoryBarrier2({
-                    srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
-                    srcAccessMask: V.VK_ACCESS_2_NONE,
-                    dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-                    dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
-                    oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
-                    newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
-                    srcQueueFamilyIndex: ~0,
-                    dstQueueFamilyIndex: ~0,
-                    image: texImage.handle[0],
-                    subresourceRange: subresource,
-                });
+                texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth }, mipLevels: container.levels.length, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: container.levels.length, baseArrayLayer: 0, layerCount: container.layerCount };
 
                 // TODO: all mip levels support
-                const texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: container.levels[0].uncompressedByteLength }));
+                texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: container.levels[0].uncompressedByteLength }));
                 texBuf.map().set(container.levels[0].levelData);
                 texBuf.unmap();
 
-                //
-                await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
-                    queueFamilyIndex: 0,
-                    queueIndex: 0,
-                    cmdBufFn: (cmdBuf)=>{
-                        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: texBarrier.length, pImageMemoryBarriers: texBarrier }));
-                        texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ 
-                            imageExtent: texImage.cInfo.extent,
-                            imageSubresource: { aspectMask:subresource.aspectMask, mipLevel:subresource.baseMipLevel, baseArrayLayer:subresource.baseArrayLayer, layerCount:subresource.layerCount }
-                        }]);
-                    }
-                }));
-
-                //
-                r(deviceObj.createImageView({
-                    image: texImage.handle[0],
-                    format : texImage.cInfo.format,
-                    pipelineLayout: this.cInfo.pipelineLayout,
-                    subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: container.levels.length, baseArrayLayer: 0, layerCount: container.layerCount }
-                }).DSC_ID);
+                r(1);
             });
             break;
         }
 
+        //
+        const texBarrier = new V.VkImageMemoryBarrier2({
+            srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
+            srcAccessMask: V.VK_ACCESS_2_NONE,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
+            newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+            image: texImage.handle[0],
+            subresourceRange: subresource,
+        });
+
+        //
+        await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
+            queueFamilyIndex: 0,
+            queueIndex: 0,
+            cmdBufFn: (cmdBuf)=>{
+                V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: texBarrier.length, pImageMemoryBarriers: texBarrier }));
+                
+                // TODO: multiple mip support
+                texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ 
+                    imageExtent: texImage.cInfo.extent,
+                    imageSubresource: { aspectMask: subresource.aspectMask, mipLevel: subresource.baseMipLevel, baseArrayLayer: subresource.baseArrayLayer, layerCount:subresource.layerCount }
+                }]);
+            }
+        }));
+
+        //
+        parsedData = deviceObj.createImageView({
+            image: texImage.handle[0],
+            format : texImage.cInfo.format,
+            pipelineLayout: this.cInfo.pipelineLayout,
+            subresourceRange: subresource
+        }).DSC_ID;
+
+        //
         return parsedData;
     }
 }

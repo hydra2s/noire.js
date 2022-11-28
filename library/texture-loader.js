@@ -5,9 +5,27 @@ import { default as gm } from "gm";
 import path from 'path';
 import fs from 'fs';
 import { read, write } from 'ktx-parse';
+import { default as HDR } from 'hdr';
+
+//
+import {
+    Float16Array, isFloat16Array, isTypedArray,
+    getFloat16, setFloat16,
+    hfround,
+} from "@petamoriken/float16";
 
 //
 const gmi = gm.subClass({imageMagick: true});
+
+//
+const XYZtoRGB = ([X, Y, Z]) => {
+    //X, Y and Z input refer to a D65/2° standard illuminant.
+    //sR, sG and sB (standard RGB) output range = 0 ÷ 255
+    let var_R = var_X *  3.2406 + var_Y * -1.5372 + var_Z * -0.4986
+    let var_G = var_X * -0.9689 + var_Y *  1.8758 + var_Z *  0.0415
+    let var_B = var_X *  0.0557 + var_Y * -0.2040 + var_Z *  1.0570
+    return [var_R, var_G, var_B].map(n => n > 0.0031308 ? 1.055 * Math.pow(n, (1 / 2.4)) - 0.055 : 12.92 * n)
+}
 
 //
 class TextureLoaderObj extends B.BasicObj {
@@ -15,7 +33,7 @@ class TextureLoaderObj extends B.BasicObj {
         super(base, null); this.cInfo = cInfo;
     }
 
-    async load(file) {
+    async load(file, relative = "./") {
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
         const memoryAllocatorObj = B.Handles[this.cInfo.memoryAllocator[0] || this.cInfo.memoryAllocator];
@@ -23,8 +41,71 @@ class TextureLoaderObj extends B.BasicObj {
         let parsedData = null;
 
         switch(ext) {
-            case ".bmp": {
-                const bmpData = bmp.decode(await fs.promises.readFile(file));
+            case ".hdr":
+            const self = this;
+
+            var hdrloader = new HDR.loader();
+            parsedData = new Promise(async (r,rj)=>{
+                hdrloader.on('load', function() {
+                    const image = this;
+
+                    // covnert into fp16 + RGB from XYZ
+                    const fp16data = new Float16Array(image.width*image.height*4);
+                    for (let I=0;I<image.width*image.height;I++) {
+                        const pixel3f = XYZtoRGB(image.subarray(I*3, I*3+3));
+                        fp16data.set([pixel3f[0], pixel3f[1], pixel3f[2], 1.0], I*4);
+                    }
+
+                    //
+                    const texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R16G16B16A16_SFLOAT, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                    const texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 2 }));
+                    texBuf.map().set(fp16data);
+                    texBuf.unmap();
+
+                    //
+                    const subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 };
+                    const texBarrier = new V.VkImageMemoryBarrier2({
+                        srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
+                        srcAccessMask: V.VK_ACCESS_2_NONE,
+                        dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                        dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+                        oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
+                        newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+                        srcQueueFamilyIndex: ~0,
+                        dstQueueFamilyIndex: ~0,
+                        image: texImage.handle[0],
+                        subresourceRange: subresource,
+                    });
+
+                    //
+                    deviceObj.submitOnce({
+                        queueFamilyIndex: 0,
+                        queueIndex: 0,
+                        cmdBufFn: (cmdBuf)=>{
+                            V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: texBarrier.length, pImageMemoryBarriers: texBarrier }));
+                            texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ 
+                                imageExtent: texImage.cInfo.extent,
+                                imageSubresource: { aspectMask:subresource.aspectMask, mipLevel:subresource.baseMipLevel, baseArrayLayer:subresource.baseArrayLayer, layerCount:subresource.layerCount }
+                            }]);
+                        }
+                    });
+
+                    //
+                    r(deviceObj.createImageView({
+                        image: texImage.handle[0],
+                        format : texImage.cInfo.format,
+                        pipelineLayout: this.cInfo.pipelineLayout,
+                        subresourceRange: subresource
+                    }).DSC_ID);
+                });
+            });
+            fs.createReadStream(relative + file).pipe(hdrloader);
+            parsedData = await parsedData;
+            break;
+
+            case ".bmp": 
+            parsedData = await new Promise(async (r,rj)=>{
+                const bmpData = bmp.decode(await fs.promises.readFile(relative + file));
                 const texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: bmpData.width, height: bmpData.height, depth: 1}, format: V.VK_FORMAT_A8B8G8R8_UNORM_PACK32, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
                 const texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: bmpData.width * bmpData.height * bmpData.bitPP * 4 }));
                 texBuf.map().set(bmpData.data);
@@ -39,6 +120,8 @@ class TextureLoaderObj extends B.BasicObj {
                     dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
                     oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
                     newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+                    srcQueueFamilyIndex: ~0,
+                    dstQueueFamilyIndex: ~0,
                     image: texImage.handle[0],
                     subresourceRange: subresource,
                 });
@@ -49,7 +132,10 @@ class TextureLoaderObj extends B.BasicObj {
                     queueIndex: 0,
                     cmdBufFn: (cmdBuf)=>{
                         V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: texBarrier.length, pImageMemoryBarriers: texBarrier }));
-                        texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ imageExtent: {width: bmpData.width, height: bmpData.height, depth: 1} }]);
+                        texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ 
+                            imageExtent: texImage.cInfo.extent,
+                            imageSubresource: { aspectMask:subresource.aspectMask, mipLevel:subresource.baseMipLevel, baseArrayLayer:subresource.baseArrayLayer, layerCount:subresource.layerCount }
+                        }]);
                     }
                 });
 
@@ -60,14 +146,14 @@ class TextureLoaderObj extends B.BasicObj {
                     pipelineLayout: this.cInfo.pipelineLayout,
                     subresourceRange: subresource
                 }).DSC_ID);
-            }
+            });
             break;
 
             case ".png":
             case ".jpg":
             case ".jng":
-            parsedData = await new Promise((r,rj)=>{
-                gmi(file).toBuffer('BMP', (err, buffer) => {
+            parsedData = await new Promise(async(r,rj)=>{
+                gmi(relative + file).toBuffer('BMP', (err, buffer) => {
                     const bmpData = bmp.decode(buffer);
                     const texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: bmpData.width, height: bmpData.height, depth: 1}, format: V.VK_FORMAT_A8B8G8R8_UNORM_PACK32, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
                     const texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: bmpData.width * bmpData.height * bmpData.bitPP * 4 }));
@@ -83,6 +169,8 @@ class TextureLoaderObj extends B.BasicObj {
                         dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
                         oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
                         newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+                        srcQueueFamilyIndex: ~0,
+                        dstQueueFamilyIndex: ~0,
                         image: texImage.handle[0],
                         subresourceRange: subresource,
                     });
@@ -93,7 +181,10 @@ class TextureLoaderObj extends B.BasicObj {
                         queueIndex: 0,
                         cmdBufFn: (cmdBuf)=>{
                             V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: texBarrier.length, pImageMemoryBarriers: texBarrier }));
-                            texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ imageExtent: {width: bmpData.width, height: bmpData.height, depth: 1} }]);
+                            texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ 
+                                imageExtent: texImage.cInfo.extent,
+                                imageSubresource: { aspectMask:subresource.aspectMask, mipLevel:subresource.baseMipLevel, baseArrayLayer:subresource.baseArrayLayer, layerCount:subresource.layerCount }
+                            }]);
                         }
                     });
 
@@ -110,12 +201,9 @@ class TextureLoaderObj extends B.BasicObj {
 
             case "ktx2":
             case "ktx":
-            {
-                const container = read(await fs.promises.readFile(file));
-                const texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth }, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
-                const texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: container.pixelWidth * container.pixelHeight * container.pixelDepth * container.typeSize }));
-                texBuf.map().set(container.levels[0].levelData);
-                texBuf.unmap();
+            parsedData = await new Promise(async(r,rj)=>{
+                const container = read(await fs.promises.readFile(relative + file));
+                const texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth }, mipLevels: container.levels.length, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
 
                 //
                 const subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: container.layerCount };
@@ -126,9 +214,16 @@ class TextureLoaderObj extends B.BasicObj {
                     dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
                     oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
                     newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+                    srcQueueFamilyIndex: ~0,
+                    dstQueueFamilyIndex: ~0,
                     image: texImage.handle[0],
                     subresourceRange: subresource,
                 });
+
+                // TODO: all mip levels support
+                const texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: container.levels[0].uncompressedByteLength }));
+                texBuf.map().set(container.levels[0].levelData);
+                texBuf.unmap();
 
                 //
                 deviceObj.submitOnce({
@@ -136,7 +231,10 @@ class TextureLoaderObj extends B.BasicObj {
                     queueIndex: 0,
                     cmdBufFn: (cmdBuf)=>{
                         V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: texBarrier.length, pImageMemoryBarriers: texBarrier }));
-                        texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ imageExtent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth } }]);
+                        texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ 
+                            imageExtent: texImage.cInfo.extent,
+                            imageSubresource: { aspectMask:subresource.aspectMask, mipLevel:subresource.baseMipLevel, baseArrayLayer:subresource.baseArrayLayer, layerCount:subresource.layerCount }
+                        }]);
                     }
                 });
 
@@ -145,9 +243,9 @@ class TextureLoaderObj extends B.BasicObj {
                     image: texImage.handle[0],
                     format : texImage.cInfo.format,
                     pipelineLayout: this.cInfo.pipelineLayout,
-                    subresourceRange: subresource
+                    subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: container.levels.length, baseArrayLayer: 0, layerCount: container.layerCount }
                 }).DSC_ID);
-            }
+            });
             break;
         }
 

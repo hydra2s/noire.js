@@ -70,7 +70,7 @@ class GltfLoaderObj extends B.BasicObj {
             case ".jpg":
             case ".ktx":
             case ".ktx2":
-            parsedData = await this.textureLoader.load(file)
+            parsedData = await this.textureLoader.load(file, relative)
             break;
         }
 

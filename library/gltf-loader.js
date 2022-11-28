@@ -15,7 +15,7 @@ const nrBinding = new Proxy(V.CStructView, new V.CStruct("nrBinding", {
 
 // bottom level of AS
 const nrMesh = new Proxy(V.CStructView, new V.CStruct("nrMesh", {
-    $address: "64",
+    $address: "u64",
     geometryCount: "u32",
     flags: "u32"
 }));
@@ -33,10 +33,10 @@ const nrGeometry = new Proxy(V.CStructView, new V.CStruct("nrGeometry", {
 }));
 
 // in top level of AS
-const nrInstance = new Proxy(V.CStructView, new V.CStruct("nrInstance", {
+const nrNode = new Proxy(V.CStructView, new V.CStruct("nrNode", {
     transform: "f32[12]",
     accStruct: "u64",
-    
+    meshBuffer: "u64"
 }));
 
 //
@@ -103,26 +103,26 @@ class GltfLoaderObj extends B.BasicObj {
         const bindings = [];
 
         // 
-        await Promise.all(rawData.buffers.map(async (B)=>{
-            const buffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: B.byteLength }));
-            const bufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: B.byteLength }));
+        await Promise.all(rawData.buffers.map(async ($B)=>{
+            const buffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: $B.byteLength }));
+            const bufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: $B.byteLength }));
 
             //
             buffers.push(buffer);
             buffersGPU.push(bufferGPU);
 
             //
-            buffer.map().set(await this.load(B.uri));
+            buffer.map().set(await this.load($B.uri));
             buffer.unmap();
 
             //
-            deviceObj.submitOnce({
+            await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
                 queueFamilyIndex: 0,
                 queueIndex: 0,
                 cmdBufFn: (cmdBuf)=>{
-                    buffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, bufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: B.byteLength }]);
+                    buffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, bufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: $B.byteLength }]);
                 }
-            });
+            }));
         }));
 
         //
@@ -185,30 +185,28 @@ class GltfLoaderObj extends B.BasicObj {
         materialBuffer.unmap();
 
         //
-        deviceObj.submitOnce({
+        await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
             queueFamilyIndex: 0,
             queueIndex: 0,
             cmdBufFn: (cmdBuf)=>{
                 materialBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, materialBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: materialData.byteLength }]);
             }
-        });
+        }));
 
         //
         const meshBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: nrMesh.byteLength * rawData.meshes.length }));
         const meshBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrMesh.byteLength * rawData.meshes.length }));
-        
+
         //
         const geometryBuffers = [];
         const geometryBuffersGPU = [];
 
         //
-        rawData.meshes.map((M,K)=>{
+        await Promise.all(rawData.meshes.map(async (M,K)=>{
             const mesh = { geometries: [], geometryCount: 0 }; meshes.push(mesh);
 
             //
-            M.primitives.map((P)=>{
-
-                //
+            mesh.geometries = M.primitives.map((P)=>{
                 const geometryId = geometries.length;
                 geometries.push({
                     vertex: bindings[P.attributes["POSITION"]],
@@ -221,8 +219,8 @@ class GltfLoaderObj extends B.BasicObj {
                 });
 
                 //
-                mesh.geometries.push(geometryId);
                 mesh.geometryCount++;
+                return geometryId;
             });
 
             // TODO: unified geometry buffer
@@ -236,37 +234,67 @@ class GltfLoaderObj extends B.BasicObj {
             geometryBuffer.unmap();
 
             // TODO: optimize accesses
-            const meshInfo = new nrMesh({
-                geometryCount: mesh.geometryCount,
-                $address: geometryBufferGPU.getDeviceAddress()
-            });
-
-            //
+            const meshInfo = new nrMesh({ geometryCount: mesh.geometryCount, $address: geometryBufferGPU.getDeviceAddress() });
             meshBuffer.map().set(meshInfo.buffer, nrMesh.byteLength*K);
             meshBuffer.unmap();
-
-            //
-            deviceObj.submitOnce({
-                queueFamilyIndex: 0,
-                queueIndex: 0,
-                cmdBufFn: (cmdBuf)=>{
-                    geometryBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, geometryBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: geometriesData.byteLength }]);
-                }
-            });
 
             // TODO: unified geometry buffer
             geometryBuffers.push(geometryBuffer);
             geometryBuffersGPU.push(geometryBufferGPU);
-        });
 
-        //
-        deviceObj.submitOnce({
+            //
+            const asGeometries = mesh.geometries.map((G,I)=>({
+                opaque: true,
+                primitiveCount: geometries[G].primitiveCount,
+                geometry: {
+                    indexData: geometries[G].index?.$address,
+                    indexType: geometries[G].index?.$address ? (is16bit(geometries[G].index.format) ? V.VK_INDEX_TYPE_UINT16 : V.VK_INDEX_TYPE_UINT32) : V.VK_INDEX_TYPE_NONE_KHR,
+                    vertexFormat: V.VK_FORMAT_R32G32B32_SFLOAT, // currently, only supported FVEC3
+                    vertexData: geometries[G].vertex?.$address,
+                    vertexStride: geometries[G].vertex.stride,
+                    maxVertex: geometries[G].vertex.length
+                }
+            }));
+
+            //
+            const bottomLevel = deviceObj.createBottomLevelAccelerationStructure({
+                geometries: asGeometries
+            });
+
+            //
+            await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
+                queueFamilyIndex: 0,
+                queueIndex: 0,
+                cmdBufFn: (cmdBuf)=>{
+                    geometryBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, geometryBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: geometriesData.byteLength }]);
+                    bottomLevel.cmdBuild(cmdBuf, mesh.geometries.map((G,I)=>({
+                        primitiveCount: G.primitiveCount,
+                        primitiveOffset: 0,
+                        firstVertex: 0,
+                        transformOffset: 0
+                    })));
+                }
+            }));
+
+            //
+            mesh.meshByteOffset = nrMesh.byteLength*K;
+            mesh.meshDeviceAddress = meshBufferGPU.getDeviceAddress() + BigInt(mesh.meshByteOffset);
+            mesh.accelerationStructure = bottomLevel;
+        }));
+
+        // commit mesh buffers
+        await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
             queueFamilyIndex: 0,
             queueIndex: 0,
             cmdBufFn: (cmdBuf)=>{
                 meshBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, meshBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: nrMesh.byteLength * rawData.meshes.length }]);
             }
-        });
+        }));
+
+        // TODO: implement nodes of GLTF, top levels of AS
+        const parseNode = (nodes, matrix)=>{
+            
+        };
 
         //
         return {

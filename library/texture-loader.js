@@ -46,7 +46,7 @@ class TextureLoaderObj extends B.BasicObj {
 
             var hdrloader = new HDR.loader();
             parsedData = new Promise(async (r,rj)=>{
-                hdrloader.on('load', function() {
+                hdrloader.on('load', async function() {
                     const image = this;
 
                     // covnert into fp16 + RGB from XYZ
@@ -78,7 +78,7 @@ class TextureLoaderObj extends B.BasicObj {
                     });
 
                     //
-                    deviceObj.submitOnce({
+                    await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
                         queueFamilyIndex: 0,
                         queueIndex: 0,
                         cmdBufFn: (cmdBuf)=>{
@@ -88,7 +88,7 @@ class TextureLoaderObj extends B.BasicObj {
                                 imageSubresource: { aspectMask:subresource.aspectMask, mipLevel:subresource.baseMipLevel, baseArrayLayer:subresource.baseArrayLayer, layerCount:subresource.layerCount }
                             }]);
                         }
-                    });
+                    }));
 
                     //
                     r(deviceObj.createImageView({
@@ -127,7 +127,7 @@ class TextureLoaderObj extends B.BasicObj {
                 });
 
                 //
-                deviceObj.submitOnce({
+                await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
                     queueFamilyIndex: 0,
                     queueIndex: 0,
                     cmdBufFn: (cmdBuf)=>{
@@ -137,7 +137,7 @@ class TextureLoaderObj extends B.BasicObj {
                             imageSubresource: { aspectMask:subresource.aspectMask, mipLevel:subresource.baseMipLevel, baseArrayLayer:subresource.baseArrayLayer, layerCount:subresource.layerCount }
                         }]);
                     }
-                });
+                }));
 
                 //
                 r(deviceObj.createImageView({
@@ -153,7 +153,7 @@ class TextureLoaderObj extends B.BasicObj {
             case ".jpg":
             case ".jng":
             parsedData = await new Promise(async(r,rj)=>{
-                gmi(relative + file).toBuffer('BMP', (err, buffer) => {
+                gmi(relative + file).toBuffer('BMP', async (err, buffer) => {
                     const bmpData = bmp.decode(buffer);
                     const texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: bmpData.width, height: bmpData.height, depth: 1}, format: V.VK_FORMAT_A8B8G8R8_UNORM_PACK32, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
                     const texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: bmpData.width * bmpData.height * bmpData.bitPP * 4 }));
@@ -176,7 +176,7 @@ class TextureLoaderObj extends B.BasicObj {
                     });
 
                     //
-                    deviceObj.submitOnce({
+                    await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
                         queueFamilyIndex: 0,
                         queueIndex: 0,
                         cmdBufFn: (cmdBuf)=>{
@@ -186,7 +186,7 @@ class TextureLoaderObj extends B.BasicObj {
                                 imageSubresource: { aspectMask:subresource.aspectMask, mipLevel:subresource.baseMipLevel, baseArrayLayer:subresource.baseArrayLayer, layerCount:subresource.layerCount }
                             }]);
                         }
-                    });
+                    }));
 
                     //
                     r(deviceObj.createImageView({
@@ -226,7 +226,7 @@ class TextureLoaderObj extends B.BasicObj {
                 texBuf.unmap();
 
                 //
-                deviceObj.submitOnce({
+                await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
                     queueFamilyIndex: 0,
                     queueIndex: 0,
                     cmdBufFn: (cmdBuf)=>{
@@ -236,7 +236,7 @@ class TextureLoaderObj extends B.BasicObj {
                             imageSubresource: { aspectMask:subresource.aspectMask, mipLevel:subresource.baseMipLevel, baseArrayLayer:subresource.baseArrayLayer, layerCount:subresource.layerCount }
                         }]);
                     }
-                });
+                }));
 
                 //
                 r(deviceObj.createImageView({

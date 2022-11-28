@@ -142,7 +142,7 @@ const awaitFenceGen = async function*(device, fence) {
         await awaitTick(); yield status;
         if (status == V.VK_ERROR_DEVICE_LOST) { throw Error("Vulkan Device Lost"); break; };
         if (status != V.VK_NOT_READY) break;
-    } while((status = V.vkGetFenceStatus(device, fence)) != V.VK_SUCCESS);
+    } while((status = V.vkGetFenceStatus(device[0]||device, fence[0]||fence)) != V.VK_SUCCESS);
     return status;
 }
 
@@ -152,7 +152,7 @@ const awaitFenceAsync = async (device, fence) => {
         await awaitTick();
         if (status == V.VK_ERROR_DEVICE_LOST) { throw Error("Vulkan Device Lost"); break; };
         if (status != V.VK_NOT_READY) break;
-    } while((status = V.vkGetFenceStatus(device, fence)) != V.VK_SUCCESS);
+    } while((status = V.vkGetFenceStatus(device[0]||device, fence[0]||fence)) != V.VK_SUCCESS);
     return status;
 }
 

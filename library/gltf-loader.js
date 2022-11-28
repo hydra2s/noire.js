@@ -17,7 +17,7 @@ const nrBinding = new Proxy(V.CStructView, new V.CStruct("nrBinding", {
 const nrMesh = new Proxy(V.CStructView, new V.CStruct("nrMesh", {
     $address: "u64",
     geometryCount: "u32",
-    flags: "u32"
+    flags: "u32",
 }));
 
 //
@@ -29,13 +29,14 @@ const nrGeometry = new Proxy(V.CStructView, new V.CStruct("nrGeometry", {
     tangent: "nrBinding",
     texcoord: "nrBinding",
     primitiveCount: "u32",
-    materialAddress: "u32"
+    _: "u32",
+    materialAddress: "u64"
 }));
 
 // in top level of AS
 const nrNode = new Proxy(V.CStructView, new V.CStruct("nrNode", {
     transform: "f32[12]",
-    accStruct: "u64",
+    //accStruct: "u64",
     meshBuffer: "u64"
 }));
 
@@ -215,7 +216,7 @@ class GltfLoaderObj extends B.BasicObj {
                     texcoord: bindings[P.attributes["TEXCOORD_0"]],
                     indice: bindings[P.indices],
                     primitiveCount: (bindings[P.indices]?.length || bindings[P.attributes["POSITION"]]?.length || 3) / 3,
-                    material: materialBufferGPU.getDeviceAddress() + BigInt(nrMaterial.byteLength * rawData.materials.length)
+                    materialAddress: materialBufferGPU.getDeviceAddress() + BigInt(nrMaterial.byteLength * P.material)
                 });
 
                 //
@@ -277,8 +278,7 @@ class GltfLoaderObj extends B.BasicObj {
             }));
 
             //
-            mesh.meshByteOffset = nrMesh.byteLength*K;
-            mesh.meshDeviceAddress = meshBufferGPU.getDeviceAddress() + BigInt(mesh.meshByteOffset);
+            mesh.meshDeviceAddress = meshBufferGPU.getDeviceAddress() + BigInt(mesh.meshByteOffset = nrMesh.byteLength*K);
             mesh.accelerationStructure = bottomLevel;
         }));
 
@@ -292,12 +292,42 @@ class GltfLoaderObj extends B.BasicObj {
         }));
 
         // TODO: implement nodes of GLTF, top levels of AS
-        const parseNode = (nodes, matrix)=>{
-            
+        const parseNode = (node, matrix)=>{
+            let $node = [];
+            if (node.children) {
+                $node = [...$node, ...node.children.map((idx)=>{
+                    return parseNode(rawData.nodes[idx], matrix);
+                })];
+            } else {
+                $node = [{
+                    instance: {
+                        "transform:f32[12]": [1.0, 0.0, 0.0, 0.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 1.0, 0.0],
+                        instanceCustomIndex: 0,
+                        mask: 0xFF,
+                        instanceShaderBindingTableRecordOffset: 0,
+                        flags: 0,
+                        accelerationStructureReference: meshes[node.mesh].accelerationStructure.getDeviceAddress()
+                    },
+                    node: {
+                        "transform:f32[12]": [1.0, 0.0, 0.0, 0.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 1.0, 0.0],
+                        meshBuffer: meshes[node.mesh].meshDeviceAddress
+                    }
+                }];
+            }
+            return $node;
         };
+
+        // only single instanced data supported
+        const instancedData = parseNode(rawData.nodes[rawData.scenes[0].nodes[0]], new Float32Array([
+            1.0, 0.0, 0.0, 0.0,  
+            0.0, 1.0, 0.0, 0.0,  
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0
+        ]));
 
         //
         return {
+            instancedData,
             geometryBuffers,
             geometryBuffersGPU,
             meshBuffer,

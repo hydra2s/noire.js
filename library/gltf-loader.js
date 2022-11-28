@@ -50,7 +50,7 @@ class GltfLoaderObj extends B.BasicObj {
         super(base, null); this.cInfo = cInfo;
     }
 
-    async load(file) {
+    async load(file, relative = "./") {
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
         const memoryAllocatorObj = B.Handles[this.cInfo.memoryAllocator[0] || this.cInfo.memoryAllocator];

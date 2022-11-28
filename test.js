@@ -1,9 +1,18 @@
 import { default as B } from "./library/basic.js";
 import { default as V } from "./deps/vulkan.node.js/index.js";
 import { default as K } from "./library/noire.js"
-
 import fs from "fs";
+import { default as $M } from "gl-matrix"
 
+//
+const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
+    perspective: "f32[16]",
+    modelView: "f32[16]",
+    accelerationStructure: "u64",
+    nodeBuffer: "u64"
+}));
+
+//
 (async()=>{
     const instanceObj = new K.InstanceObj({  });
     const physicalDevicesObj = instanceObj.enumeratePhysicalDeviceObjs();
@@ -103,59 +112,11 @@ import fs from "fs";
     }
 
     //
-    const vertices = new Float32Array([
-        0.0, -0.5,
-        0.5,  0.5,
-        -0.5,  0.5 
-    ]);
-
-    //
-    const vertexBuffer = K.createVertexBuffer(physicalDevicesObj[0].handle[0], deviceObj.handle[0], vertices);
-    const bottomLevel = deviceObj.createBottomLevelAccelerationStructure({
-        geometries: [{
-            opaque: true,
-            primitiveCount: 1,
-            geometry: {
-                vertexFormat: V.VK_FORMAT_R32G32_SFLOAT,
-                vertexData: K.getBufferDeviceAddress(deviceObj.handle[0], vertexBuffer),
-                vertexStride: 8,
-                maxVertex: 3
-            }
-        }]
-    });
-
-    //
-    const topLevel = deviceObj.createTopLevelAccelerationStructure({
-        opaque: true,
-        memoryAllocator: memoryAllocatorObj.handle[0],
-        instanced: [{
-            "transform:f32[12]": [1.0, 0.0, 0.0, 0.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 1.0, 0.0],
-            instanceCustomIndex: 0,
-            mask: 0xFF,
-            instanceShaderBindingTableRecordOffset: 0,
-            flags: 0,
-            accelerationStructureReference: bottomLevel.getDeviceAddress()
-        }]
-    });
-
-    //
     const fenceB = deviceObj.submitOnce({
         queueFamilyIndex: 0,
         queueIndex: 0,
         cmdBufFn: (cmdBuf)=>{
             swapchainObj.cmdFromUndefined(cmdBuf);
-            bottomLevel.cmdBuild(cmdBuf, [{
-                primitiveCount: 1,
-                primitiveOffset: 0,
-                firstVertex: 0,
-                transformOffset: 0
-            }]);
-            topLevel.cmdBuild(cmdBuf, [{
-                primitiveCount: 1,
-                primitiveOffset: 0,
-                firstVertex: 0,
-                transformOffset: 0
-            }]);
         }
     });
 
@@ -168,16 +129,22 @@ import fs from "fs";
         code: await fs.promises.readFile("shaders/triangle.comp.spv")
     });
 
+    //
+    const uniformData = new nrUniformData({
+        perspective: $M.mat4.transpose(new Float32Array(16), $M.mat4.perspective(new Float32Array(16), 60 / 180 * Math.PI, windowSize[0]/windowSize[1], 0.0001, 10000.0)),
+        modelView: $M.mat4.transpose(new Float32Array(16), $M.mat4.lookAt(new Float32Array(16), [0.0, 0.0, -1.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0])),
+        accelerationStructure: gltfModel.nodeAccelerationStructure.getDeviceAddress(),
+        nodeBuffer: gltfModel.nodeBufferGPU.getDeviceAddress()
+    });
+
     // 
     const cmdBufs = deviceObj.allocatePrimaryCommands((cmdBuf, imageIndex)=>{
         swapchainObj.cmdToGeneral(cmdBuf);
         //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 0, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) }); // clear
         //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 3, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) });
 
-        const AB = new ArrayBuffer(16), U64 = new BigUint64Array(AB, 0, 1), U32 = new Uint32Array(AB, 8, 1);
-        //U64[0] = gltfModel.nodeAccelerationStructure.getDeviceAddress(), U32[0] = swapchainObj.getStorageDescId(imageIndex);
-        U64[0] = topLevel.getDeviceAddress(), U32[0] = swapchainObj.getStorageDescId(imageIndex);
-        triangleObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/4), 1, AB);
+        descriptorsObj.cmdUpdateUniform(cmdBuf, uniformData.buffer);
+        triangleObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/4), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
 
         swapchainObj.cmdToPresent(cmdBuf);
     }, swapchainObj.getImageCount(), 0);

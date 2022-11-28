@@ -54,6 +54,33 @@ const nrMaterial = new Proxy(V.CStructView, new V.CStruct("nrMaterial", {
 }));
 
 //
+const Formats = {
+    eFloat: 0x0,
+    eFloat2: 0x1,
+    eFloat3: 0x2,
+    eFloat4: 0x3,
+    eHalf: 0x4,
+    eHalf2: 0x5,
+    eHalf3: 0x6,
+    eHalf4: 0x7,
+    eUint: 0x8,
+    eUint2: 0x9,
+    eUint3: 0xA,
+    eUint4: 0xB,
+    eShort: 0xC,
+    eShort2: 0xD,
+    eShort3: 0xE,
+    eShort4: 0xF,
+    eMat3x4: 0x1F,
+    eNone: 0x100
+}
+
+//
+const is16bit = (format)=>{
+    return !!(format & 0x4);
+}
+
+//
 class GltfLoaderObj extends B.BasicObj {
     constructor(base, cInfo) {
         super(base, null); this.cInfo = cInfo;
@@ -132,14 +159,17 @@ class GltfLoaderObj extends B.BasicObj {
             const B = rawData.bufferViews[A.bufferView];
 
             //
-            let Bs = 4;
+            let Bs = 4, isInt = 0x0, cnt = 0x0;
             if (A.componentType == 5126) { Bs = 4 };
-            if (A.componentType == 5123) { Bs = 2 };
+            if (A.componentType == 5123) { Bs = 2, isInt = 0x8 };
+            if (A.componentType == 5125) { Bs = 4, isInt = 0x8 };
+            const is16bit = Bs == 2 ? 0x4 : 0x0;
 
             //
-            if (A.type == "VEC2") Bs *= 2;
-            if (A.type == "VEC3") Bs *= 3;
-            if (A.type == "VEC4") Bs *= 4;
+            if (A.type == "SCALAR") { Bs *= 1; cnt = 0x0; };
+            if (A.type == "VEC2") { Bs *= 2; cnt = 0x1; };
+            if (A.type == "VEC3") { Bs *= 3; cnt = 0x2; };
+            if (A.type == "VEC4") { Bs *= 4; cnt = 0x3; };
 
             //
             const _bstride = A.byteStride || B.byteStride || Bs;
@@ -150,7 +180,8 @@ class GltfLoaderObj extends B.BasicObj {
                 $address: buffersGPU[B.buffer].getDeviceAddress() + BigInt(A?.byteOffset||0) + BigInt(B?.byteOffset||0),
                 length: _blength / _bstride,
                 range: _blength,
-                stride: _bstride
+                stride: _bstride,
+                format: (cnt | is16bit | isInt)
             });
         });
 
@@ -248,8 +279,8 @@ class GltfLoaderObj extends B.BasicObj {
                 opaque: true,
                 primitiveCount: geometries[G].primitiveCount,
                 geometry: {
-                    indexData: geometries[G].index?.$address,
-                    indexType: geometries[G].index?.$address ? (is16bit(geometries[G].index.format) ? V.VK_INDEX_TYPE_UINT16 : V.VK_INDEX_TYPE_UINT32) : V.VK_INDEX_TYPE_NONE_KHR,
+                    indexData: geometries[G].indice?.$address,
+                    indexType: geometries[G].indice?.$address ? (is16bit(geometries[G].indice.format) ? V.VK_INDEX_TYPE_UINT16 : V.VK_INDEX_TYPE_UINT32) : V.VK_INDEX_TYPE_NONE_KHR,
                     vertexFormat: V.VK_FORMAT_R32G32B32_SFLOAT, // currently, only supported FVEC3
                     vertexData: geometries[G].vertex?.$address,
                     vertexStride: geometries[G].vertex.stride,

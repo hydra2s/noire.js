@@ -414,6 +414,11 @@ class ImageObj extends AllocationObj {
         V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: dstMemoryBarrier.length, pImageMemoryBarriers: dstMemoryBarrier }));
     }
 
+    createImageView(cInfo) {
+        const deviceObj = B.Handles[this.base[0]]; cInfo.image = this.handle[0];
+        return deviceObj.createImageView(cInfo);
+    }
+
 }
 
 //
@@ -447,10 +452,7 @@ class ImageViewObj extends B.BasicObj {
         }
     }
 
-    createImageView(cInfo) {
-        const deviceObj = B.Handles[this.base[0]]; cInfo.image = this.handle[0];
-        return deviceObj.createImageView(cInfo);
-    }
+    
 }
 
 //

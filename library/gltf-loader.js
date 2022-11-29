@@ -220,8 +220,6 @@ class GltfLoaderObj extends B.BasicObj {
             }
         });
 
-        console.log(materials);
-
         //
         const materialData = new nrMaterial(materials);
         materialBuffer.map().set(materialData.buffer);

@@ -464,6 +464,11 @@ class SamplerObj extends B.BasicObj {
 
         //
         V.vkCreateSampler(this.base[0], this.samplerInfo = new V.VkSamplerCreateInfo({
+            magFilter: V.VK_FILTER_LINEAR,
+            minFilter: V.VK_FILTER_LINEAR,
+            addressModeU: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            addressModeV: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            addressModeW: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
             ...cInfo.samplerInfo
         }), null, this.handle = new BigUint64Array(1));
 

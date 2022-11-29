@@ -189,6 +189,7 @@ class GltfLoaderObj extends B.BasicObj {
         // 
         const textureDescIndices = new Array(rawData.images.length).fill(-1);
         const samplerDescIndices = rawData.samplers.map((S)=>(deviceObj.createSampler({
+            pipelineLayout: this.cInfo.pipelineLayout,
             samplerInfo: {
                 magFilter: V.VK_FILTER_LINEAR,
                 minFilter: V.VK_FILTER_LINEAR,
@@ -213,11 +214,13 @@ class GltfLoaderObj extends B.BasicObj {
             const material = {}; materials.push(material);
             const X = M.pbrMetallicRoughness.baseColorTexture.index;
             material.diffuse = {
-                tex: textureDescIndices[rawData.textures[X].source] || -1,
-                sam: samplerDescIndices[rawData.textures[X].sampler] || -1,
+                tex: Math.max(textureDescIndices[rawData.textures[X].source], -1),
+                sam: Math.max(samplerDescIndices[rawData.textures[X].sampler], -1),
                 col: [0.0, 0.0, 0.0, 1.0]
             }
         });
+
+        console.log(materials);
 
         //
         const materialData = new nrMaterial(materials);

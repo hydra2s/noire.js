@@ -101,11 +101,12 @@ class GltfLoaderObj extends B.BasicObj {
         //
         switch(ext) {
             case ".gltf":
-            parsedData = this.parse(await fs.promises.readFile(file));
+            console.log(path.dirname(file));
+            parsedData = this.parse(await fs.promises.readFile(file), path.dirname(file) + "/");
             break;
 
             case ".bin":
-            parsedData = await fs.promises.readFile(file);
+            parsedData = await fs.promises.readFile(relative + file);
             break;
 
             case ".hdr":
@@ -120,7 +121,7 @@ class GltfLoaderObj extends B.BasicObj {
         return parsedData;
     }
 
-    async parse(gltf) {
+    async parse(gltf, relative) {
         const rawData = JSON.parse(gltf);
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
@@ -143,7 +144,7 @@ class GltfLoaderObj extends B.BasicObj {
             buffersGPU.push(bufferGPU);
 
             //
-            buffer.map().set(await this.load($B.uri));
+            buffer.map().set(await this.load($B.uri, relative));
             buffer.unmap();
 
             //
@@ -221,7 +222,7 @@ class GltfLoaderObj extends B.BasicObj {
 
         //
         await Promise.all(rawData.images.map(async (I, L)=>{
-            textureDescIndices[L] = await this.load(I.uri);
+            textureDescIndices[L] = await this.load(I.uri, relative);
         }));
 
         //

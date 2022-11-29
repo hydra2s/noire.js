@@ -137,8 +137,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     await B.awaitFenceAsync(deviceObj.handle[0], fenceB[0]);
 
     //
-    //const gltfModel = await gltfLoaderA.load("BoomBox.gltf");
-    const gltfModel = await gltfLoaderA.load("BoomBoxWithAxes.gltf");
+    //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
+    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
         code: await fs.promises.readFile("shaders/triangle.comp.spv")

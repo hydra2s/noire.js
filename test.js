@@ -145,10 +145,20 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     });
 
     //
-    const perspective = $M.mat4.perspective($M.mat4.create(), 90.0 * Math.PI / 360.0, windowSize[0]/windowSize[1], 0.0001, 10000.0);
-    const modelView = $M.mat4.lookAt($M.mat4.create(), $M.vec3.fromValues(0,0,0.05), $M.vec3.fromValues(0,0,0), $M.vec3.fromValues(0,1,0));
+    let mouseMoving = false;
+    let cameraMoving = false;
+    let moveDir = $M.vec3.fromValues(0,0,0);
+    let viewDir = $M.vec3.fromValues(0,0,-1);
+    let lastX = 0.0, lastY = 0.0;
 
     //
+    let eye = $M.vec3.fromValues(0,0,0.05);
+    let center = $M.vec3.add($M.vec3.create(), eye, viewDir);
+    let up = $M.vec3.fromValues(0,1,0);
+
+    //
+    const perspective = $M.mat4.perspective($M.mat4.create(), 90.0 * Math.PI / 360.0, windowSize[0]/windowSize[1], 0.0001, 10000.0);
+    const modelView = $M.mat4.lookAt($M.mat4.create(), eye, center, up);
     const uniformData = new nrUniformData({
         perspective: $M.mat4.transpose($M.mat4.create(), perspective),
         perspectiveInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), perspective)),
@@ -159,19 +169,110 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         instanceCount: gltfModel.nodeData.length
     });
 
+    
+
+    //
+    const updateMatrices = ()=>{
+        const perspective = $M.mat4.perspective($M.mat4.create(), 90.0 * Math.PI / 360.0, windowSize[0]/windowSize[1], 0.0001, 10000.0);
+        const modelView = $M.mat4.lookAt($M.mat4.create(), eye, $M.vec3.add($M.vec3.create(), eye, viewDir), up);
+        uniformData.perspective = $M.mat4.transpose($M.mat4.create(), perspective);
+        uniformData.perspectiveInverse = $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), perspective));
+        uniformData.modelView = $M.mat4.transpose($M.mat4.create(), modelView);
+        uniformData.modelViewInverse = $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView));
+    };
+
     // 
     const cmdBufs = deviceObj.allocatePrimaryCommands((cmdBuf, imageIndex)=>{
         swapchainObj.cmdToGeneral(cmdBuf);
         //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 0, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) }); // clear
         //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 3, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) });
 
-        descriptorsObj.cmdUpdateUniform(cmdBuf, uniformData.buffer);
+        //descriptorsObj.cmdUpdateUniform(cmdBuf, uniformData.buffer); // because it's frozen operation
         triangleObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/4), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
 
         swapchainObj.cmdToPresent(cmdBuf);
     }, swapchainObj.getImageCount(), 0);
 
     //
+    const keys = {};
+
+    //
+    V.glfwSetKeyCallback(windowObj.getWindow(), (window, key, scancode, action, mods)=>{
+        if (action == V.GLFW_PRESS) { cameraMoving = true, keys[key] = true; };
+        if (action == V.GLFW_RELEASE) { cameraMoving = false, keys[key] = false; };
+    });
+
+    //
+    V.glfwSetCursorPosCallback(windowObj.getWindow(), (window, dx, dy)=>{
+        if (mouseMoving) {
+            const dX = dx - lastX;
+            const dY = dy - lastY;
+
+            //
+            const modelView = $M.mat4.transpose($M.mat4.create(), $M.mat4.lookAt($M.mat4.create(), eye, $M.vec3.add($M.vec3.create(), eye, viewDir), up));
+            const xrot = $M.mat4.fromRotation($M.mat4.create(), dX / 720.0, $M.vec3.fromValues(0.0, -1.0, 0.0));
+            const yrot = $M.mat4.fromRotation($M.mat4.create(), dY / 720.0, $M.vec3.fromValues(-1.0, 0.0, 0.0));
+
+            //
+            let localView = $M.vec4.transformMat4($M.vec4.create(), $M.vec4.fromValues(...viewDir, 0.0), $M.mat4.invert($M.mat4.create(), modelView));
+            localView = $M.vec4.transformMat4($M.vec4.create(), localView, xrot);
+            localView = $M.vec4.transformMat4($M.vec4.create(), localView, yrot);
+            viewDir = $M.vec4.transformMat4($M.vec4.create(), localView, modelView).subarray(0, 3);
+        }
+        lastX = dx, lastY = dy;
+    });
+
+    //
+    V.glfwSetMouseButtonCallback(windowObj.getWindow(), (window, button, action, mods)=>{
+        if (button == V.GLFW_MOUSE_BUTTON_1) {
+            if (action == V.GLFW_PRESS) { mouseMoving = true; };
+            if (action == V.GLFW_RELEASE) { mouseMoving = false; };
+        }
+    });
+
+    //
+    let camTime = performance.now();
+    const handleCamera = ()=>{
+        const modelView = $M.mat4.lookAt($M.mat4.create(), eye, $M.vec3.add($M.vec3.create(), eye, viewDir), up);
+        const currentTime = performance.now();
+        const dT = currentTime - lastTime;
+        camTime = currentTime;
+
+        //
+        const viewSpeed = 0.0001;
+        let localEye = $M.vec4.transformMat4($M.vec4.create(), $M.vec4.fromValues(...eye, 1.0), modelView).subarray(0, 3);
+        let moveVec = $M.vec3.create(0,0,0);
+
+        if (keys[V.GLFW_KEY_W]) { moveVec = $M.vec3.add($M.vec3.create(), moveVec, $M.vec3.fromValues(0,0,-1)); };
+        if (keys[V.GLFW_KEY_S]) { moveVec = $M.vec3.add($M.vec3.create(), moveVec, $M.vec3.fromValues(0,0,1)); };
+        if (keys[V.GLFW_KEY_A]) { moveVec = $M.vec3.add($M.vec3.create(), moveVec, $M.vec3.fromValues(-1,0,0)); };
+        if (keys[V.GLFW_KEY_D]) { moveVec = $M.vec3.add($M.vec3.create(), moveVec, $M.vec3.fromValues(1,0,0)); };
+        if (keys[V.GLFW_KEY_LEFT_SHIFT]) { moveVec = $M.vec3.add($M.vec3.create(), moveVec, $M.vec3.fromValues(0,-1,0)); };
+        if (keys[V.GLFW_KEY_SPACE]) { moveVec = $M.vec3.add($M.vec3.create(), moveVec, $M.vec3.fromValues(0,1,0)); };
+
+        eye = $M.vec4.transformMat4(
+            $M.vec4.create(), 
+            $M.vec4.fromValues(
+                ...$M.vec3.add(
+                    $M.vec3.create(), 
+                    localEye, 
+                    $M.vec3.scale(
+                        $M.vec3.create(), 
+                        $M.vec3.normalize(
+                            $M.vec3.create(), 
+                            moveVec
+                        ), 
+                        dT*viewSpeed
+                    )
+                ),
+                1.0
+            ), 
+            $M.mat4.invert($M.mat4.create(), modelView)
+        ).subarray(0, 3);
+    };
+
+    //
+    let terminated = false;
     let lastTime = performance.now();
     const renderGen = async function*() {
         // TODO: dedicated semaphores support
@@ -181,6 +282,10 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         //await awaitFenceAsync(device[0], fence[imageIndex[0]]);
         for await (let R of K.awaitFenceGen(deviceObj.handle[0], fenceI[imageIndex])) { yield R; };
         V.vkDestroyFence(deviceObj.handle[0], fenceI[imageIndex], null); // promise to manually broke fence
+
+        // TODO: use host memory for synchronize
+        // use mapped memory
+        descriptorsObj.updateUniformDirect(uniformData);
 
         //
         const currentTime = performance.now();
@@ -207,15 +312,19 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //
     let renderer = null, iterator = null;
     let status = V.VK_NOT_READY;
-    let terminated = false;
 
     //
     console.log("Begin rendering...");
     while (!V.glfwWindowShouldClose(windowObj.window) && !terminated) {
         V.glfwPollEvents();
         deviceObj.tickProcessing();
-        //await awaitTick(); // crap, it's needed for async!
+        if (keys[V.GLFW_KEY_ESCAPE]) { terminated = true; };
 
+        //
+        handleCamera();
+        updateMatrices();
+
+        //await awaitTick(); // crap, it's needed for async!
         // as you can see, async isn't so async
         //if (!renderer || renderer.status == "ready") { renderer = makeState(renderGen()); };
         if (!renderer || iterator.done) { renderer = renderGen(); };

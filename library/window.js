@@ -21,6 +21,10 @@ class WindowObj extends B.BasicObj {
         V.glfwGetWindowSize(this.window, this.windowSize = new Uint32Array(2));
         return this.windowSize;
     }
+
+    getWindow() {
+        return this.window;
+    }
 }
 
 //

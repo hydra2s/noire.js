@@ -194,6 +194,11 @@ class DescriptorsObj extends B.BasicObj {
         this.writeDescriptors();
     }
 
+    updateUniformDirect(rawData, byteOffset = 0n) {
+        this.uniformDescriptorBuffer.map().set(rawData, byteOffset);
+        this.uniformDescriptorBuffer.unmap();
+    }
+
     cmdUpdateUniform(cmdBuf, rawData, byteOffset = 0n, queueFamilyIndex = ~0) {
         this.bufferBarrier = new V.VkBufferMemoryBarrier2({ 
             srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | V.VK_PIPELINE_STAGE_2_HOST_BIT,

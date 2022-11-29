@@ -18,93 +18,65 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
 
 //
 Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
-    return Array(ceil(this.length/n)).fill().map((_,i) => this.slice(i*n,i*n+n));
+    return new Array(Math.ceil(this.length/n)).fill().map((_,i) => this.slice(i*n,i*n+n));
 }});
 
 
-
-function invert(invOut, m) {
-    let inv = $M.mat4.create(), det;
-    let i;
-
-    inv[0]  =  m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
-    inv[4]  = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
-    inv[8]  =  m[4] * m[9]  * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
-    inv[12] = -m[4] * m[9]  * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
-    inv[1]  = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
-    inv[5]  =  m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
-    inv[9]  = -m[0] * m[9]  * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
-    inv[13] =  m[0] * m[9]  * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
-    inv[2]  =  m[1] * m[6]  * m[15] - m[1] * m[7]  * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[7]  - m[13] * m[3] * m[6];
-    inv[6]  = -m[0] * m[6]  * m[15] + m[0] * m[7]  * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[7]  + m[12] * m[3] * m[6];
-    inv[10] =  m[0] * m[5]  * m[15] - m[0] * m[7]  * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[7]  - m[12] * m[3] * m[5];
-    inv[14] = -m[0] * m[5]  * m[14] + m[0] * m[6]  * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[6]  + m[12] * m[2] * m[5];
-    inv[3]  = -m[1] * m[6]  * m[11] + m[1] * m[7]  * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9]  * m[2] * m[7]  + m[9]  * m[3] * m[6];
-    inv[7]  =  m[0] * m[6]  * m[11] - m[0] * m[7]  * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8]  * m[2] * m[7]  - m[8]  * m[3] * m[6];
-    inv[11] = -m[0] * m[5]  * m[11] + m[0] * m[7]  * m[9]  + m[4] * m[1] * m[11] - m[4] * m[3] * m[9]  - m[8]  * m[1] * m[7]  + m[8]  * m[3] * m[5];
-    inv[15] =  m[0] * m[5]  * m[10] - m[0] * m[6]  * m[9]  - m[4] * m[1] * m[10] + m[4] * m[2] * m[9]  + m[8]  * m[1] * m[6]  - m[8]  * m[2] * m[5];
-
-    det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
-    if (det == 0) return false;
-    det = 1.0 / det;
-
-    for (i = 0; i < 16; i++)
-        invOut[i] = inv[i] * det;
-
-    return true;
-}
-
-
-function affineInvert(out, a) {
-    let a00 = a[0],
-        a01 = a[1],
-        a02 = a[2];
-
-    let a10 = a[4],
-        a11 = a[5],
-        a12 = a[6];
-    
-    let a20 = a[8],
-        a21 = a[9],
-        a22 = a[10];
-
-    let b01 = a22 * a11 - a12 * a21;
-    let b11 = -a22 * a10 + a12 * a20;
-    let b21 = a21 * a10 - a11 * a20;
-
-    // Calculate the determinant
-    let det = a00 * b01 + a01 * b11 + a02 * b21;
-
-    if (!det) {
-        return null;
+function inverse(_A) {
+    var temp,
+    N = _A.length,
+    E = [];
+   
+    for (var i = 0; i < N; i++)
+      E[i] = [];
+   
+    for (i = 0; i < N; i++)
+      for (var j = 0; j < N; j++) {
+        E[i][j] = 0;
+        if (i == j)
+          E[i][j] = 1;
+      }
+   
+    for (var k = 0; k < N; k++) {
+      temp = _A[k][k];
+   
+      for (var j = 0; j < N; j++)
+      {
+        _A[k][j] /= temp;
+        E[k][j] /= temp;
+      }
+   
+      for (var i = k + 1; i < N; i++)
+      {
+        temp = _A[i][k];
+   
+        for (var j = 0; j < N; j++)
+        {
+          _A[i][j] -= _A[k][j] * temp;
+          E[i][j] -= E[k][j] * temp;
+        }
+      }
     }
-
-    let t0 = -a[12],
-        t1 = -a[13],
-        t2 = -a[14];
-
-    det = 1.0 / det;
-
-    out[0] = b01 * det;
-    out[1] = (-a22 * a01 + a02 * a21) * det;
-    out[2] = (a12 * a01 - a02 * a11) * det;
-    out[3] = 0;
-    out[4] = b11 * det;
-    out[5] = (a22 * a00 - a02 * a20) * det;
-    out[6] = (-a12 * a00 + a02 * a10) * det;
-    out[7] = 0;
-    out[8] = b21 * det;
-    out[9] = (-a21 * a00 + a01 * a20) * det;
-    out[10] = (a11 * a00 - a01 * a10) * det;
-    out[11] = 0;
-    out[12] = out[0] * t0 + out[4] * t1 + out[8] * t2;
-    out[13] = out[1] * t0 + out[5] * t1 + out[9] * t2;
-    out[14] = out[2] * t0 + out[6] * t1 + out[10] * t2;
-    out[15] = 1;
-
-    return out;
-}
-
+   
+    for (var k = N - 1; k > 0; k--)
+    {
+      for (var i = k - 1; i >= 0; i--)
+      {
+        temp = _A[i][k];
+   
+        for (var j = 0; j < N; j++)
+        {
+          _A[i][j] -= _A[k][j] * temp;
+          E[i][j] -= E[k][j] * temp;
+        }
+      }
+    }
+   
+    for (var i = 0; i < N; i++)
+      for (var j = 0; j < N; j++)
+        _A[i][j] = E[i][j];
+    return _A;
+  }
 
 //
 (async()=>{
@@ -228,23 +200,20 @@ function affineInvert(out, a) {
     let mouseMoving = false;
     let cameraMoving = false;
     let moveDir = $M.vec3.fromValues(0,0,0);
-    let viewDir = $M.vec3.fromValues(0,0,-1);
+    let viewDir = $M.vec3.fromValues(0,0,1);
     let lastX = 0.0, lastY = 0.0;
 
     //
-    let eye = $M.vec3.fromValues(0,0,0.05);
+    let eye = $M.vec3.fromValues(0,0,0.0,0.0);
     let center = $M.vec3.add($M.vec3.create(), eye, viewDir);
     let up = $M.vec3.fromValues(0,1,0);
 
     //
-    
-
-    //
-    const perspective = $M.mat4.perspective($M.mat4.create(), 90.0 * Math.PI / 360.0, windowSize[0]/windowSize[1], 0.0001, 10000.0);
+    const perspective = Array.from($M.mat4.perspective($M.mat4.create(), 90.0 * Math.PI / 360.0, windowSize[0]/windowSize[1], 0.0001, 10000.0));
     const modelView = $M.mat4.lookAt($M.mat4.create(), eye, center, up);
     const uniformData = new nrUniformData({
         perspective: $M.mat4.transpose($M.mat4.create(), perspective),
-        perspectiveInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), perspective)),
+        perspectiveInverse: $M.mat4.transpose($M.mat4.create(), inverse(perspective.chunk(4)).flat()),
         modelView: $M.mat4.transpose($M.mat4.create(), modelView),
         modelViewInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView)),
         accelerationStructure: gltfModel.nodeAccelerationStructure.getDeviceAddress(),
@@ -256,10 +225,7 @@ function affineInvert(out, a) {
 
     //
     const updateMatrices = ()=>{
-        const perspective = $M.mat4.perspective($M.mat4.create(), 90.0 * Math.PI / 360.0, windowSize[0]/windowSize[1], 0.0001, 10000.0);
         const modelView = $M.mat4.lookAt($M.mat4.create(), eye, $M.vec3.add($M.vec3.create(), eye, viewDir), up);
-        uniformData.perspective = $M.mat4.transpose($M.mat4.create(), perspective);
-        uniformData.perspectiveInverse = $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), perspective));
         uniformData.modelView = $M.mat4.transpose($M.mat4.create(), modelView);
         uniformData.modelViewInverse = $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView));
     };

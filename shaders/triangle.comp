@@ -31,8 +31,8 @@ layout (push_constant) uniform PData {
 layout (local_size_x = 32, local_size_y = 4, local_size_z = 1) in;
 
 //
-vec3 divW(in vec4 v) {
-    return v.xyz/v.w;
+vec4 divW(in vec4 v) {
+    return vec4(v.xyz/v.w, 1.f);
 }
 
 //
@@ -97,8 +97,8 @@ layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrMaterial 
 
 //
 void main() {
-    const vec3 bOrigin = divW(vec4(vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.0 - 1.0, 0.0, 1.0) * inverse(modelView) * inverse(perspective));//vec3(vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.f - 1.f, -1);
-    const vec3 eOrigin = divW(vec4(vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.0 - 1.0, 1.0, 1.0) * inverse(modelView) * inverse(perspective));
+    const vec3 bOrigin = (divW(vec4(vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.0 - 1.0, 0.0, 1.0) * inverse(perspective)) * inverse(modelView)).xyz;//vec3(vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.f - 1.f, -1);
+    const vec3 eOrigin = (divW(vec4(vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.0 - 1.0, 1.0, 1.0) * inverse(perspective)) * inverse(modelView)).xyz;
     const vec3 dir = normalize(eOrigin - bOrigin);
 
     //
@@ -121,7 +121,7 @@ void main() {
         nrMaterial materialData = nrMaterial(geometryData.materialAddress);
 
         //
-        imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.xy), vec4(/*1.f - bary.x - bary.y, bary.xy*/ texture(sampler2D(textures[materialData.diffuse.tex], samplers[materialData.diffuse.sam]), vec2(gl_GlobalInvocationID.xy)/720.0).xyz, 1.f));
+        imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.xy), vec4(1.f - bary.x - bary.y, bary.xy /*texture(sampler2D(textures[materialData.diffuse.tex], samplers[materialData.diffuse.sam]), vec2(gl_GlobalInvocationID.xy)/720.0).xyz*/, 1.f));
     } else {
         imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.xy), vec4(0, 0, 0, 1));
     }

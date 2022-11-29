@@ -100,8 +100,8 @@ class DescriptorsObj extends B.BasicObj {
         //
         this.uniformDescriptorSetBindings = new V.VkDescriptorSetLayoutBinding([{
             binding: 0,
-            descriptorType: V.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            descriptorCount: 1,
+            descriptorType: V.VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK,
+            descriptorCount: this.uniformBufferSize,
             stageFlags: V.VK_SHADER_STAGE_ALL,
         }]);
 
@@ -172,7 +172,6 @@ class DescriptorsObj extends B.BasicObj {
         //
         this.samplers = new Proxy(new OutstandingArray(), new OutstandingArrayHandler());
         this.resourceImages = new Proxy(new OutstandingArray(), new OutstandingArrayHandler());
-        this.uniformBuffer = memoryAllocatorObj.allocateMemory({ isBAR: true }, deviceObj.createBuffer({ size: this.uniformBufferSize, usage: V.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT }));
 
         //
         // TODO: create dedicated image resource buffer
@@ -184,11 +183,9 @@ class DescriptorsObj extends B.BasicObj {
         // create BARZ buffers
         this.resourceDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isBAR: true }, deviceObj.createBuffer({ size: this.resourceDescriptorSetLayoutSize[0], usage: V.VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT }));
         this. samplerDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isBAR: true }, deviceObj.createBuffer({ size: this.samplerDescriptorSetLayoutSize[0], usage: V.VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT }));
-        this. uniformDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isBAR: true }, deviceObj.createBuffer({ size: this.uniformDescriptorSetLayoutSize[0], usage: V.VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT }));
+        this. uniformDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isBAR: true }, deviceObj.createBuffer({ size: this.uniformBufferSize, usage: V.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT }));
 
-        //
-        //V.vkGetDescriptorSetLayoutBindingOffsetEXT(this.base[0], this.descriptorLayout[0], 0, this.sampledDescriptorOffset = new BigUint64Array(1));
-        //V.vkGetDescriptorSetLayoutBindingOffsetEXT(this.base[0], this.descriptorLayout[0], 1, this.resourceDescriptorOffset = new BigUint64Array(1));
+        // 
         V.vkGetDescriptorSetLayoutBindingOffsetEXT(this.base[0], this.descriptorLayout[0], 0, this.resourceDescriptorOffset = new BigUint64Array(1));
         V.vkGetDescriptorSetLayoutBindingOffsetEXT(this.base[0], this.descriptorLayout[1], 0, this.samplerDescriptorOffset = new BigUint64Array(1));
         V.vkGetDescriptorSetLayoutBindingOffsetEXT(this.base[0], this.descriptorLayout[2], 0, this.uniformDescriptorOffset = new BigUint64Array(1));
@@ -205,13 +202,13 @@ class DescriptorsObj extends B.BasicObj {
             dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
             srcQueueFamilyIndex: queueFamilyIndex,
             dstQueueFamilyIndex: queueFamilyIndex,
-            $buffer: this.uniformBuffer.handle[0],
+            $buffer: this.uniformDescriptorBuffer.handle[0],
             offset: byteOffset,
             size: rawData.byteLength
         });
 
         //
-        V.vkCmdUpdateBuffer(cmdBuf[0]||cmdBuf, this.uniformBuffer.handle[0], byteOffset, rawData.byteLength, rawData);
+        V.vkCmdUpdateBuffer(cmdBuf[0]||cmdBuf, this.uniformDescriptorBuffer.handle[0], byteOffset, rawData.byteLength, rawData);
         V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: this.bufferBarrier.length, pBufferMemoryBarriers: this.bufferBarrier }));
     }
 
@@ -222,19 +219,11 @@ class DescriptorsObj extends B.BasicObj {
 
         //
         this.resourceImageBinding = new V.VkDescriptorImageInfo(new Array(Math.min(this.resourceImages.length, 1024)).fill({}).map((_, I)=>({
-            imageView: this.resourceImages[I],
-            //imageLayout: V.VK_IMAGE_LAYOUT_GENERAL
+            imageView: this.resourceImages[I]
         })));
 
         //
-        this.uniformBinding = new V.VkDescriptorAddressInfoEXT({
-            $address: this.uniformBuffer.getDeviceAddress(),
-            range: this.uniformBufferSize
-        });
-
-        //
         const P = physicalDeviceObj.deviceDescriptorBufferProperties;
-        const UMAP = this. uniformDescriptorBuffer.map().address();
         const SMAP = this. samplerDescriptorBuffer.map().address();
         const RMAP = this.resourceDescriptorBuffer.map().address();
 
@@ -249,10 +238,6 @@ class DescriptorsObj extends B.BasicObj {
         }
 
         //
-        V.vkGetDescriptorEXT(this.base[0], new V.VkDescriptorGetInfoEXT({ type: V.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, data: this.uniformBinding }), P.uniformBufferDescriptorSize, UMAP + BigInt(this.uniformDescriptorOffset[0]));
-
-        //
-        this. uniformDescriptorBuffer.unmap();
         this. samplerDescriptorBuffer.unmap();
         this.resourceDescriptorBuffer.unmap();
     }

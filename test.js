@@ -133,7 +133,7 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     //
     const uniformData = new nrUniformData({
         perspective: $M.mat4.transpose(new Float32Array(16), $M.mat4.perspective(new Float32Array(16), 60 / 180 * Math.PI, windowSize[0]/windowSize[1], 0.0001, 10000.0)),
-        modelView: $M.mat4.transpose(new Float32Array(16), $M.mat4.lookAt(new Float32Array(16), [0.0, 0.0, -1.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0])),
+        modelView: $M.mat4.transpose(new Float32Array(16), $M.mat4.lookAt(new Float32Array(16), [0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0])),
         accelerationStructure: gltfModel.nodeAccelerationStructure.getDeviceAddress(),
         nodeBuffer: gltfModel.nodeBufferGPU.getDeviceAddress(),
         instanceCount: gltfModel.nodeData.length

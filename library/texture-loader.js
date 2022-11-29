@@ -102,7 +102,7 @@ class TextureLoaderObj extends B.BasicObj {
             case ".jpg":
             case ".jng":
                 status = await new Promise(async(r,rj)=>{
-                gmi(relative + file).toBuffer('PNG', async (err, buffer) => {
+                gmi(relative + file).quality(0).toBuffer('PNG', async (err, buffer) => {
                     new PNG({}).parse(buffer, function (error, image) {
                         texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
                         componentMapping = { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A };

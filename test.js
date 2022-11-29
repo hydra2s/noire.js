@@ -145,8 +145,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     });
 
     //
-    const perspective = $M.mat4.perspective($M.mat4.create(), 30.0 * Math.PI / 180.0, windowSize[0]/windowSize[1], 0.0001, 10000.0);
-    const modelView = $M.mat4.lookAt($M.mat4.create(), $M.vec3.fromValues(0,0,0.1), $M.vec3.fromValues(0,0,0), $M.vec3.fromValues(0,1,0));
+    const perspective = $M.mat4.perspective($M.mat4.create(), 90.0 * Math.PI / 360.0, windowSize[0]/windowSize[1], 0.0001, 10000.0);
+    const modelView = $M.mat4.lookAt($M.mat4.create(), $M.vec3.fromValues(0,0,0.05), $M.vec3.fromValues(0,0,0), $M.vec3.fromValues(0,1,0));
 
     //
     const uniformData = new nrUniformData({

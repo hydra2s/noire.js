@@ -340,10 +340,10 @@ class GltfLoaderObj extends B.BasicObj {
             let $node = [];
 
             //
-            if (node.matrix?.length >= 16) { $M.mat4.multiply(matrix, new Float32Array(matrix), node.matrix); };
-            if (node.translation?.length >= 3) { $M.mat4.translate(matrix, new Float32Array(matrix), node.translation); };
-            if (node.scale?.length >= 3) { $M.mat4.scale(matrix, new Float32Array(matrix), node.scale); };
-            if (node.rotation?.length >= 4) { $M.mat4.multiply(matrix, new Float32Array(matrix), $M.mat4.fromQuat(new Float32Array(16), [node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]])); };
+            if (node.translation?.length >= 3) { matrix = $M.mat4.multiply($M.mat4.create(), $M.mat4.clone(matrix), $M.mat4.fromTranslation($M.mat4.create(), $M.vec3.fromValues(...node.translation))); };
+            if (node.rotation?.length >= 4) { matrix = $M.mat4.multiply($M.mat4.create(), $M.mat4.clone(matrix), $M.mat4.fromQuat($M.mat4.create(), $M.quat.fromValues(...node.rotation))); };
+            if (node.scale?.length >= 3) { matrix = $M.mat4.multiply($M.mat4.create(), $M.mat4.clone(matrix), $M.mat4.fromScaling($M.mat4.create(), $M.vec3.fromValues(...node.scale))); };
+            if (node.matrix?.length >= 16) { matrix = $M.mat4.multiply($M.mat4.create(), $M.mat4.clone(matrix), $M.mat4.fromQuat($M.mat4.create(), $M.mat4.fromValues(...node.matrix))); };
 
             //
             if (node.children) {
@@ -373,12 +373,7 @@ class GltfLoaderObj extends B.BasicObj {
         };
 
         // only single instanced data supported
-        const instancedData = parseNode(rawData.nodes[rawData.scenes[0].nodes[0]], new Float32Array([
-            1.0, 0.0, 0.0, 0.0,  
-            0.0, 1.0, 0.0, 0.0,  
-            0.0, 0.0, 1.0, 0.0,
-            0.0, 0.0, 0.0, 1.0
-        ]));
+        const instancedData = parseNode(rawData.nodes[rawData.scenes[0].nodes[0]], $M.mat4.create());
 
         //
         const nodeData = new nrNode(instancedData.map((ID)=>(ID.node)));

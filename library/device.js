@@ -29,7 +29,7 @@ class DeviceObj extends B.BasicObj {
             "VK_EXT_extended_dynamic_state3",
             "VK_EXT_robustness2", 
             "VK_EXT_vertex_input_dynamic_state",
-            "VK_EXT_descriptor_buffer\0", // needs termination code here
+            "VK_EXT_descriptor_buffer", // needs termination code here
             "VK_EXT_multi_draw",
             "VK_KHR_fragment_shader_barycentric",
             "VK_EXT_mesh_shader",
@@ -39,7 +39,8 @@ class DeviceObj extends B.BasicObj {
             "VK_KHR_shader_clock",
             "VK_KHR_ray_tracing_maintenance1",
             "VK_KHR_workgroup_memory_explicit_layout",
-            "VK_EXT_mutable_descriptor_type"
+            "VK_EXT_mutable_descriptor_type",
+            "VK_EXT_transform_feedback"
             //"VK_EXT_shader_atomic_float2" // broken support in NVIDIA
         ];
 

@@ -8,7 +8,8 @@ class PhysicalDeviceObj extends B.BasicObj {
         const instanceObj = B.Handles[base[0]];
 
         // TODO: unify into one object
-        this.deviceMutableDescriptorFeatures = new V.VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT();
+        this.deviceTransformFeedbackFeatures = new V.VkPhysicalDeviceTransformFeedbackFeaturesEXT();
+        this.deviceMutableDescriptorFeatures = new V.VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT({ pNext: this.deviceTransformFeedbackFeatures });
         this.deviceWorkgroupMemoryExplicitFeatures = new V.VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR({ pNext: this.deviceMutableDescriptorFeatures });
         this.deviceRayTracingMaintenance1Features = new V.VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR({ pNext: this.deviceWorkgroupMemoryExplicitFeatures });
         this.deviceShaderClockFeatures = new V.VkPhysicalDeviceShaderClockFeaturesKHR({ pNext: this.deviceRayTracingMaintenance1Features });

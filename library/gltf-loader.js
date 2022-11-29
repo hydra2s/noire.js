@@ -281,14 +281,12 @@ class GltfLoaderObj extends B.BasicObj {
             geometryBuffer.map().set(geometriesData.buffer);
             geometryBuffer.unmap();
 
-            // TODO: optimize accesses
-            const meshInfo = new nrMesh({ geometryCount: mesh.geometryCount, $address: geometryBufferGPU.getDeviceAddress() });
-            meshBuffer.map().set(meshInfo.buffer, nrMesh.byteLength*K);
-            meshBuffer.unmap();
-
             // TODO: unified geometry buffer
             geometryBuffers.push(geometryBuffer);
             geometryBuffersGPU.push(geometryBufferGPU);
+
+            //
+            mesh.info = { geometryCount: mesh.geometryCount, $address: geometryBufferGPU.getDeviceAddress() };
 
             //
             const asGeometries = mesh.geometries.map((G,I)=>({
@@ -329,6 +327,11 @@ class GltfLoaderObj extends B.BasicObj {
             mesh.accelerationStructure = bottomLevel;
         }));
 
+        // TODO: optimize access
+        const meshInfo = new nrMesh(meshes.map((M)=>(M.info)));
+        meshBuffer.map().set(meshInfo.buffer);
+        meshBuffer.unmap();
+
         //
         //console.log(meshes);
 
@@ -348,7 +351,7 @@ class GltfLoaderObj extends B.BasicObj {
                     return parseNode(rawData.nodes[idx], matrix);
                 })];
             } else {
-                const MTX = new Float32Array(16); $M.mat4.transpose(MTX, new Float32Array(matrix));
+                const MTX = $M.mat4.transpose($M.mat4.create(), matrix);
                 $node = [...$node, {
                     instance: {
                         "transform:f32[12]": Array.from(MTX.subarray(0, 12)),
@@ -389,6 +392,7 @@ class GltfLoaderObj extends B.BasicObj {
         const nodeBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: nrNode.byteLength * nodeData.length }));
         const nodeBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrNode.byteLength * nodeData.length }));
 
+        // also, `set` offset is broken!
         // TODO: optimize accesses
         nodeBuffer.map().set(nodeData.buffer);
         nodeBuffer.unmap();

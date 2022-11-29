@@ -23,7 +23,9 @@ layout (set = 1, binding = 0) uniform sampler samplers[];
 //
 layout (set = 2, binding = 0, scalar) uniform MData { 
     mat4x4 perspective;
+    mat4x4 perspectiveInverse;
     mat4x4 modelView;
+    mat4x4 modelViewInverse;
     uint64_t accStruct;
     uint64_t nodeBuffer;
 };
@@ -44,11 +46,9 @@ vec4 divW(in vec4 v) {
 
 //
 void main() {
-    const vec3 bOrigin = (divW(vec4((vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.0 - 1.0) * vec2(1.f, 1.f), 0.0, 1.0) * inverse(perspective)) * inverse(modelView)).xyz;//vec3(vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.f - 1.f, -1);
-    const vec3 eOrigin = (divW(vec4((vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.0 - 1.0) * vec2(1.f, 1.f), 1.0, 1.0) * inverse(perspective)) * inverse(modelView)).xyz;
+    const vec3 bOrigin = divW(  vec4((vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.0 - 1.0) * vec2(1.f, -1.f), 0.0, 1.0) * inverse(perspective) * modelViewInverse).xyz;
+    const vec3 eOrigin = divW(  vec4((vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.0 - 1.0) * vec2(1.f, -1.f), 1.0, 1.0) * inverse(perspective) * modelViewInverse).xyz;
     const vec3 dir = normalize(eOrigin - bOrigin);
-
-    
 
     //
     rayQueryEXT rayQuery;

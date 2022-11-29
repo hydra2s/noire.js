@@ -7,11 +7,24 @@ import { default as $M } from "gl-matrix"
 //
 const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     perspective: "f32[16]",
+    perspectiveInverse: "f32[16]",
     modelView: "f32[16]",
+    modelViewInverse: "f32[16]",
     accelerationStructure: "u64",
     nodeBuffer: "u64",
     instanceCount: "u32"
 }));
+
+
+//
+Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
+    return Array(ceil(this.length/n)).fill().map((_,i) => this.slice(i*n,i*n+n));
+}});
+
+
+
+
+
 
 //
 (async()=>{
@@ -124,17 +137,23 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     await B.awaitFenceAsync(deviceObj.handle[0], fenceB[0]);
 
     //
-    const gltfModel = await gltfLoaderA.load("BoomBox.gltf");
-    //const gltfModel = await gltfLoaderA.load("BoomBoxWithAxes.gltf");
+    //const gltfModel = await gltfLoaderA.load("BoomBox.gltf");
+    const gltfModel = await gltfLoaderA.load("BoomBoxWithAxes.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
         code: await fs.promises.readFile("shaders/triangle.comp.spv")
     });
 
     //
+    const perspective = $M.mat4.perspective($M.mat4.create(), 30.0 * Math.PI / 180.0, windowSize[0]/windowSize[1], 0.0001, 10000.0);
+    const modelView = $M.mat4.lookAt($M.mat4.create(), $M.vec3.fromValues(0,0,0.06), $M.vec3.fromValues(0,0,0), $M.vec3.fromValues(0,1,0));
+
+    //
     const uniformData = new nrUniformData({
-        perspective: $M.mat4.transpose(new Float32Array(16), $M.mat4.perspective(new Float32Array(16), 60 / 180 * Math.PI, windowSize[0]/windowSize[1], 0.0001, 10000.0)),
-        modelView: $M.mat4.transpose(new Float32Array(16), $M.mat4.lookAt(new Float32Array(16), [0.0, 0.0, 0.0], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0])),
+        perspective: $M.mat4.transpose($M.mat4.create(), perspective),
+        perspectiveInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), perspective)),
+        modelView: $M.mat4.transpose($M.mat4.create(), modelView),
+        modelViewInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView)),
         accelerationStructure: gltfModel.nodeAccelerationStructure.getDeviceAddress(),
         nodeBuffer: gltfModel.nodeBufferGPU.getDeviceAddress(),
         instanceCount: gltfModel.nodeData.length

@@ -53,6 +53,7 @@ const nrMaterial = new Proxy(V.CStructView, new V.CStruct("nrMaterial", {
     diffuse: "nrTexBinding",
     normal: "nrTexBinding",
     PBR: "nrTexBinding",
+    emissive: "nrTexBinding",
 }));
 
 //
@@ -228,11 +229,27 @@ class GltfLoaderObj extends B.BasicObj {
         //
         rawData.materials.map((M)=>{
             const material = {}; materials.push(material);
-            const X = M.pbrMetallicRoughness.baseColorTexture.index;
+            const X = Math.max(M.pbrMetallicRoughness?.baseColorTexture?.index, -1);
+            const P = Math.max(M.pbrMetallicRoughness?.metallicRoughnessTexture?.index, -1);
+            const N = Math.max(M.normalTexture?.index, -1);
             material.diffuse = {
-                tex: Math.max(textureDescIndices[rawData.textures[X].source], -1),
-                sam: Math.max(samplerDescIndices[rawData.textures[X].sampler], 0),
+                tex: X >= 0 ? Math.max(textureDescIndices[rawData.textures[X].source], -1): -1,
+                sam: X >= 0 ? Math.max(samplerDescIndices[rawData.textures[X].sampler], 0) : 0,
                 col: [0.0, 0.0, 0.0, 1.0]
+            }
+            material.PBR = {
+                tex: P >= 0 ? Math.max(textureDescIndices[rawData.textures[P].source], -1) : -1,
+                sam: P >= 0 ? Math.max(samplerDescIndices[rawData.textures[P].sampler], 0) :  0,
+                col: [0.0, 0.0, 0.0, 0.0]
+            }
+            material.normal = {
+                tex: N >= 0 ? Math.max(textureDescIndices[rawData.textures[N].source], -1) : -1,
+                sam: N >= 0 ? Math.max(samplerDescIndices[rawData.textures[N].sampler], 0) :  0,
+                col: [0.0, 0.0, 0.5, 0.5]
+            }
+            material.emissive = {
+                tex: -1,
+                col: M.emissiveFactor ? [...M.emissiveFactor, 1.0] : [0,0,0,1]
             }
         });
 

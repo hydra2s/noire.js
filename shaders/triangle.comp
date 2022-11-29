@@ -13,36 +13,11 @@
 #extension GL_EXT_samplerless_texture_functions : enable
 
 //
+#include "include/math.glsl"
 #include "include/noire.glsl"
 
 //
-layout (set = 0, binding = 0) uniform texture2D textures[];
-layout (set = 0, binding = 0, rgba8) uniform image2D images[];
-layout (set = 1, binding = 0) uniform sampler samplers[];
-
-//
-layout (set = 2, binding = 0, scalar) uniform MData { 
-    mat4x4 perspective;
-    mat4x4 perspectiveInverse;
-    mat4x4 modelView;
-    mat4x4 modelViewInverse;
-    uint64_t accStruct;
-    uint64_t nodeBuffer;
-};
-
-layout (push_constant) uniform PData {
-    uint32_t imageIndex;
-};
-
-//
 layout (local_size_x = 32, local_size_y = 4, local_size_z = 1) in;
-
-//
-vec4 divW(in vec4 v) {
-    return vec4(v.xyz/v.w, 1.f);
-}
-
-
 
 //
 void main() {

@@ -209,11 +209,11 @@ function inverse(_A) {
     let up = $M.vec3.fromValues(0,1,0);
 
     //
-    const perspective = Array.from($M.mat4.perspective($M.mat4.create(), 90.0 * Math.PI / 360.0, windowSize[0]/windowSize[1], 0.0001, 10000.0));
+    const perspective = Array.from($M.mat4.perspective($M.mat4.create(), 60.0 * Math.PI / 180.0, windowSize[0]/windowSize[1], 0.001, 10000.0));
     const modelView = $M.mat4.lookAt($M.mat4.create(), eye, center, up);
     const uniformData = new nrUniformData({
         perspective: $M.mat4.transpose($M.mat4.create(), perspective),
-        perspectiveInverse: $M.mat4.transpose($M.mat4.create(), inverse(perspective.chunk(4)).flat()),
+        perspectiveInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), perspective)),
         modelView: $M.mat4.transpose($M.mat4.create(), modelView),
         modelViewInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView)),
         accelerationStructure: gltfModel.nodeAccelerationStructure.getDeviceAddress(),

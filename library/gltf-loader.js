@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { default as L } from "./texture-loader.js"
 import { default as $M } from "gl-matrix"
+import {JSOX} from 'jsox'
 
 //
 const nrBinding = new Proxy(V.CStructView, new V.CStruct("nrBinding", {
@@ -187,20 +188,34 @@ class GltfLoaderObj extends B.BasicObj {
         });
 
         // 
-        const textureDescIndices = new Array(rawData.images.length).fill(-1);
-        const samplerDescIndices = rawData.samplers.map((S)=>(deviceObj.createSampler({
-            pipelineLayout: this.cInfo.pipelineLayout,
-            samplerInfo: {
-                magFilter: V.VK_FILTER_LINEAR,
-                minFilter: V.VK_FILTER_LINEAR,
-                addressModeU: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                addressModeV: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                addressModeW: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            }
-        }).DSC_ID));
+        let textureDescIndices = new Array(rawData.images.length).fill(-1);
+        let samplerDescIndices = [];
+        if (rawData.samplers) {
+            samplerDescIndices = rawData.samplers.map((S)=>(deviceObj.createSampler({
+                pipelineLayout: this.cInfo.pipelineLayout,
+                samplerInfo: {
+                    magFilter: V.VK_FILTER_LINEAR,
+                    minFilter: V.VK_FILTER_LINEAR,
+                    addressModeU: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                    addressModeV: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                    addressModeW: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                }
+            }).DSC_ID));
+        } else {
+            samplerDescIndices.push(deviceObj.createSampler({
+                pipelineLayout: this.cInfo.pipelineLayout,
+                samplerInfo: {
+                    magFilter: V.VK_FILTER_LINEAR,
+                    minFilter: V.VK_FILTER_LINEAR,
+                    addressModeU: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                    addressModeV: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                    addressModeW: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                }
+            }).DSC_ID);
+        }
 
         // 
-        const meshes = []; // bottom levels
+        const meshes = new Array(rawData.meshes.length).fill({}); // bottom levels
         const materials = []; //
         const geometries = [];
 
@@ -215,7 +230,7 @@ class GltfLoaderObj extends B.BasicObj {
             const X = M.pbrMetallicRoughness.baseColorTexture.index;
             material.diffuse = {
                 tex: Math.max(textureDescIndices[rawData.textures[X].source], -1),
-                sam: Math.max(samplerDescIndices[rawData.textures[X].sampler], -1),
+                sam: Math.max(samplerDescIndices[rawData.textures[X].sampler], 0),
                 col: [0.0, 0.0, 0.0, 1.0]
             }
         });
@@ -235,7 +250,8 @@ class GltfLoaderObj extends B.BasicObj {
 
         //
         await Promise.all(rawData.meshes.map(async (M,K)=>{
-            const mesh = { geometries: [], geometryCount: 0 }; meshes.push(mesh);
+            const mesh = { geometries: [], geometryCount: 0 };
+            meshes[K] = mesh;
 
             //
             mesh.geometries = M.primitives.map((P)=>{
@@ -313,6 +329,9 @@ class GltfLoaderObj extends B.BasicObj {
             mesh.accelerationStructure = bottomLevel;
         }));
 
+        //
+        //console.log(meshes);
+
         // 
         const parseNode = (node, matrix)=>{
             let $node = [];
@@ -321,18 +340,18 @@ class GltfLoaderObj extends B.BasicObj {
             if (node.matrix?.length >= 16) { $M.mat4.multiply(matrix, new Float32Array(matrix), node.matrix); };
             if (node.translation?.length >= 3) { $M.mat4.translate(matrix, new Float32Array(matrix), node.translation); };
             if (node.scale?.length >= 3) { $M.mat4.scale(matrix, new Float32Array(matrix), node.scale); };
-            if (node.rotation?.length >= 4) { $M.mat4.multiply(matrix, new Float32Array(matrix), $M.mat4.fromQuat(new Float32Array(16), node.rotation)); };
+            if (node.rotation?.length >= 4) { $M.mat4.multiply(matrix, new Float32Array(matrix), $M.mat4.fromQuat(new Float32Array(16), [node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]])); };
 
             //
             if (node.children) {
-                $node = [...$node, ...node.children.map((idx)=>{
+                $node = [...$node, ...node.children.flatMap((idx)=>{
                     return parseNode(rawData.nodes[idx], matrix);
                 })];
             } else {
                 const MTX = new Float32Array(16); $M.mat4.transpose(MTX, new Float32Array(matrix));
                 $node = [...$node, {
                     instance: {
-                        "transform:f32[12]": MTX.subarray(0, 12),
+                        "transform:f32[12]": Array.from(MTX.subarray(0, 12)),
                         instanceCustomIndex: 0,
                         mask: 0xFF,
                         instanceShaderBindingTableRecordOffset: 0,
@@ -340,12 +359,13 @@ class GltfLoaderObj extends B.BasicObj {
                         accelerationStructureReference: meshes[node.mesh].accelerationStructure.getDeviceAddress()
                     },
                     node: {
-                        "transform:f32[12]": MTX.subarray(0, 12),
+                        "transform:f32[12]": Array.from(MTX.subarray(0, 12)),
                         meshBuffer: meshes[node.mesh].meshDeviceAddress,
                         meshIndex: node.mesh
                     }
                 }];
             }
+
             return $node;
         };
 

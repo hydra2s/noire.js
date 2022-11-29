@@ -89,12 +89,9 @@ const createTypedBuffer = (physicalDevice, device, usage, byteSize, PTR = null) 
 
     //
     if (PTR && typeof PTR != "string") {
-        //
         const dataPtr = new BigUint64Array(1);
         V.vkMapMemory(device, bufferMemory[0], 0n, bufferInfo.size, 0, dataPtr);
-
-        // gigant spider
-        ArrayBuffer.fromAddress(dataPtr[0], bufferInfo.size).set(ArrayBuffer.fromAddress(PTR, bufferInfo.size));
+        V.memcpy(dataPtr[0], PTR, bufferInfo.size);
         V.vkUnmapMemory(device, bufferMemory[0]);
     }
 

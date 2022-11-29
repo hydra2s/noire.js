@@ -151,7 +151,8 @@ class TopLevelAccelerationStructure extends AccelerationStructure {
         this.instanced = options.instanced?.length ? new V.VkAccelerationStructureInstanceKHR(options.instanced) : new V.VkAccelerationStructureInstanceKHR(options.primitiveCount);
         this.instanceBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: (options.instanced?.length || options.primitiveCount) * V.VkAccelerationStructureInstanceKHR.byteLength }));
         this.instanceBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: (options.instanced?.length || options.primitiveCount) * V.VkAccelerationStructureInstanceKHR.byteLength, usage: V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR }));
-        this.instanceBuffer.map().set(ArrayBuffer.fromAddress(this.instanced.address(), (options.instanced?.length || options.primitiveCount) * V.VkAccelerationStructureInstanceKHR.byteLength));
+        V.memcpy(this.instanceBuffer.map().address(), this.instanced.address(), (options.instanced?.length || options.primitiveCount) * V.VkAccelerationStructureInstanceKHR.byteLength);
+        this.instanceBuffer.unmap();
 
         //
         if (this.instanceBuffer && options.instanced?.length && !options.instanced.data) {
@@ -170,7 +171,9 @@ class TopLevelAccelerationStructure extends AccelerationStructure {
     uploadInstanceData(instanced) {
         if (instanced?.length) {
             this.instanced = new V.VkAccelerationStructureInstanceKHR(instanced);
-            this.instanceBuffer.map().set(ArrayBuffer.fromAddress(this.instanced.address(), instanced.length * V.VkAccelerationStructureInstanceKHR.byteLength));
+            //this.instanceBuffer.map().set(ArrayBuffer.fromAddress(this.instanced.address(), instanced.length * V.VkAccelerationStructureInstanceKHR.byteLength));
+            V.memcpy(this.instanceBuffer.map().address(), this.instanced.address(), instanced.length * V.VkAccelerationStructureInstanceKHR.byteLength);
+            this.instanceBuffer.unmap();
         }
     }
 };

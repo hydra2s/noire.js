@@ -415,7 +415,9 @@ class ImageObj extends AllocationObj {
     }
 
     createImageView(cInfo) {
-        const deviceObj = B.Handles[this.base[0]]; cInfo.image = this.handle[0];
+        const deviceObj = B.Handles[this.base[0]]; 
+        cInfo.image = this.handle[0]; 
+        cInfo.format = this.cInfo.format;
         return deviceObj.createImageView(cInfo);
     }
 

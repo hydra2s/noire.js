@@ -186,7 +186,7 @@ class GraphicsPipelineObj extends PipelineObj {
     }
 
     // 
-    cmdDraw({cmdBuf, vertexInfo = [], vertexCount = 3, instanceCount = 1, firstVertex = 0, firstInstance = 0, dispatch = {x: 1, y: 1, z: 1}, pushConstRaw = null, pushConstByteOffset = 0n, imageViews = [], depthImageView = null, stencilImageView = null, viewport, scissor}) {
+    cmdDraw({cmdBuf, vertexInfo = [], vertexCount = 3, instanceCount = 1, firstVertex = 0, firstInstance = 0, dispatch = {x: 1, y: 1, z: 1}, pushConstRaw = null, pushConstByteOffset = 0n, viewport, scissor}) {
         //
         const memoryBarrier = new V.VkMemoryBarrier2({ 
             srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
@@ -201,13 +201,14 @@ class GraphicsPipelineObj extends PipelineObj {
         const deviceObj = B.Handles[this.base[0]];
         const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
         const framebufferLayoutObj = B.Handles[(this.cInfo.framebufferLayout ? this.cInfo.framebufferLayout[0] : null) || this.cInfo.framebufferLayout] || B.DefaulFramebufferLayoutObj;
+        const framebufferObj = B.Handles[this.cInfo.framebuffer];
 
         //
-        const hasDepth = framebufferLayoutObj.depthFormat && depthImageView;
-        const hasStencil = framebufferLayoutObj.stencilFormat && stencilImageView;
+        const hasDepth = framebufferLayoutObj.depthFormat;
+        const hasStencil = framebufferLayoutObj.stencilFormat;
 
         // TODO: manually image layout
-        const depthAttachmentClear = hasDepth ? new V.VkClearAttachment({ aspectMask: deviceObj.ImageViews[depthImageView].cInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.depthAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
+        const depthAttachmentClear = hasDepth ? new V.VkClearAttachment({ aspectMask: framebufferObj.depthStencilImageView.imageViewInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.depthAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
         const depthDynamicRendering = hasDepth ? new V.VkRenderingAttachmentInfo({ ...framebufferLayoutObj.depthAttachmentDynamicRenderInfo, imageView: depthImageView, imageLayout: depthImageView == stencilImageView ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL }) : null;
         const depthTransitionBarrier = hasDepth ? new V.VkImageMemoryBarrier2({
             srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -218,12 +219,12 @@ class GraphicsPipelineObj extends PipelineObj {
             newLayout: depthDynamicRendering.imageLayout,
             srcQueueFamilyIndex: ~0,
             dstQueueFamilyIndex: ~0,
-            image: deviceObj.ImageViews[depthImageView].cInfo.image,
-            subresourceRange: deviceObj.ImageViews[depthImageView].cInfo.subresourceRange
+            image: framebufferObj.depthStencilImage,
+            subresourceRange: framebufferObj.depthStencilImageView.imageViewInfo.subresourceRange
         }) : null;
 
         // TODO: manually image layout
-        const stencilAttachmentClear = hasStencil ? new V.VkClearAttachment({ aspectMask: deviceObj.ImageViews[stencilImageView].cInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.stencilAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
+        const stencilAttachmentClear = hasStencil ? new V.VkClearAttachment({ aspectMask: framebufferObj.depthStencilImageView.imageViewInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.stencilAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
         const stencilDynamicRendering = hasStencil ? new V.VkRenderingAttachmentInfo({ ...framebufferLayoutObj.stencilAttachmentDynamicRenderInfo, imageView: stencilImageView, imageLayout: depthImageView == stencilImageView ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL }) : null;
         const stencilTransitionBarrier = hasStencil ? new V.VkImageMemoryBarrier2({
             srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -234,8 +235,8 @@ class GraphicsPipelineObj extends PipelineObj {
             newLayout: stencilDynamicRendering.imageLayout,
             srcQueueFamilyIndex: ~0,
             dstQueueFamilyIndex: ~0,
-            image: deviceObj.ImageViews[stencilImageView].cInfo.image,
-            subresourceRange: deviceObj.ImageViews[stencilImageView].cInfo.subresourceRange
+            image: framebufferObj.depthStencilImage,
+            subresourceRange: framebufferObj.depthStencilImageView.imageViewInfo.subresourceRange
         }) : null;
 
         //
@@ -248,12 +249,12 @@ class GraphicsPipelineObj extends PipelineObj {
         const colorAttachmentClear = new V.VkClearAttachment(colorTransitionBarrier.length);
 
         //
-        let layerCount = deviceObj?.ImageViews[imageViews[0]]?.cInfo?.subresourceRange?.layerCount || 1;
+        let layerCount = framebufferObj.colorImageViews[0].imageViewInfo.subresourceRange.layerCount || 1;
         for (let I=0;I<colorTransitionBarrier.length;I++) {
-            colorAttachmentClear[I] = { aspectMask: deviceObj.ImageViews[imageViews[I]].cInfo.subresourceRange.aspectMask, colorAttachment: I, ["clearValue:f32[4]"]: framebufferLayoutObj.colorAttachmentDynamicRenderInfo[I]["clearValue:f32[4]"] };
+            colorAttachmentClear[I] = { aspectMask: framebufferObj.colorImageViews[I].imageViewInfo.subresourceRange.aspectMask, colorAttachment: I, ["clearValue:f32[4]"]: framebufferLayoutObj.colorAttachmentDynamicRenderInfo[I]["clearValue:f32[4]"] };
             colorDynamicRendering[I] = {
                 ...framebufferLayoutObj.colorAttachmentDynamicRenderInfo[I],
-                imageView: imageViews[I]
+                imageView: framebufferObj.colorImageViews[I].handle[0]
             };
 
             //
@@ -266,12 +267,12 @@ class GraphicsPipelineObj extends PipelineObj {
                 newLayout: colorDynamicRendering[I].imageLayout,
                 srcQueueFamilyIndex: ~0,
                 dstQueueFamilyIndex: ~0,
-                image: deviceObj.ImageViews[imageViews[I]].cInfo.image,
-                subresourceRange: deviceObj.ImageViews[imageViews[I]].cInfo.subresourceRange
+                image: framebufferObj.colorImages[I],
+                subresourceRange: framebufferObj.colorImageViews[I].imageViewInfo.subresourceRange
             };
 
             //
-            layerCount = Math.min(deviceObj?.ImageViews[imageViews[I]]?.cInfo?.subresourceRange?.layerCount || 1, 1);
+            layerCount = Math.min(framebufferObj.colorImageViews[I].imageViewInfo.layerCount || 1, 1);
         }
 
         // 

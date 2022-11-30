@@ -126,6 +126,10 @@ class DeviceObj extends B.BasicObj {
         return queue;
     }
 
+    createFramebuffer(cInfo) {
+        return new B.FramebufferObj(this.handle, cInfo);
+    }
+
     createTopLevelAccelerationStructure(cInfo) {
         return new B.TopLevelAccelerationStructure(this.handle, cInfo);
     }

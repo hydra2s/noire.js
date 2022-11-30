@@ -70,7 +70,145 @@ class FramebufferLayoutObj extends B.BasicObj {
 }
 
 //
+class FramebufferObj extends B.BasicObj {
+    constructor(base, cInfo){
+        super(base, null); this.cInfo = cInfo;
+        this.handle = new BigUint64Array([0n]);
+        this.handle[0] = this.handle.address();
+        B.Handles[this.handle[0]] = this;
+
+        //
+        const deviceObj = B.Handles[this.base[0]];
+        const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
+        const framebufferLayoutObj = B.Handles[(this.cInfo.framebufferLayout ? this.cInfo.framebufferLayout[0] : null) || this.cInfo.framebufferLayout] || B.DefaulFramebufferLayoutObj;
+
+        //
+        let extent = {width: cInfo.extent.width || 1, height: cInfo.extent.height || 1, depth: cInfo.extent.depth || 1};
+
+        //
+        this.colorImages = framebufferLayoutObj.colorFormats.map((F)=>(deviceObj.createImage({
+            format: F, imageUsage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT, extent,
+        })));
+
+        //
+        this.depthStencilImage = deviceObj.createImage({
+            format: framebufferLayoutObj.depthFormat, imageUsage: V.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT, extent,
+        });
+
+        //
+        this.depthStencilImageView = this.depthStencilImage.createImageView({
+            pipelineLayout: descriptorsObj.handle[0],
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_DEPTH_BIT | V.VK_IMAGE_ASPECT_STENCIL_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 }
+        });
+
+        //
+        this.colorImageViews = this.colorImages.map((IMG)=>(IMG.createImageView({
+            pipelineLayout: descriptorsObj.handle[0],
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 }
+        })));
+
+
+        //
+        this.colorToAttachmentTemplate = {
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            srcSccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            dstAccessMask: V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            newLayout: V.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        };
+
+        this.depthStencilToAttachment = new V.VkImageMemoryBarrier2({
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            srcAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            dstAccessMask: V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            newLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            image: this.depthStencilImage.handle[0],
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+            subresourceRange: this.depthStencilImageView.imageViewInfo.subresourceRange
+        });
+
+
+        //
+        this.colorToGeneralTemplate = {
+            srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            srcAccessMask:  V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        };
+
+        this.depthStencilToGeneral = new V.VkImageMemoryBarrier2({
+            srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            srcAccessMask: V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            image: this.depthStencilImage.handle[0],
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+            subresourceRange: this.depthStencilImageView.imageViewInfo.subresourceRange
+        });
+
+
+        // 
+        this.colorFromUndefinedTemplate = {
+            srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
+            srcAccessMask: V.VK_ACCESS_2_NONE,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            dstAccessMask:  V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
+            newLayout: V.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        }
+
+        this.depthStencilFromUndefined = new V.VkImageMemoryBarrier2({
+            srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
+            srcAccessMask: V.VK_ACCESS_2_NONE,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            dstAccessMask: V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
+            newLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            image: this.depthStencilImage.handle[0],
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+            subresourceRange: this.depthStencilImageView.imageViewInfo.subresourceRange
+        });
+
+    }
+
+    cmdFromUndefined(cmdBuf) {
+        const imageBarriers = new V.VkImageMemoryBarrier2(this.colorImages.map((IMG, I)=>({...this.colorFromUndefinedTemplate, image: IMG.handle[0], subresourceRange: this.colorImageViews[I].imageViewInfo.subresourceRange})));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: 1, pImageMemoryBarriers: this.depthStencilFromUndefined }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: imageBarriers.length, pImageMemoryBarriers: imageBarriers }));
+    }
+
+    cmdToGeneral(cmdBuf) {
+        const imageBarriers = new V.VkImageMemoryBarrier2(this.colorImages.map((IMG, I)=>({...this.colorToGeneralTemplate, image: IMG.handle[0], subresourceRange: this.colorImageViews[I].imageViewInfo.subresourceRange})));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: 1, pImageMemoryBarriers: this.depthStencilToGeneral }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: imageBarriers.length, pImageMemoryBarriers: imageBarriers }));
+    }
+
+    cmdToAttachment(cmdBuf) {
+        const imageBarriers = new V.VkImageMemoryBarrier2(this.colorImages.map((IMG, I)=>({...this.colorToAttachmentTemplate, image: IMG.handle[0], subresourceRange: this.colorImageViews[I].imageViewInfo.subresourceRange})));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: 1, pImageMemoryBarriers: this.depthStencilToAttachment }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: imageBarriers.length, pImageMemoryBarriers: imageBarriers }));
+    }
+}
+
+//
 B.FramebufferLayoutObj = FramebufferLayoutObj;
+B.FramebufferObj = FramebufferObj;
 
 //
 const DefaulFramebufferLayoutObj = new FramebufferLayoutObj(null, {
@@ -93,4 +231,4 @@ const DefaulFramebufferLayoutObj = new FramebufferLayoutObj(null, {
 B.DefaulFramebufferLayoutObj = DefaulFramebufferLayoutObj;
 
 //
-export default { FramebufferLayoutObj, DefaulFramebufferLayoutObj };
+export default { FramebufferLayoutObj, DefaulFramebufferLayoutObj, FramebufferObj };

@@ -83,17 +83,24 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     //
     const framebufferLayoutObj = deviceObj.createFramebufferLayout({
-        colorAttachments: [{
-            blend: {},
-            format: swapchainObj.getFormat(),
-            dynamicState: {}
-        }],
+        colorAttachments: [
+            {
+                blend: {},
+                format: V.VK_FORMAT_R32G32B32A32_UINT,
+                dynamicState: {}
+            },
+            {
+                blend: {},
+                format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
+                dynamicState: {}
+            }
+        ],
         depthAttachment: {
-            format: V.VK_FORMAT_UNDEFINED,
+            format: V.VK_FORMAT_D32_SFLOAT_S8_UINT,
             dynamicState: {}
         },
         stencilAttachment: {
-            format: V.VK_FORMAT_UNDEFINED,
+            format: V.VK_FORMAT_D32_SFLOAT_S8_UINT,
             dynamicState: {}
         }
     });
@@ -108,8 +115,153 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         }
     });
 
-    //
+
     const windowSize = windowObj.getWindowSize();
+
+    //
+    const depthStencilImage = deviceObj.createImage({
+        format: V.VK_FORMAT_D32_SFLOAT_S8_UINT,
+        imageUsage: V.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        extent: {width: windowSize[0], height: windowSize[1], depth: 1}
+    });
+
+    //
+    const colorIndexImage = deviceObj.createImage({
+        format: V.VK_FORMAT_R32G32B32A32_UINT,
+        imageUsage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT,
+        extent: {width: windowSize[0], height: windowSize[1], depth: 1}
+    });
+
+    //
+    const colorFloatData = deviceObj.createImage({
+        format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
+        imageUsage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT,
+        extent: {width: windowSize[0], height: windowSize[1], depth: 1}
+    });
+    
+
+    // TODO: better image barrier support in library (implicit)
+    const imageBarriers = new V.VkImageMemoryBarrier2([
+    {
+        srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
+        srcAccessMask: V.VK_ACCESS_2_NONE,
+        dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        dstAccessMask:  V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+        oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
+        newLayout: V.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        image: colorIndexImage.handle[0],
+        srcQueueFamilyIndex: ~0,
+        dstQueueFamilyIndex: ~0,
+        subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 },
+    },
+    {
+        srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
+        srcAccessMask: V.VK_ACCESS_2_NONE,
+        dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        dstAccessMask:  V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+        oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
+        newLayout: V.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        image: colorFloatData.handle[0],
+        srcQueueFamilyIndex: ~0,
+        dstQueueFamilyIndex: ~0,
+        subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 },
+    },
+    {
+        srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
+        srcAccessMask: V.VK_ACCESS_2_NONE,
+        dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        dstAccessMask: V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
+        newLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        image: depthStencilImage.handle[0],
+        srcQueueFamilyIndex: ~0,
+        dstQueueFamilyIndex: ~0,
+        subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_DEPTH_BIT | V.VK_IMAGE_ASPECT_STENCIL_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 },
+    }]);
+
+    //
+    const toGeneralBarrier = new V.VkImageMemoryBarrier2([
+        {
+            srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            srcAccessMask:  V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            image: colorIndexImage.handle[0],
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 },
+        },
+        {
+            srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            srcAccessMask:  V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            image: colorFloatData.handle[0],
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 },
+        },
+        {
+            srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            srcAccessMask: V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            image: depthStencilImage.handle[0],
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_DEPTH_BIT | V.VK_IMAGE_ASPECT_STENCIL_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 },
+        }
+    ]);
+
+    //
+    const toAttachmentBarrier = new V.VkImageMemoryBarrier2([
+        {
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            srcSccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            dstAccessMask:  V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            newLayout: V.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            image: colorIndexImage.handle[0],
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 },
+        },
+        {
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            srcSccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            dstAccessMask: V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            newLayout: V.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            image: colorFloatData.handle[0],
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 },
+        },
+        {
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            srcAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            dstAccessMask: V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            newLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            image: depthStencilImage.handle[0],
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_DEPTH_BIT | V.VK_IMAGE_ASPECT_STENCIL_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 },
+        }
+    ]);
+
+
+
+    //
     const viewport = new V.VkViewport({}); viewport[":f32[6]"] = [0, 0, windowSize[0], windowSize[1], 0.0, 1.0];
     const scissor = new V.VkRect2D({ ["offset:u32[2]"]: [0,0], ["extent:u32[2]"]: windowSize});
 
@@ -125,6 +277,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         queueIndex: 0,
         cmdBufFn: (cmdBuf)=>{
             swapchainObj.cmdFromUndefined(cmdBuf);
+            V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: imageBarriers.length, pImageMemoryBarriers: imageBarriers }));
         }
     });
 
@@ -138,6 +291,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         pipelineLayout: descriptorsObj.handle[0],
         code: await fs.promises.readFile("shaders/triangle.comp.spv")
     });
+
+
 
     //
     let mouseMoving = false;
@@ -179,8 +334,24 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 0, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) }); // clear
         //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 3, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) });
 
+
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: toGeneralBarrier.length, pImageMemoryBarriers: toGeneralBarrier }));
+
+        //
+        /*
+        graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 0, scissor, viewport,  imageViews: colorImageViews, depthImageView: depthStencilImageView, stencilImageView: depthStencilImageView });
+        gltfModel.instancedData.map((D, I)=>{
+            const pushData = new BigUint32Array([swapchainObj.getStorageDescId(imageIndex), I]);
+            const mesh = gltfModel.meshes[D.meshIndex];
+            graphicsPipelineObj.cmdDraw({ cmdBuf, vertexInfo: mesh.multiDraw, scissor, viewport, imageViews: colorImageViews, depthImageView: depthStencilImageView, stencilImageView: depthStencilImageView, pushConstRaw: pushData });
+        });*/
+
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: toAttachmentBarrier.length, pImageMemoryBarriers: toAttachmentBarrier }));
+
+
         //descriptorsObj.cmdUpdateUniform(cmdBuf, uniformData.buffer); // because it's frozen operation
         triangleObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/4), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
+
 
         swapchainObj.cmdToPresent(cmdBuf);
     }, swapchainObj.getImageCount(), 0);

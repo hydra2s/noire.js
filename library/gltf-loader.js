@@ -343,6 +343,9 @@ class GltfLoaderObj extends B.BasicObj {
             //
             mesh.meshDeviceAddress = meshBufferGPU.getDeviceAddress() + BigInt(mesh.meshByteOffset = nrMesh.byteLength*K);
             mesh.accelerationStructure = bottomLevel;
+            mesh.multiDraw = new V.VkMultiDrawInfoEXT(mesh.geometries.map((IDX)=>{
+                return { vertexCount: geometries[IDX].primitiveCount*3 };
+            }));
         }));
 
         // TODO: optimize access

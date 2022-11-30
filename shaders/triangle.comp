@@ -23,35 +23,8 @@ layout (local_size_x = 32, local_size_y = 4, local_size_z = 1) in;
 void main() {
     const vec3 bOrigin = divW(  vec4((vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.0 - 1.0) * vec2(1.f, -1.f), 0.0, 1.0) * perspectiveInverse * modelViewInverse).xyz;
     const vec3 eOrigin = divW(  vec4((vec2(gl_GlobalInvocationID.xy) / vec2(1280, 720) * 2.0 - 1.0) * vec2(1.f, -1.f), 1.0, 1.0) * perspectiveInverse * modelViewInverse).xyz;
-    const vec3 dir = normalize(eOrigin - bOrigin);
 
     //
-    rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, bOrigin, 0.0001f, dir, 10000.f);
-
-    //
-    while(rayQueryProceedEXT(rayQuery)) {
-        rayQueryConfirmIntersectionEXT(rayQuery);
-    }
-
-    //
-    if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) {
-        const vec2 bary_ = rayQueryGetIntersectionBarycentricsEXT(rayQuery, true);
-        const vec3 bary = vec3(1.f - bary_.x - bary_.y, bary_.xy);
-
-        //
-        nrNode nodeData = nrNode(nodeBuffer) + rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
-        nrMesh meshData = nrMesh(nodeData.meshBuffer);
-        nrGeometry geometryData = nrGeometry(meshData.address) + rayQueryGetIntersectionGeometryIndexEXT (rayQuery, true);
-        uvec3 indices = readIndexData(geometryData.indice, rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true));
-        vec4 texcoord = readFloatData3(geometryData.texcoord, indices) * bary;
-
-        //
-        nrMaterial materialData = nrMaterial(geometryData.materialAddress);
-
-        //
-        imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.xy), vec4(texture(sampler2D(textures[materialData.diffuse.tex], samplers[materialData.diffuse.sam]), texcoord.xy).xyz, 1.f));
-    } else {
-        imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.xy), vec4(0, 0, 0, 1));
-    }
+    RayTracedData data = rayTrace(bOrigin, normalize(eOrigin - bOrigin));
+    imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.xy), vec4(data.diffuse.xyz, 1));
 }

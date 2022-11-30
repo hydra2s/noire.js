@@ -379,7 +379,7 @@ class GltfLoaderObj extends B.BasicObj {
         nodeBuffer.unmap();
 
         // commit mesh buffers
-        await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
+        B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
             queueFamilyIndex: 0,
             queueIndex: 0,
             cmdBufFn: async (cmdBuf)=>{

@@ -84,17 +84,18 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //
     const framebufferLayoutObj = deviceObj.createFramebufferLayout({
         colorAttachments: [
-            {
+            /*{
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_UINT,
                 dynamicState: {}
-            },
+            },*/
             {
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
                 dynamicState: {}
             }
         ],
+        /*
         depthAttachment: {
             format: V.VK_FORMAT_D32_SFLOAT_S8_UINT,
             dynamicState: {}
@@ -102,7 +103,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         stencilAttachment: {
             format: V.VK_FORMAT_D32_SFLOAT_S8_UINT,
             dynamicState: {}
-        }
+        }*/
     });
 
     //

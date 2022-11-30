@@ -223,8 +223,6 @@ class GraphicsPipelineObj extends PipelineObj {
             subresourceRange: framebufferObj.depthStencilImageView.imageViewInfo.subresourceRange
         }) : null;
 
-        console.log(framebufferLayoutObj.depthAttachmentDynamicRenderInfo);
-
         // TODO: manually image layout
         const stencilAttachmentClear = hasStencil ? new V.VkClearAttachment({ aspectMask: framebufferObj.depthStencilImageView.imageViewInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.stencilAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
         const stencilDynamicRendering = hasStencil ? new V.VkRenderingAttachmentInfo({ ...framebufferLayoutObj.stencilAttachmentDynamicRenderInfo, imageView: framebufferObj.depthStencilImageView.handle[0] }) : null;
@@ -247,7 +245,7 @@ class GraphicsPipelineObj extends PipelineObj {
 
         //
         const colorDynamicRendering = new V.VkRenderingAttachmentInfo(Math.min(framebufferObj.colorImageViews.length, framebufferLayoutObj.colorAttachmentDynamicRenderInfo.length));
-        const colorTransitionBarrier = new V.VkImageMemoryBarrier2(Math.min(framebufferObj.colorImageViews.length, framebufferLayoutObj.colorAttachmentDynamicRenderInfo.length));
+        const colorTransitionBarrier = new V.VkImageMemoryBarrier2(colorDynamicRendering.length);
         const colorAttachmentClear = new V.VkClearAttachment(colorTransitionBarrier.length);
 
         //
@@ -282,8 +280,6 @@ class GraphicsPipelineObj extends PipelineObj {
             layerCount = Math.min(framebufferObj.colorImageViews[I].imageViewInfo.layerCount || 1, 1);
         }
 
-        
-
         // 
         V.vkCmdBeginRendering(cmdBuf[0]||cmdBuf, new V.VkRenderingInfoKHR({ 
             renderArea: scissor_[0], 
@@ -291,8 +287,8 @@ class GraphicsPipelineObj extends PipelineObj {
             viewMask: 0x0, 
             colorAttachmentCount: colorDynamicRendering.length, 
             pColorAttachments: colorDynamicRendering,
-            pDepthAttachment: null,//depthDynamicRendering,
-            pStencilAttachment: null,//stencilDynamicRendering,
+            pDepthAttachment: depthDynamicRendering,
+            pStencilAttachment: stencilDynamicRendering,
         }));
         if (pushConstRaw) {
             //V.vkCmdPushConstants(cmdBuf[0]||cmdBuf, this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout, V.VK_SHADER_STAGE_ALL, pushConstByteOffset, pushConstRaw.byteLength, pushConstRaw);
@@ -319,8 +315,8 @@ class GraphicsPipelineObj extends PipelineObj {
         } else {
             const rects_ = new V.VkClearRect({ rect: scissor_[0], baseArrayLayer: 0, layerCount }); 
             V.vkCmdClearAttachments(cmdBuf[0]||cmdBuf, colorAttachmentClear.length, colorAttachmentClear, rects_.length, rects_);
-            if (  depthAttachmentClear) V.vkCmdClearAttachments(cmdBuf[0]||cmdBuf,   depthAttachmentClear.length,   depthAttachmentClear, scissor_.length, scissor_);
-            if (stencilAttachmentClear) V.vkCmdClearAttachments(cmdBuf[0]||cmdBuf, stencilAttachmentClear.length, stencilAttachmentClear, scissor_.length, scissor_);
+            //if (  depthAttachmentClear) V.vkCmdClearAttachments(cmdBuf[0]||cmdBuf,   depthAttachmentClear.length,   depthAttachmentClear, scissor_.length, scissor_);
+            //if (stencilAttachmentClear) V.vkCmdClearAttachments(cmdBuf[0]||cmdBuf, stencilAttachmentClear.length, stencilAttachmentClear, scissor_.length, scissor_);
         }
 
         //

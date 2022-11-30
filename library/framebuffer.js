@@ -159,15 +159,14 @@ class FramebufferObj extends B.BasicObj {
             subresourceRange: this.depthStencilImageView.imageViewInfo.subresourceRange
         });
 
-
         // 
         this.colorFromUndefinedTemplate = {
             srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
             srcAccessMask: V.VK_ACCESS_2_NONE,
-            dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-            dstAccessMask:  V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
             oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
-            newLayout: V.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
             srcQueueFamilyIndex: ~0,
             dstQueueFamilyIndex: ~0,
         }
@@ -175,10 +174,10 @@ class FramebufferObj extends B.BasicObj {
         this.depthStencilFromUndefined = new V.VkImageMemoryBarrier2({
             srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
             srcAccessMask: V.VK_ACCESS_2_NONE,
-            dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-            dstAccessMask: V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT | V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
             oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
-            newLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
             image: this.depthStencilImage.handle[0],
             srcQueueFamilyIndex: ~0,
             dstQueueFamilyIndex: ~0,

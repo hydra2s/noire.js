@@ -1,12 +1,14 @@
 #version 460 core
 #extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_fragment_shader_barycentric : enable
 
-layout (location = 0) out vec4 fragColor;
+//
+layout (location = 0) out uvec4 fIndices;
+layout (location = 1) out vec4 fBary;
+layout (location = 0) in flat uvec4 vIndices;
 
-layout (location = 0) in vec3 color;
-
-
-
+//
 void main() {
-	fragColor = vec4(color, 1.0);
+	fBary = vec4(gl_BaryCoordEXT, gl_FragCoord.z);
+	fIndices = vIndices;
 }

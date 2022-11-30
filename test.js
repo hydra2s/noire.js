@@ -197,18 +197,17 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 0, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) }); // clear
         //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 3, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) });
 
-        framebufferObj.cmdToGeneral(cmdBuf);
-        
         //
-        /*
-        graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 0, scissor, viewport,  imageViews: colorImageViews, depthImageView: depthStencilImageView, stencilImageView: depthStencilImageView });
-        gltfModel.instancedData.map((D, I)=>{
-            const pushData = new BigUint32Array([swapchainObj.getStorageDescId(imageIndex), I]);
-            const mesh = gltfModel.meshes[D.meshIndex];
-            graphicsPipelineObj.cmdDraw({ cmdBuf, vertexInfo: mesh.multiDraw, scissor, viewport, imageViews: colorImageViews, depthImageView: depthStencilImageView, stencilImageView: depthStencilImageView, pushConstRaw: pushData });
-        });*/
-
         framebufferObj.cmdToAttachment(cmdBuf);
+        graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 0, scissor, viewport, framebuffer: framebufferObj.handle[0] });
+        gltfModel.instancedData.map((D, I)=>{
+            const pushData = new Uint32Array([swapchainObj.getStorageDescId(imageIndex), I]);
+            const mesh = gltfModel.meshes[D.node.meshIndex];
+            //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexInfo: mesh.multiDraw, scissor, viewport, framebuffer: framebufferObj.handle[0], pushConstRaw: pushData });
+        });
+        framebufferObj.cmdToGeneral(cmdBuf);
+        //
+        
 
         //descriptorsObj.cmdUpdateUniform(cmdBuf, uniformData.buffer); // because it's frozen operation
         triangleObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/4), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));

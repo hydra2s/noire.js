@@ -176,13 +176,13 @@ class GltfLoaderObj extends B.BasicObj {
             if (A.type == "VEC4") { Bs *= 4; cnt = 0x3; };
 
             //
-            const _bstride = A.byteStride || B.byteStride || Bs;
-            const _blength = A.byteLength || B.byteLength;
+            const _bstride = A.byteStride ||                      B.byteStride || Bs;
+            const _blength = A.byteLength || A?.count*_bstride || B.byteLength;
 
             //
             bindings.push({
                 $address: buffersGPU[B.buffer].getDeviceAddress() + BigInt(A?.byteOffset||0) + BigInt(B?.byteOffset||0),
-                $length: _blength / _bstride,
+                $length: A.count || (_blength / _bstride),
                 range: _blength,
                 stride: _bstride,
                 format: (cnt | is16bit | isInt)
@@ -289,13 +289,15 @@ class GltfLoaderObj extends B.BasicObj {
                 return geometryId;
             });
 
-            // TODO: unified geometry buffer
-            const geometryBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: nrGeometry.byteLength * mesh.geometryCount }));
-            const geometryBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrGeometry.byteLength * mesh.geometryCount, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT }));
-
             // TODO: optimize accesses
             const geometriesData = new nrGeometry(mesh.geometryCount);
             mesh.geometries.map((I,L)=>(geometriesData[L] = geometries[I]));
+
+            // TODO: unified geometry buffer
+            const geometryBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: geometriesData.byteLength }));
+            const geometryBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: geometriesData.byteLength, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT }));
+
+            //
             geometryBuffer.map().set(geometriesData.buffer);
             geometryBuffer.unmap();
 
@@ -339,6 +341,8 @@ class GltfLoaderObj extends B.BasicObj {
                     })));
                 }
             }));
+
+            //console.log(mesh.geometries.map((IDX)=>(geometries[IDX])));
 
             //
             mesh.meshDeviceAddress = meshBufferGPU.getDeviceAddress() + BigInt(mesh.meshByteOffset = nrMesh.byteLength*K);
@@ -429,6 +433,8 @@ class GltfLoaderObj extends B.BasicObj {
                 }]);
             }
         }));
+
+        //console.log("parsed!");
 
         //
         return {

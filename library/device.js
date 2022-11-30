@@ -40,8 +40,8 @@ class DeviceObj extends B.BasicObj {
             "VK_KHR_ray_tracing_maintenance1",
             "VK_KHR_workgroup_memory_explicit_layout",
             "VK_EXT_mutable_descriptor_type",
-            "VK_EXT_transform_feedback"
-            //"VK_EXT_shader_atomic_float2" // broken support in NVIDIA
+            "VK_EXT_transform_feedback",
+            "VK_EXT_shader_atomic_float2" // broken support in NVIDIA
         ];
 
         //for (let K=0;K<physicalDeviceObj.extensions.length;K++) {
@@ -53,7 +53,7 @@ class DeviceObj extends B.BasicObj {
             let found = false;
             for (let K=0;K<physicalDeviceObj.extensions.length;K++) {
                 const X = String.fromAddress(physicalDeviceObj.extensions[K].extensionName.address());
-                if (X.indexOf(E) >= 0 || E.indexOf(X) >= 0) { found = true; break; };
+                if (X == E) { found = true; break; };
             }
             return found;
         });

@@ -153,7 +153,7 @@ class GraphicsPipelineObj extends PipelineObj {
             depthWriteEnable: framebufferLayoutObj.depthFormat ? 1 : 0,
             depthCompareOp: V.VK_COMPARE_OP_LESS_OR_EQUAL,
             depthBoundsTestEnable: true,
-            stencilTestEnable: framebufferLayoutObj.stencilFormat ? 0 : 0,
+            stencilTestEnable: framebufferLayoutObj.stencilFormat ? 0 : 0, // TODO: stencil support
             front: {},
             back: {},
             minDepthBounds: 0.0,
@@ -307,8 +307,7 @@ class GraphicsPipelineObj extends PipelineObj {
             V.vkCmdDrawMeshTasksEXT(cmdBuf[0]||cmdBuf, dispatch.x || 1, dispatch.y || 1, dispatch.z || 1); rendered = true;
         } else
         if (!this.usedMeshShader && vertexInfo && vertexInfo.length) {
-            const multiDraw = new V.VkMultiDrawInfoEXT(vertexInfo);
-            V.vkCmdDrawMultiEXT(cmdBuf[0]||cmdBuf, multiDraw.length, multiDraw, instanceCount, firstInstance, V.VkMultiDrawInfoEXT.byteLength); rendered = true;
+            V.vkCmdDrawMultiEXT(cmdBuf[0]||cmdBuf, vertexInfo.length, vertexInfo, instanceCount, firstInstance, V.VkMultiDrawInfoEXT.byteLength); rendered = true;
         } else 
         if (!this.usedMeshShader && vertexCount > 0) {
             V.vkCmdDraw(cmdBuf[0]||cmdBuf, vertexCount, instanceCount, firstVertex, firstInstance); rendered = true;

@@ -13,7 +13,7 @@ class InstanceObj extends B.BasicObj {
 
         //
         this.extensions = ["VK_KHR_get_surface_capabilities2"].concat(IExtensionOpen);
-        this.layers = [/*"VK_LAYER_KHRONOS_validation"*/];
+        this.layers = ["VK_LAYER_KHRONOS_validation"];
 
         //
         V.vkEnumerateInstanceLayerProperties(this.amountOfLayers = new Uint32Array(1), null);

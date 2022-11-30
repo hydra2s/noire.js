@@ -41,7 +41,7 @@ class FramebufferLayoutObj extends B.BasicObj {
         //
         this.colorAttachmentDynamicRenderInfo = new Array(cInfo.colorAttachments.length).fill({}).map((_, I)=>{
             return {
-                loadOp: V.VK_ATTACHMENT_LOAD_OP_CLEAR,
+                loadOp: V.VK_ATTACHMENT_LOAD_OP_LOAD, // VK_ATTACHMENT_LOAD_OP_CLEAR is broken!
                 storeOp: V.VK_ATTACHMENT_STORE_OP_STORE,
                 imageLayout: V.VK_IMAGE_LAYOUT_GENERAL,
                 clearValue: new Uint32Array([0, 0, 0, 0]),
@@ -51,19 +51,19 @@ class FramebufferLayoutObj extends B.BasicObj {
 
         //
         this.depthAttachmentDynamicRenderInfo = {
-            loadOp: V.VK_ATTACHMENT_LOAD_OP_CLEAR,
+            loadOp: V.VK_ATTACHMENT_LOAD_OP_LOAD,
             storeOp: V.VK_ATTACHMENT_STORE_OP_STORE,
             imageLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            clearValue: {depth: 1.0, stencil: 0},
+            ["clearValue:VkClearDepthStencilValue"]: {depth: 1.0, stencil: 0},
             ...(cInfo.depthAttachment?.dynamicState||{})
         };
 
         //
         this.stencilAttachmentDynamicRenderInfo = {
-            loadOp: V.VK_ATTACHMENT_LOAD_OP_CLEAR,
+            loadOp: V.VK_ATTACHMENT_LOAD_OP_LOAD,
             storeOp: V.VK_ATTACHMENT_STORE_OP_STORE,
             imageLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            clearValue: {depth: 1.0, stencil: 0},
+            ["clearValue:VkClearDepthStencilValue"]: {depth: 1.0, stencil: 0},
             ...(cInfo.stencilAttachment?.dynamicState||{})
         };
     }
@@ -81,14 +81,15 @@ class FramebufferObj extends B.BasicObj {
         const deviceObj = B.Handles[this.base[0]];
         const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
         const framebufferLayoutObj = B.Handles[(this.cInfo.framebufferLayout ? this.cInfo.framebufferLayout[0] : null) || this.cInfo.framebufferLayout] || B.DefaulFramebufferLayoutObj;
+        const memoryAllocatorObj = B.Handles[this.cInfo.memoryAllocator[0] || this.cInfo.memoryAllocator];
 
         //
         let extent = {width: Math.max(cInfo.extent.width || 2, 2), height: Math.max(cInfo.extent.height || 2, 2), depth: cInfo.extent.depth || 1};
 
         //
-        this.colorImages = framebufferLayoutObj.colorFormats.map((F)=>(deviceObj.createImage({
+        this.colorImages = framebufferLayoutObj.colorFormats.map((F)=>(memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createImage({
             format: F, usage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT, extent,
-        })));
+        }))));
 
         //
         this.colorImageViews = this.colorImages.map((IMG)=>(IMG.createImageView({
@@ -96,14 +97,14 @@ class FramebufferObj extends B.BasicObj {
             subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 }
         })));
 
-        console.log(this.colorImageViews);
+        //console.log(this.colorImageViews);
 
         //
         if (framebufferLayoutObj.depthFormat || framebufferLayoutObj.stencilFormat) {
             //
-            this.depthStencilImage = deviceObj.createImage({
+            this.depthStencilImage = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createImage({
                 format: framebufferLayoutObj.depthFormat, usage: V.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT, extent,
-            });
+            }));
 
             //
             this.depthStencilImageView = this.depthStencilImage.createImageView({
@@ -156,7 +157,7 @@ class FramebufferObj extends B.BasicObj {
             this.depthStencilToAttachment = new V.VkImageMemoryBarrier2({
                 srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                 srcAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
-                dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
                 dstAccessMask: V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                 oldLayout: V.VK_IMAGE_LAYOUT_GENERAL,
                 newLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -167,7 +168,7 @@ class FramebufferObj extends B.BasicObj {
             });
 
             this.depthStencilToGeneral = new V.VkImageMemoryBarrier2({
-                srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
                 srcAccessMask: V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | V.VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                 dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                 dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,

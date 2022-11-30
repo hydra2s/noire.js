@@ -12,7 +12,9 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     modelViewInverse: "f32[16]",
     accelerationStructure: "u64",
     nodeBuffer: "u64",
-    instanceCount: "u32"
+    instanceCount: "u32",
+    _: "u32",
+    framebuffers: "u32[2]"
 }));
 
 
@@ -84,18 +86,17 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //
     const framebufferLayoutObj = deviceObj.createFramebufferLayout({
         colorAttachments: [
-            /*{
+            {
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_UINT,
                 dynamicState: {}
-            },*/
+            },
             {
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
                 dynamicState: {}
             }
         ],
-        /*
         depthAttachment: {
             format: V.VK_FORMAT_D32_SFLOAT_S8_UINT,
             dynamicState: {}
@@ -103,7 +104,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         stencilAttachment: {
             format: V.VK_FORMAT_D32_SFLOAT_S8_UINT,
             dynamicState: {}
-        }*/
+        }
     });
 
     //
@@ -119,6 +120,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     const windowSize = windowObj.getWindowSize();
     const framebufferObj = deviceObj.createFramebuffer({
+        memoryAllocator: memoryAllocatorObj.handle[0],
         framebufferLayout: framebufferLayoutObj.handle[0],
         pipelineLayout: descriptorsObj.handle[0],
         extent: {width: windowSize[0], height: windowSize[1], depth: 1}
@@ -180,10 +182,9 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         modelViewInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView)),
         accelerationStructure: gltfModel.nodeAccelerationStructure.getDeviceAddress(),
         nodeBuffer: gltfModel.nodeBufferGPU.getDeviceAddress(),
-        instanceCount: gltfModel.nodeData.length
+        instanceCount: gltfModel.nodeData.length,
+        framebuffers: [framebufferObj.colorImageViews[0].DSC_ID, framebufferObj.colorImageViews[1].DSC_ID]
     });
-
-
 
     //
     const updateMatrices = ()=>{
@@ -195,8 +196,6 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     // 
     const cmdBufs = deviceObj.allocatePrimaryCommands((cmdBuf, imageIndex)=>{
         swapchainObj.cmdToGeneral(cmdBuf);
-        //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 0, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) }); // clear
-        //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 3, scissor, viewport, imageViews: new BigUint64Array([swapchainObj.getImageView(imageIndex)]) });
 
         //
         framebufferObj.cmdToAttachment(cmdBuf);
@@ -204,7 +203,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         gltfModel.instancedData.map((D, I)=>{
             const pushData = new Uint32Array([swapchainObj.getStorageDescId(imageIndex), I]);
             const mesh = gltfModel.meshes[D.node.meshIndex];
-            //graphicsPipelineObj.cmdDraw({ cmdBuf, vertexInfo: mesh.multiDraw, scissor, viewport, framebuffer: framebufferObj.handle[0], pushConstRaw: pushData });
+            graphicsPipelineObj.cmdDraw({ cmdBuf, vertexInfo: mesh.multiDraw, scissor, viewport, framebuffer: framebufferObj.handle[0], pushConstRaw: pushData });
         });
         framebufferObj.cmdToGeneral(cmdBuf);
         //

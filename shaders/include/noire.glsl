@@ -1,5 +1,6 @@
 //
 layout (set = 0, binding = 0) uniform texture2D textures[];
+layout (set = 0, binding = 0) uniform utexture2D texturesU[];
 layout (set = 0, binding = 0, rgba8) uniform image2D images[];
 layout (set = 1, binding = 0) uniform sampler samplers[];
 
@@ -11,6 +12,9 @@ layout (set = 2, binding = 0, scalar) uniform MData {
     mat4x4 modelViewInverse;
     uint64_t accStruct;
     uint64_t nodeBuffer;
+    uint32_t instanceCount;
+    uint32_t _;
+    uint32_t framebuffers[2];
 };
 
 layout (push_constant) uniform PConst {

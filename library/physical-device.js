@@ -9,6 +9,7 @@ class PhysicalDeviceObj extends B.BasicObj {
 
         // TODO: unify into one object
         this.deviceTransformFeedbackFeatures = new V.VkPhysicalDeviceTransformFeedbackFeaturesEXT();
+        //this.deviceMutableDescriptorFeaturesV = new V.VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE({ pNext: this.deviceTransformFeedbackFeatures });
         this.deviceMutableDescriptorFeatures = new V.VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT({ pNext: this.deviceTransformFeedbackFeatures });
         this.deviceWorkgroupMemoryExplicitFeatures = new V.VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR({ pNext: this.deviceMutableDescriptorFeatures });
         this.deviceRayTracingMaintenance1Features = new V.VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR({ pNext: this.deviceWorkgroupMemoryExplicitFeatures });
@@ -19,7 +20,7 @@ class PhysicalDeviceObj extends B.BasicObj {
         this.devicePipelineRobustnessFeatures = new V.VkPhysicalDevicePipelineRobustnessFeaturesEXT({ pNext: this.deviceAtomicFloatFeatures });
         this.deviceMultiDrawFeatures = new V.VkPhysicalDeviceMultiDrawFeaturesEXT({ pNext: this.devicePipelineRobustnessFeatures });
         this.deviceBarycentricFeatures = new V.VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR({ pNext: this.deviceMultiDrawFeatures });
-        this.deviceMeshShaderFeatures = new V.VkPhysicalDeviceMeshShaderFeaturesEXT({ pNext: this.deviceMeshShaderFeatures });
+        this.deviceMeshShaderFeatures = new V.VkPhysicalDeviceMeshShaderFeaturesEXT({ pNext: this.deviceBarycentricFeatures });
         this.deviceDescriptorBufferFeatures = new V.VkPhysicalDeviceDescriptorBufferFeaturesEXT({ pNext: this.deviceMeshShaderFeatures });
         this.deviceVertexInputFeatures = new V.VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT({ pNext: this.deviceDescriptorBufferFeatures });
         this.deviceRobustness2Features = new V.VkPhysicalDeviceRobustness2FeaturesEXT({ pNext: this.deviceVertexInputFeatures });

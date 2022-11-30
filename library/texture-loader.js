@@ -150,7 +150,7 @@ class TextureLoaderObj extends B.BasicObj {
         });
 
         //
-        await B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
+        const imageFence = B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
             queueFamilyIndex: 0,
             queueIndex: 0,
             cmdBufFn: (cmdBuf)=>{

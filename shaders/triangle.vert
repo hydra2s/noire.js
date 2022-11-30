@@ -10,6 +10,7 @@
 #extension GL_EXT_buffer_reference : enable
 #extension GL_EXT_buffer_reference2 : enable
 #extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_EXT_fragment_shader_barycentric : enable
 
 //
 #include "include/math.glsl"
@@ -17,7 +18,13 @@
 
 //
 out gl_PerVertex { vec4 gl_Position; };
-layout (location = 0) out flat uvec4 vIndices;
+
+//
+layout (location = 0) pervertexEXT out Inputs {
+	uvec4 vIndices;
+	vec4 vTexcoord;
+	uint64_t vMaterialAddress;
+};
 
 //
 void main() {
@@ -30,8 +37,11 @@ void main() {
 	uint indices = readIndexData(geometryData.indice, gl_VertexIndex);
 	//vec4 texcoord = readFloatData(geometryData.texcoord, indices);
 	vec4 vertex = readFloatData(geometryData.vertex, indices);
+	vec4 texcoord = readFloatData(geometryData.texcoord, indices);
 
 	//
 	gl_Position = vec4(vec4(vertex.xyz, 1.f) * nodeData.transform, 1.f) * modelView * perspective;
 	vIndices = sys;
+	vMaterialAddress = geometryData.materialAddress;
+	vTexcoord = texcoord;
 }

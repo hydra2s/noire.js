@@ -152,8 +152,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     //
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
-    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
+    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],

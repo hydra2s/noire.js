@@ -223,6 +223,8 @@ class GraphicsPipelineObj extends PipelineObj {
             subresourceRange: framebufferObj.depthStencilImageView.imageViewInfo.subresourceRange
         }) : null;
 
+        console.log(framebufferLayoutObj.depthAttachmentDynamicRenderInfo);
+
         // TODO: manually image layout
         const stencilAttachmentClear = hasStencil ? new V.VkClearAttachment({ aspectMask: framebufferObj.depthStencilImageView.imageViewInfo.subresourceRange.aspectMask, ["clearValue:VkClearDepthStencilValue"]: framebufferLayoutObj.stencilAttachmentDynamicRenderInfo["clearValue:VkClearDepthStencilValue"] }) : null;
         const stencilDynamicRendering = hasStencil ? new V.VkRenderingAttachmentInfo({ ...framebufferLayoutObj.stencilAttachmentDynamicRenderInfo, imageView: framebufferObj.depthStencilImageView.handle[0] }) : null;
@@ -251,10 +253,15 @@ class GraphicsPipelineObj extends PipelineObj {
         //
         let layerCount = framebufferObj.colorImageViews[0].imageViewInfo.subresourceRange.layerCount || 1;
         for (let I=0;I<colorTransitionBarrier.length;I++) {
-            colorAttachmentClear[I] = { aspectMask: framebufferObj.colorImageViews[I].imageViewInfo.subresourceRange.aspectMask, colorAttachment: I, ["clearValue:f32[4]"]: framebufferLayoutObj.colorAttachmentDynamicRenderInfo[I]["clearValue:f32[4]"] };
+            colorAttachmentClear[I] = { 
+                aspectMask: framebufferObj.colorImageViews[I].imageViewInfo.subresourceRange.aspectMask, 
+                colorAttachment: I, 
+                ["clearValue:u32[4]"]: framebufferLayoutObj.colorAttachmentDynamicRenderInfo[I].clearValue 
+            };
             colorDynamicRendering[I] = {
                 ...framebufferLayoutObj.colorAttachmentDynamicRenderInfo[I],
-                imageView: framebufferObj.colorImageViews[I].handle[0]
+                imageView: framebufferObj.colorImageViews[I].handle[0],
+                ["clearValue:u32[4]"]: framebufferLayoutObj.colorAttachmentDynamicRenderInfo[I].clearValue 
             };
 
             //
@@ -274,6 +281,8 @@ class GraphicsPipelineObj extends PipelineObj {
             //
             layerCount = Math.min(framebufferObj.colorImageViews[I].imageViewInfo.layerCount || 1, 1);
         }
+
+        
 
         // 
         V.vkCmdBeginRendering(cmdBuf[0]||cmdBuf, new V.VkRenderingInfoKHR({ 

@@ -44,7 +44,7 @@ class FramebufferLayoutObj extends B.BasicObj {
                 loadOp: V.VK_ATTACHMENT_LOAD_OP_CLEAR,
                 storeOp: V.VK_ATTACHMENT_STORE_OP_STORE,
                 imageLayout: V.VK_IMAGE_LAYOUT_GENERAL,
-                "clearValue:f32[4]": [0.0, 0.0, 0.0, 0.0],
+                clearValue: new Uint32Array([0, 0, 0, 0]),
                 ...cInfo.colorAttachments[I].dynamicState
             };
         });
@@ -54,7 +54,7 @@ class FramebufferLayoutObj extends B.BasicObj {
             loadOp: V.VK_ATTACHMENT_LOAD_OP_CLEAR,
             storeOp: V.VK_ATTACHMENT_STORE_OP_STORE,
             imageLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            "clearValue:VkClearDepthStencilValue": {depth: 1.0, stencil: 0},
+            clearValue: {depth: 1.0, stencil: 0},
             ...cInfo.depthAttachment.dynamicState
         };
 
@@ -63,7 +63,7 @@ class FramebufferLayoutObj extends B.BasicObj {
             loadOp: V.VK_ATTACHMENT_LOAD_OP_CLEAR,
             storeOp: V.VK_ATTACHMENT_STORE_OP_STORE,
             imageLayout: V.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            "clearValue:VkClearDepthStencilValue": {depth: 1.0, stencil: 0},
+            clearValue: {depth: 1.0, stencil: 0},
             ...cInfo.stencilAttachment.dynamicState
         };
     }
@@ -98,7 +98,7 @@ class FramebufferObj extends B.BasicObj {
         //
         this.depthStencilImageView = this.depthStencilImage.createImageView({
             pipelineLayout: descriptorsObj.handle[0],
-            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_DEPTH_BIT | V.VK_IMAGE_ASPECT_STENCIL_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 }
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_DEPTH_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 }
         });
 
         //

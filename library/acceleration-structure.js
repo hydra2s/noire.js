@@ -1,6 +1,10 @@
 import { default as B } from "./basic.js";
 import { default as V } from "../deps/vulkan.node.js/index.js";
 
+//
+const bigIntMax = (...args) => args.reduce((m, e) => e > m ? e : m);
+const bigIntMin = (...args) => args.reduce((m, e) => e < m ? e : m);
+
 // TODO: user-define opaque flags support
 class AccelerationStructure extends B.BasicObj {
     constructor(base, options) {
@@ -84,7 +88,7 @@ class AccelerationStructure extends B.BasicObj {
         }), null, this.handle = new BigUint64Array(1));
 
         //
-        this.scratchMemory = B.createTypedBuffer(this.physicalDevice, this.device, V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | V.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, this.asBuildSizesInfo.buildScratchSize);
+        this.scratchMemory = B.createTypedBuffer(this.physicalDevice, this.device, V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | V.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, bigIntMax(this.asBuildSizesInfo.buildScratchSize, this.asBuildSizesInfo.updateScratchSize));
         this.scratchBarrier = new V.VkBufferMemoryBarrier2({
             srcStageMask: V.VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
             srcAccessMask: V.VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
@@ -94,7 +98,7 @@ class AccelerationStructure extends B.BasicObj {
             dstQueueFamilyIndex: ~0,
             $buffer: this.scratchMemory,
             offset: 0,
-            size: this.asBuildSizesInfo.buildScratchSize
+            size: bigIntMax(this.asBuildSizesInfo.buildScratchSize, this.asBuildSizesInfo.updateScratchSize)
         });
 
         //

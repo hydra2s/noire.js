@@ -7,6 +7,7 @@ import fs from 'fs';
 import { read, write } from 'ktx-parse';
 import { default as HDR } from 'hdr';
 import { PNG } from 'pngjs';
+import { default as Jimp } from 'jimp';
 
 //
 import {
@@ -81,10 +82,12 @@ class TextureLoaderObj extends B.BasicObj {
             status = await status;
             break;
 
+            case ".bmp":
+            case ".jpg":
             case ".png": 
             status = await new Promise(async (r,rj)=>{
-                fs.createReadStream(relative + file).pipe(new PNG({})).on("parsed", function () {
-                    const image = this;
+                Jimp.read(relative + file, (err, DATA)=>{
+                    const image = DATA.bitmap;
                     texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
                     componentMapping = { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A };
 
@@ -92,15 +95,30 @@ class TextureLoaderObj extends B.BasicObj {
                     texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 4 }));
                     texBuf.map().set(image.data);
                     texBuf.unmap();
-
+                    
+                    //
                     r(1);
                 });
             });
             break;
+            
+            case "ktx2":
+            case "ktx":
+            status = await new Promise(async(r,rj)=>{
+                const container = read(await fs.promises.readFile(relative + file));
+                texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth }, mipLevels: container.levels.length, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: container.levels.length, baseArrayLayer: 0, layerCount: container.layerCount };
 
-            case ".bmp":
-            case ".jpg":
-            case ".jng":
+                // TODO: all mip levels support
+                texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: container.levels[0].uncompressedByteLength }));
+                texBuf.map().set(container.levels[0].levelData);
+                texBuf.unmap();
+
+                r(1);
+            });
+            break;
+
+            default:
                 status = await new Promise(async(r,rj)=>{
                 gmi(relative + file).quality(0).toBuffer('PNG', async (err, buffer) => {
                     new PNG({}).parse(buffer, function (error, image) {
@@ -115,22 +133,6 @@ class TextureLoaderObj extends B.BasicObj {
                         r(1);
                     });
                 })
-            });
-            break;
-
-            case "ktx2":
-            case "ktx":
-            status = await new Promise(async(r,rj)=>{
-                const container = read(await fs.promises.readFile(relative + file));
-                texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth }, mipLevels: container.levels.length, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
-                subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: container.levels.length, baseArrayLayer: 0, layerCount: container.layerCount };
-
-                // TODO: all mip levels support
-                texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: container.levels[0].uncompressedByteLength }));
-                texBuf.map().set(container.levels[0].levelData);
-                texBuf.unmap();
-
-                r(1);
             });
             break;
         }

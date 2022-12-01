@@ -206,7 +206,7 @@ class DeviceObj extends B.BasicObj {
     }
 
     //
-    submitCommands({cmdBuf = [], queueFamilyIndex = 0, queueIndex = 0, waitSemaphores = [], signalSemaphores = [], waitStageMasks = []} = { cmdBuf: [], queueFamilyIndex: 0, queueIndex: 0, waitSemaphores: [], signalSemaphores: [] }) {
+    submitCommands({cmdBuf = [], queueFamilyIndex = 0, queueIndex = 0, waitSemaphores = [], signalSemaphores = [], waitStageMasks = [], manualFence = false} = { cmdBuf: [], queueFamilyIndex: 0, queueIndex: 0, waitSemaphores: [], signalSemaphores: [] }) {
         // single time command
         const fence = new BigUint64Array(1);
         const queue = this.getQueue(queueFamilyIndex, queueIndex);
@@ -229,7 +229,9 @@ class DeviceObj extends B.BasicObj {
             if (result != V.VK_NOT_READY) {
                 this.waitingProcesses.splice(this.waitingProcesses.indexOf(deallocProcess), 1); 
             };
-            //V.vkDestroyFence(this.handle[0], fence[0], null);
+            if (!manualFence) {
+                V.vkDestroyFence(this.handle[0], fence[0], null);
+            }
         };
         this.waitingProcesses.push(deallocProcess);
 
@@ -238,7 +240,7 @@ class DeviceObj extends B.BasicObj {
     }
 
     //
-    submitOnce({cmdBufFn = null, queueFamilyIndex = 0, queueIndex = 0, waitSemaphores = [], signalSemaphores = [], waitStageMasks = []} = { cmdBufFn: null, queueFamilyIndex: 0, queueIndex: 0, waitSemaphores: [], signalSemaphores: [] }) {
+    submitOnce({cmdBufFn = null, queueFamilyIndex = 0, queueIndex = 0, waitSemaphores = [], signalSemaphores = [], waitStageMasks = [], manualFence = false} = { cmdBufFn: null, queueFamilyIndex: 0, queueIndex: 0, waitSemaphores: [], signalSemaphores: [] }) {
         // single time command
         const fence = new BigUint64Array(1), cmdBuf = new BigUint64Array(1);
         const queue = this.getQueue(queueFamilyIndex, queueIndex);
@@ -268,7 +270,9 @@ class DeviceObj extends B.BasicObj {
                 V.vkFreeCommandBuffers(this.handle[0], this.queueFamilies[queueFamilyIndex].cmdPool, cmdBuf.length, cmdBuf);
                 this.waitingProcesses.splice(this.waitingProcesses.indexOf(deallocProcess), 1); 
             };
-            //V.vkDestroyFence(this.handle[0], fence[0], null);
+            if (!manualFence) {
+                V.vkDestroyFence(this.handle[0], fence[0], null);
+            }
         };
         this.waitingProcesses.push(deallocProcess);
 

@@ -324,7 +324,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             signalSemaphores: swapchainObj.semaphoreRenderingAvailable,
             queueFamilyIndex: 0,
             queueIndex: 0,
-            cmdBuf: new BigUint64Array([cmdBufs[imageIndex]])
+            cmdBuf: new BigUint64Array([cmdBufs[imageIndex]]),
+            manualFence: true
         });
 
         // TODO: dedicated semaphores support

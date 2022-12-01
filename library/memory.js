@@ -309,15 +309,17 @@ class ImageObj extends AllocationObj {
             const deviceObj = B.Handles[this.base[0]];
             const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 
-
-            // TODO: conversion array based extent to object
-
+            //
+            let extent = {
+                width : (cInfo.extent.width  || cInfo.extent.x || cInfo.extent[0]) || 1, 
+                height: (cInfo.extent.height || cInfo.extent.y || cInfo.extent[1]) || 1, 
+                depth : (cInfo.extent.depth  || cInfo.extent.z || cInfo.extent[2]) || 1};
 
             // TODO: support for external memory allocators
             V.vkCreateImage(this.base[0], this.pInfo = new V.VkImageCreateInfo({
-                imageType: cInfo.extent.depth > 1 ? V.VK_IMAGE_TYPE_3D : (cInfo.extent.height > 1 ? V.VK_IMAGE_TYPE_2D : V.VK_IMAGE_TYPE_1D),
+                imageType: extent.depth > 1 ? V.VK_IMAGE_TYPE_3D : (extent.height > 1 ? V.VK_IMAGE_TYPE_2D : V.VK_IMAGE_TYPE_1D),
                 format: cInfo.format,
-                extent: {width: cInfo.extent.width || 1, height: cInfo.extent.height || 1, depth: cInfo.extent.depth || 1},
+                extent: extent,
                 mipLevels: cInfo.mipLevels || 1,
                 arrayLayers: cInfo.arrayLayers || 1,
                 samples: cInfo.samples || V.VK_SAMPLE_COUNT_1_BIT,
@@ -334,6 +336,26 @@ class ImageObj extends AllocationObj {
             V.vkGetImageMemoryRequirements2(this.base[0], new V.VkImageMemoryRequirementsInfo2({ image: this.handle[0] }), this.memoryRequirements2 = new V.VkMemoryRequirements2());
             this.memoryRequirements = this.memoryRequirements2.memoryRequirements;
         }
+    }
+
+    getImageType() {
+        const extent = this.getExtent();
+        return this.pInfo?.imageType || (extent.depth > 1 ? V.VK_IMAGE_TYPE_3D : (extent.height > 1 ? V.VK_IMAGE_TYPE_2D : V.VK_IMAGE_TYPE_1D));
+    }
+
+    getLayerCount() {
+        return this.pInfo?.arrayLayers || this.cInfo?.arrayLayers || 1;
+    }
+
+    getMipCount() {
+        return this.pInfo?.mipLevels || this.cInfo?.mipLevels || 1;
+    }
+
+    getExtent() {
+        return this.pInfo?.extent || {
+            width : (this.cInfo.extent.width  || this.cInfo.extent.x ||this. cInfo.extent[0]) || 1, 
+            height: (this.cInfo.extent.height || this.cInfo.extent.y || this.cInfo.extent[1]) || 1, 
+            depth : (this.cInfo.extent.depth  || this.cInfo.extent.z || this.cInfo.extent[2]) || 1};
     }
 
     cmdCopyToBuffer(cmdBuf, buffer, regions, imageLayout = V.VK_IMAGE_LAYOUT_GENERAL) {
@@ -435,10 +457,25 @@ class ImageViewObj extends B.BasicObj {
             const imageObj = deviceObj.Images[this.cInfo.image];
 
             //
+            const extent = imageObj.getExtent();;
+            const layers = imageObj.getLayerCount();
+            const imageT = imageObj.getImageType();
+
+            // TODO: full support mip levels
+            // TODO: support for depth and stencil aspect
+            const subresourceRange = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: this.cInfo.mipLevel || 0, levelCount: 1, baseArrayLayer: 0, layerCount: imageObj.cInfo.arrayLayers || layers, ...(this.cInfo.subresourceRange||{}) };
+
+            // TODO: cubemap support, and check power of 6
+            let imageViewType = V.VK_IMAGE_VIEW_TYPE_3D;
+            if (imageT == V.VK_IMAGE_TYPE_1D) { imageViewType = (subresourceRange.layerCount > 1 ? V.VK_IMAGE_VIEW_TYPE_1D_ARRAY   : V.VK_IMAGE_VIEW_TYPE_1D  ); };
+            if (imageT == V.VK_IMAGE_TYPE_2D) { imageViewType = (subresourceRange.layerCount > 1 ? V.VK_IMAGE_VIEW_TYPE_2D_ARRAY   : V.VK_IMAGE_VIEW_TYPE_2D  ); };
+            if (this.cInfo.isCubemap)         { imageViewType = (subresourceRange.layerCount > 6 ? V.VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : V.VK_IMAGE_VIEW_TYPE_CUBE); };
+
+            //
             V.vkCreateImageView(this.base[0], this.imageViewInfo = new V.VkImageViewCreateInfo({
-                viewType : this.cInfo.viewType || V.VK_IMAGE_VIEW_TYPE_2D, // TODO: automatic view type
+                viewType : this.cInfo.viewType || imageViewType, // TODO: automatic view type
                 format : imageObj.cInfo.format,
-                subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: this.cInfo.mipLevel || 0, levelCount: 1, baseArrayLayer: 0, layerCount: imageObj.cInfo.arrayLayers, ...this.cInfo.subresourceRange },
+                subresourceRange: subresourceRange,
                 components: cInfo.components || { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A }
             }).set({image: this.cInfo.image}), null, this.handle = new BigUint64Array(1));
 
@@ -454,7 +491,20 @@ class ImageViewObj extends B.BasicObj {
         }
     }
 
-    
+    getImage() {
+        return this.imageViewInfo?.image || this.cInfo?.image;
+    }
+
+    getSubresourceRange() {
+        const deviceObj = B.Handles[this.base[0]];
+        const imageObj = deviceObj.Images[this.cInfo.image];
+        const layers = imageObj.getLayerCount();
+
+        // TODO: full support mip levels
+        // TODO: support for depth and stencil aspect
+        return this.imageViewInfo?.subresourceRange || this.cInfo?.subresourceRange || 
+        { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: this.cInfo.mipLevel || 0, levelCount: 1, baseArrayLayer: 0, layerCount: imageObj.cInfo.arrayLayers || layers, ...(this.cInfo.subresourceRange||{}) };
+    }
 }
 
 //

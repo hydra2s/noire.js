@@ -185,9 +185,8 @@ class GraphicsPipelineObj extends PipelineObj {
         deviceObj.Pipelines[this.handle[0]] = this;
     }
 
-    // 
-    cmdDraw({cmdBuf, vertexInfo = [], vertexCount = 3, instanceCount = 1, firstVertex = 0, firstInstance = 0, dispatch = {x: 1, y: 1, z: 1}, pushConstRaw = null, pushConstByteOffset = 0n, viewport, scissor, framebuffer}) {
-        //
+    //
+    cmdBarrier(cmdBuf) {
         const memoryBarrier = new V.VkMemoryBarrier2({ 
             srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
             srcAccessMask: V.VK_ACCESS_2_SHADER_READ_BIT | V.VK_ACCESS_2_SHADER_WRITE_BIT,
@@ -196,6 +195,12 @@ class GraphicsPipelineObj extends PipelineObj {
             srcQueueFamilyIndex: ~0,
             dstQueueFamilyIndex: ~0,
         });
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ memoryBarrierCount: memoryBarrier.length, pMemoryBarriers: memoryBarrier }));
+    };
+
+    // 
+    cmdDraw({cmdBuf, vertexInfo = [], vertexCount = 3, instanceCount = 1, firstVertex = 0, firstInstance = 0, dispatch = {x: 1, y: 1, z: 1}, pushConstRaw = null, pushConstByteOffset = 0n, viewport, scissor, framebuffer}) {
+        
 
         //
         const deviceObj = B.Handles[this.base[0]];
@@ -320,11 +325,8 @@ class GraphicsPipelineObj extends PipelineObj {
 
         //
         V.vkCmdEndRendering(cmdBuf[0]||cmdBuf);
-
-        if (rendered) {
-            V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ memoryBarrierCount: memoryBarrier.length, pMemoryBarriers: memoryBarrier }));
-        };
-
+        
+        // don't enable!
         //V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: colorTransitionBarrier.length, pImageMemoryBarriers: colorTransitionBarrier }));
         //if (  hasDepth) V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount:   depthTransitionBarrier.length, pImageMemoryBarriers:   depthTransitionBarrier }));
         //if (hasStencil) V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: stencilTransitionBarrier.length, pImageMemoryBarriers: stencilTransitionBarrier }));

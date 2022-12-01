@@ -207,9 +207,9 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             const mesh = gltfModel.meshes[D.node.meshIndex];
             graphicsPipelineObj.cmdDraw({ cmdBuf, vertexInfo: mesh.multiDraw, scissor, viewport, framebuffer: framebufferObj.handle[0], pushConstRaw: pushData });
         });
+        graphicsPipelineObj.cmdBarrier(cmdBuf);
         framebufferObj.cmdToGeneral(cmdBuf);
         //
-        
 
         //descriptorsObj.cmdUpdateUniform(cmdBuf, uniformData.buffer); // because it's frozen operation
         triangleObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/4), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));

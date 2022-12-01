@@ -105,12 +105,13 @@ class AccelerationStructure extends B.BasicObj {
         return this.deviceAddress || (this.deviceAddress = B.getAcceelerationStructureAddress(this.device, this.handle[0], this.asBuildSizesInfo.accelerationStructureSize));
     }
 
-    cmdBuild(cmdBuf, geometries) {
+    cmdBuild(cmdBuf, geometries, mode = V.VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR) {
         const asBufferBarriers = new V.VkBufferMemoryBarrier2([this.bufferBarrier, this.scratchBarrier]);
         const asBuildGeometryInfo = new V.VkAccelerationStructureBuildGeometryInfoKHR({
             type: this.asLevel,
             flags: V.VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
             mode: V.VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+            srcAccelerationStructure: V.VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR ? this.handle[0] : 0n,
             dstAccelerationStructure: this.handle[0],
             geometryCount: this.asGeometryInfo.length,
             pGeometries: this.asGeometryInfo,

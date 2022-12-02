@@ -4,7 +4,6 @@ struct RayTracedData {
     vec4 normal;
     vec4 PBR;
     vec4 emissive;
-    vec4 tangent;
     uvec4 indices;
     uint64_t materialAddress;
     vec2 texcoord;
@@ -16,10 +15,18 @@ struct RayTracedData {
     vec3 biNormal;
     vec3 dir;
     vec3 bary;
+    vec3 tangent;
 };
 
+// A vot HER! More FPS drop...
+//layout (scalar) shared RayTracedData RDATA[32][6];
+//#define rayData RDATA[gl_LocalInvocationID.x][gl_LocalInvocationID.y]
+
 //
-RayTracedData rasterize(inout RayTracedData rayData, in uvec2 coord) {
+RayTracedData rayData;
+
+//
+void rasterize(in uvec2 coord) {
     const vec3 bary = texelFetch(textures [framebuffers[1]], ivec2(coord), 0).xyz;
     const uvec4 sys = texelFetch(texturesU[framebuffers[0]], ivec2(coord), 0);
     const vec4 pos  = vec4(divW(texelFetch(textures [framebuffers[2]], ivec2(coord), 0)).xyz, 1.f);
@@ -62,9 +69,8 @@ RayTracedData rasterize(inout RayTracedData rayData, in uvec2 coord) {
 
         // TOO PISSFUL for FPS
         const vec4 TAN = readFloatData3(geometryData.tangent, indices) * bary;
-        rayData. tangent = nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f);
-        rayData. tangent.xyz = normalize(rayData. tangent.xyz) * (TAN.w * 2.f - 1.f);
-        rayData. tangent.xyz = normalize(rayData. tangent.xyz - dot(rayData. tangent.xyz, rayData. surfaceNormal) * rayData. surfaceNormal);
+        rayData.tangent.xyz = normalize((nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f)).xyz) * TAN.w;
+        rayData.tangent.xyz = normalize(rayData.tangent.xyz - dot(rayData.tangent.xyz, rayData.surfaceNormal) * rayData.surfaceNormal);
         //rayData. tangent.xyz = faceforward(rayData.tangent.xyz, rayData.dir, rayData.tangent.xyz);
 
         //
@@ -78,11 +84,11 @@ RayTracedData rasterize(inout RayTracedData rayData, in uvec2 coord) {
     }
 
     //
-    return rayData;
+    //return rayData;
 }
 
 //
-RayTracedData rayTrace(inout RayTracedData rayData, in vec3 origin, in vec3 far, in vec3 dir) {
+void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
     rayData.normal = vec4(0.f, 0.f, 0.5f, 0.f);
     rayData.diffuse = vec4(0.f.xxx, 1.f);
     rayData.origin = vec4(far, 1.f);
@@ -155,9 +161,8 @@ RayTracedData rayTrace(inout RayTracedData rayData, in vec3 origin, in vec3 far,
 
         // TOO PISSFUL for FPS
         const vec4 TAN = readFloatData3(geometryData.tangent, indices) * bary;
-        rayData. tangent = nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f);
-        rayData. tangent.xyz = normalize(rayData. tangent.xyz) * (TAN.w * 2.f - 1.f);
-        rayData. tangent.xyz = normalize(rayData. tangent.xyz - dot(rayData. tangent.xyz, rayData. surfaceNormal) * rayData. surfaceNormal);
+        rayData.tangent.xyz = normalize((nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f)).xyz) * TAN.w;
+        rayData.tangent.xyz = normalize(rayData.tangent.xyz - dot(rayData.tangent.xyz, rayData.surfaceNormal) * rayData.surfaceNormal);
         //rayData. tangent.xyz = faceforward(rayData.tangent.xyz, rayData.dir, rayData.tangent.xyz);
 
         //
@@ -171,10 +176,10 @@ RayTracedData rayTrace(inout RayTracedData rayData, in vec3 origin, in vec3 far,
     }
 
     //
-    return rayData;
+    //return rayData;
 }
 
-bool shadowTrace(inout RayTracedData rayData, in vec3 origin, in vec3 far, in vec3 dir) {
+bool shadowTrace(in vec3 origin, in vec3 far, in vec3 dir) {
     rayQueryEXT rayQuery;
     rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0001f, dir, distance(origin, far));
 
@@ -211,14 +216,13 @@ bool shadowTrace(inout RayTracedData rayData, in vec3 origin, in vec3 far, in ve
     return false;
 }
 
+//
 struct GIData {
     vec4 color;
 };
 
-
-
 //
-GIData globalIllumination(inout RayTracedData rayData) {
+GIData globalIllumination() {
     const vec3 worldNormal = rayData.surfaceNormal;
 
     //
@@ -275,7 +279,7 @@ GIData globalIllumination(inout RayTracedData rayData) {
                     lightDir = coneSample(LC * inversesqrt(dt), cosL, C);
 
                     // 
-                    shadowed = shadowTrace(rayData, rayData.origin.xyz + TBN[2] * epsilon, SO, lightDir);
+                    shadowed = shadowTrace(rayData.origin.xyz + TBN[2] * epsilon, SO, lightDir);
                     const vec3 directLight = (sqrt(max(dot(TBN[2], lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f) * rayData.diffuse.xyz;
 
                     //
@@ -289,7 +293,7 @@ GIData globalIllumination(inout RayTracedData rayData) {
 
             // next step
             if (dot(energy.xyz, 1.f.xxx) > 0.001f && I < 1) {
-                rayTrace(rayData, rayData.origin.xyz + rayData.surfaceNormal * epsilon, rayData.origin.xyz + rayData.surfaceNormal * epsilon + reflDir * 10000.f, reflDir);
+                rayTrace(rayData.origin.xyz + rayData.surfaceNormal * epsilon, rayData.origin.xyz + rayData.surfaceNormal * epsilon + reflDir * 10000.f, reflDir);
             }
         } else {
             break;

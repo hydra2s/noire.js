@@ -248,7 +248,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         });
         graphicsPipelineObj.cmdBarrier(cmdBuf);
         framebufferObj.cmdToGeneral(cmdBuf);
-        triangleObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/4), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
+        triangleObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
 
 
         swapchainObj.cmdToPresent(cmdBuf);

@@ -15,6 +15,7 @@ layout (set = 2, binding = 0, scalar) uniform MData {
     uint32_t instanceCount;
     uint16_t width, height;
     uint32_t framebuffers[4];
+    uint32_t frameCount;
 };
 
 layout (push_constant) uniform PConst {

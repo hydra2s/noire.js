@@ -14,7 +14,8 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     nodeBuffer: "u64",
     instanceCount: "u32",
     width: "u16", height: "u16",
-    framebuffers: "u32[4]"
+    framebuffers: "u32[4]",
+    frameCount: "u32"
 }));
 
 
@@ -201,10 +202,12 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     });
 
     //
+    let frameCount = 0;
     const updateMatrices = ()=>{
         const modelView = $M.mat4.lookAt($M.mat4.create(), eye, $M.vec3.add($M.vec3.create(), eye, viewDir), up);
         uniformData.modelView = $M.mat4.transpose($M.mat4.create(), modelView);
         uniformData.modelViewInverse = $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView));
+        uniformData.frameCount = frameCount++;
     };
 
     // 
@@ -215,7 +218,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     const cmdBufs = deviceObj.allocatePrimaryCommands((cmdBuf, imageIndex)=>{
         
         // for test FPS
-        /*gltfModel.meshes.map((mesh)=>{
+        gltfModel.meshes.map((mesh)=>{
             mesh.accelerationStructure.cmdBuild(cmdBuf, mesh.geometries.map((G,I)=>({
                 primitiveCount: gltfModel.geometries[G].primitiveCount,
                 primitiveOffset: 0,
@@ -229,7 +232,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             primitiveOffset: 0,
             firstVertex: 0,
             transformOffset: 0
-        }]);*/
+        }]);
 
         //
         swapchainObj.cmdToGeneral(cmdBuf);

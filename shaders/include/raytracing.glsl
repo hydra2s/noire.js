@@ -196,11 +196,12 @@ struct GIData {
     vec4 color;
 };
 
+//
 GIData globalIllumination(inout RayTracedData rayData) {
     const vec3 worldNormal = rayData.surfaceNormal;
 
     //
-    const vec3 lightPos = vec3(10, 100, 0);
+    const vec3 lightPos = vec3(0, 100, 10);
     vec3 lightDir = normalize(lightPos - rayData.origin.xyz);
     vec3 lightCol = 2.f.xxx;
     float diff = sqrt(max(dot(rayData.surfaceNormal, lightDir), 0.0));
@@ -218,29 +219,42 @@ GIData globalIllumination(inout RayTracedData rayData) {
     float reflCoef = 1.f;
     vec3 reflDir = rayData.dir;
     vec3 reflCol = 1.f.xxx;
+
+    //
+    vec2 C = vec2(gl_GlobalInvocationID.xy);
+    float F = float(frameCount) / 1000.f;
+
+    //
     for (int I=0;I<2;I++) {
         if ( dot(energy.xyz, 1.f.xxx) > 0.001f && any(greaterThan(rayData.bary, 0.f.xxx)) ) {
             {   // shading
                 lightDir = normalize(lightPos - rayData.origin.xyz);
-                shadowed = shadowTrace(rayData, rayData.origin.xyz + rayData.surfaceNormal * epsilon, rayData.origin.xyz + rayData.surfaceNormal * epsilon + lightDir * 10000.f, lightDir);
-
-                // if reflection
-                reflDir = normalize(reflect(rayData.dir, rayData.surfaceNormal));
-                reflCoef = pow(max(dot(rayData.surfaceNormal.xyz, reflDir.xyz), 0.f), 2.f) * 0.9f + 0.1f;
                 reflCol = 1.f.xxx;
 
-                //
-                const vec3 shading = lightCol * (sqrt(max(dot(rayData.surfaceNormal, lightDir), 0.0)) * (shadowed?0.f:0.8f) + 0.2f) * rayData.diffuse.xyz;
+                // if reflection
+                if (unorm(gold_noise(C, 1.0+F)) <= (reflCoef = pow(1.f - max(dot(rayData.surfaceNormal.xyz, -reflDir.xyz), 0.f), 2.f) * 0.9f + 0.1)) {
+                    reflDir = normalize(reflect(rayData.dir, rayData.surfaceNormal));
+                } else 
 
-                //
-                fcolor += vec4(energy.xyz * shading * reflCoef, 0.f);
+                // if diffuse
+                if (unorm(gold_noise(C, 2.0+F)) < 1.f) {
+                    reflDir = normalize(cosineWeightedDirection(C, 3.0+F, rayData.surfaceNormal.xyz));
+
+                    // TODO: correct diffuse coefficient
+                    shadowed = shadowTrace(rayData, rayData.origin.xyz + rayData.surfaceNormal * epsilon, rayData.origin.xyz + rayData.surfaceNormal * epsilon + lightDir * 10000.f, lightDir);
+                    const vec3 directLight = (sqrt(max(dot(rayData.surfaceNormal, lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f) * rayData.diffuse.xyz;
+
+                    //
+                    fcolor += vec4(lightCol * energy.xyz * directLight, 0.f);
+                    reflCol *= min(max(rayData.diffuse.xyz, 0.f.xxx), 1.f);
+                }
 
                 // if reflection
-                energy *= vec4(max(min(reflCol, 1.f.xxx), 0.f.xxx) * (1.f - reflCoef), 1.f);
+                energy *= vec4(max(min(reflCol, 1.f.xxx), 0.f.xxx), 1.f);
             }
 
             // next step
-            if (dot(energy.xyz, 1.f.xxx) > 0.001f || I == 1) {
+            if (dot(energy.xyz, 1.f.xxx) > 0.001f && I < 1) {
                 rayTrace(rayData, rayData.origin.xyz + rayData.surfaceNormal * epsilon, rayData.origin.xyz + rayData.surfaceNormal * epsilon + reflDir * 10000.f, reflDir);
             }
         } else {

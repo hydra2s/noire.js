@@ -31,7 +31,8 @@ void main() {
     const vec3 dir = normalize(eOrigin - bOrigin);
     const vec3 reflDir = normalize(reflect(dir, worldNormal));
 
-    const float epsilon = 0.01f;
+    //
+    const float epsilon = 0.01f; // TODO: use depth for correct epsilon
     RayTracedData reflData = rayTrace(data.origin.xyz + worldNormal * epsilon, data.origin.xyz + worldNormal * epsilon + reflDir * 10000.f, reflDir);
     vec3     lightPos = vec3(10, 100, 0);
     vec3     lightDir = normalize(lightPos     - data.origin.xyz);  

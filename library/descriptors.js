@@ -199,6 +199,21 @@ class DescriptorsObj extends B.BasicObj {
         this.uniformDescriptorBuffer.unmap();
     }
 
+    cmdBarrier(cmdBuf, queueFamilyIndex = ~0) {
+        this.bufferBarrier = new V.VkBufferMemoryBarrier2({ 
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | V.VK_PIPELINE_STAGE_2_HOST_BIT,
+            srcAccessMask: V.VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            srcQueueFamilyIndex: queueFamilyIndex,
+            dstQueueFamilyIndex: queueFamilyIndex,
+            $buffer: this.uniformDescriptorBuffer.handle[0],
+            offset: 0,
+            size: this.uniformBufferSize
+        });
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: this.bufferBarrier.length, pBufferMemoryBarriers: this.bufferBarrier }));
+    }
+
     cmdUpdateUniform(cmdBuf, rawData, byteOffset = 0n, queueFamilyIndex = ~0) {
         this.bufferBarrier = new V.VkBufferMemoryBarrier2({ 
             srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | V.VK_PIPELINE_STAGE_2_HOST_BIT,

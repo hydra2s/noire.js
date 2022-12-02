@@ -208,9 +208,29 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     // 
     const cmdBufs = deviceObj.allocatePrimaryCommands((cmdBuf, imageIndex)=>{
+        
+        // for test FPS
+        gltfModel.meshes.map((mesh)=>{
+            mesh.accelerationStructure.cmdBuild(cmdBuf, mesh.geometries.map((G,I)=>({
+                primitiveCount: gltfModel.geometries[G].primitiveCount,
+                primitiveOffset: 0,
+                firstVertex: 0,
+                transformOffset: 0
+            })))
+        });
+
+        gltfModel.nodeAccelerationStructure.cmdBuild(cmdBuf, [{
+            primitiveCount: gltfModel.instancedData.length,
+            primitiveOffset: 0,
+            firstVertex: 0,
+            transformOffset: 0
+        }]);
+
+
         swapchainObj.cmdToGeneral(cmdBuf);
 
         //
+        descriptorsObj.cmdBarrier(cmdBuf);
         framebufferObj.cmdToAttachment(cmdBuf);
         graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 0, scissor, viewport, framebuffer: framebufferObj.handle[0] });
         gltfModel.instancedData.map((D, I)=>{
@@ -271,7 +291,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     const handleCamera = ()=>{
         const modelView = $M.mat4.lookAt($M.mat4.create(), eye, $M.vec3.add($M.vec3.create(), eye, viewDir), up);
         const currentTime = performance.now();
-        const dT = currentTime - lastTime;
+        const dT = currentTime - camTime;
         camTime = currentTime;
 
         //
@@ -309,7 +329,11 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     //
     let terminated = false;
-    let lastTime = performance.now();
+    let filterStrength = 5;
+    let frameTime = performance.now(), lastLoop = new Date, thisLoop = performance.now();
+    let interval = performance.now();
+
+    //
     const renderGen = async function*() {
         // TODO: dedicated semaphores support
         const imageIndex = swapchainObj.acquireImageIndex();
@@ -324,9 +348,19 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         descriptorsObj.updateUniformDirect(uniformData);
 
         //
-        const currentTime = performance.now();
-        //console.log("FPS: " + (1000/(currentTime - lastTime)));
-        lastTime = currentTime;
+        const previousTime = thisLoop;
+        const thisFrameTime = (thisLoop = performance.now()) - lastLoop;
+        frameTime += (thisFrameTime - frameTime) / filterStrength;
+        lastLoop = thisLoop;
+
+        //
+        interval += thisLoop - previousTime;
+
+        //
+        if (interval >= 100) {
+            interval %= 100;
+            console.log("FPS: " + Math.round(Math.max(1000/frameTime, 1)));
+        }
 
         // 
         fenceI[imageIndex] = deviceObj.submitCommands({

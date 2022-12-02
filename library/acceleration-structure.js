@@ -43,7 +43,7 @@ class AccelerationStructure extends B.BasicObj {
             }
         })));
 
-        //
+        // TODO: support fast trace option
         const asBuildSizeGeometryInfo = new V.VkAccelerationStructureBuildGeometryInfoKHR({
             type: this.asLevel,
             flags: V.VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,

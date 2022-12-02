@@ -208,6 +208,10 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     };
 
     // 
+    // TODO: Make Indirect Draw Calls!
+    // Needs for reusing this command!
+    // When change resolution, needs rebuild commands too.
+    // Uniform buffer currently not required to command rebuild.
     const cmdBufs = deviceObj.allocatePrimaryCommands((cmdBuf, imageIndex)=>{
         
         // for test FPS
@@ -336,8 +340,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     //
     let terminated = false;
-    let filterStrength = 5;
-    let frameTime = performance.now(), lastLoop = new Date, thisLoop = performance.now();
+    let filterStrength = 20;
+    let frameTime = performance.now(), lastLoop = performance.now(), thisLoop = performance.now();
     let interval = performance.now();
 
     //

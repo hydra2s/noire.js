@@ -23,14 +23,14 @@ layout (push_constant) uniform PConst {
 };
 
 //
-layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrMesh {
+layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nrMesh {
     uint64_t address;
     uint32_t geometryCount;
     uint32_t flags;
 };
 
 //
-layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrNode {
+layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nrNode {
     mat4x4 transform;
     mat4x4 transformInverse;
     uint64_t meshBuffer;
@@ -69,7 +69,7 @@ vec4 readTexData(in nrTexBinding B, in vec2 texcoord) {
 }
 
 //
-layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrGeometry {
+layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nrGeometry {
     nrBinding vertex;
     nrBinding indice;
     nrBinding normal;
@@ -82,17 +82,17 @@ layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrGeometry 
 };
 
 //
-layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrUshort { uint16_t v; };
-layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrUvec { uint v; };
-layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrUshort3 { u16vec3 v; };
-layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrUvec3 { uvec3 v; };
-layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nfFloat4 { vec4 v; };
-layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nfFloat3 { vec3 v; };
-layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nfFloat2 { vec2 v; };
-layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nfFloat { float v; };
+layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nrUshort { uint16_t v; };
+layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nrUvec { uint v; };
+layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nrUshort3 { u16vec3 v; };
+layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nrUvec3 { uvec3 v; };
+layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nfFloat4 { vec4 v; };
+layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nfFloat3 { vec3 v; };
+layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nfFloat2 { vec2 v; };
+layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nfFloat { float v; };
 
 //
-layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrMaterial {
+layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nrMaterial {
     nrTexBinding diffuse;
     nrTexBinding normal;
     nrTexBinding PBR;

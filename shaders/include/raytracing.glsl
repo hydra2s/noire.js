@@ -14,6 +14,7 @@ struct RayTracedData {
     vec3 originalNormal;
     vec3 surfaceNormal;
     vec3 dir;
+    vec3 bary;
 };
 
 //
@@ -27,6 +28,7 @@ RayTracedData rasterize(inout RayTracedData rayData, in uvec2 coord) {
     rayData.diffuse = vec4(0.f.xxx, 1.f);
     rayData.surfaceNormal = normalize((modelView * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
     rayData.originalOrigin = pos;
+    rayData.bary = bary;
 
     //
     if (any(greaterThan(bary, 0.f.xxx))) {
@@ -44,7 +46,7 @@ RayTracedData rasterize(inout RayTracedData rayData, in uvec2 coord) {
         //rayData.worldToObject = transpose(rayQueryGetIntersectionWorldToObjectEXT(rayQuery, true));
         //rayData.origin = vec4(vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f) * rayData.objectToWorld, rayQueryGetIntersectionTEXT(rayQuery, true));
 
-        vec4 _camera = divW(pos * inverse(perspective));
+        vec4 _camera = divW(pos * perspectiveInverse);
         vec4 _origin = divW(_camera * modelViewInverse);
         rayData.dir = normalize((modelView * normalize(_camera)).xyz);
         rayData.origin = _origin;

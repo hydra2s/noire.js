@@ -14,7 +14,6 @@ layout(local_size_x=1, local_size_y=32) in;
 taskPayloadSharedEXT uvec2 dispatch;
 
 //
-// We prefer to use refraction and ray-tracing for transparent effects...
 void main() {
   
 };

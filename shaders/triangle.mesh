@@ -11,22 +11,20 @@
 //
 taskPayloadSharedEXT uvec2 dispatch;
 
-//
-//layout(location = 0) out flat uvec4 pIndices[];
-layout (location = 1) pervertexEXT out vec4 pScreen[];
-layout (location = 2) pervertexEXT out vec4 pTexcoord[];
-layout (location = 3) pervertexEXT out mat3x3 pTbn[];
-layout (location = 6) perprimitiveEXT out flat uint64_t pMaterialRef[];
-layout (location = 0) perprimitiveEXT out uvec4 pIndices[];
+// penny-wise
+layout (location = 0) pervertexEXT out Inputs {
+	uvec4 vIndices;
+	vec4 vTexcoord;
+	vec4 vPosition;
+	uint64_t vMaterialAddress;
+} V[];
 
 //
-//layout(max_vertices=3, max_primitives=1) out;
 layout (triangles) out;
 layout (max_vertices=96, max_primitives=32) out;
 layout (local_size_x=32) in;
 
 //
-// We prefer to use refraction and ray-tracing for transparent effects...
 void main() {
     SetMeshOutputsEXT(0, 0);
 

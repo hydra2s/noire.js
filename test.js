@@ -80,7 +80,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     // // // // // // //
 
     // TODO: DPI support
-    const windowObj = instanceObj.createWindow({ width: 1920, height: 1080 });
+    const windowObj = instanceObj.createWindow({ /*width: 1920, height: 1080*/ width: 1920, height: 1080 });
     const swapchainObj = deviceObj.createSwapChain({ window: windowObj, pipelineLayout: descriptorsObj.handle[0] });
 
     //
@@ -280,8 +280,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         camTime = currentTime;
 
         //
-        const dX = (mX - lastX) / dT * 0.015;
-        const dY = (mY - lastY) / dT * 0.015;
+        const dX = (mX - lastX) / windowSize[1] * 1.5;
+        const dY = (mY - lastY) / windowSize[1] * 1.5;
 
         //
         const viewSpeed = 0.0001;

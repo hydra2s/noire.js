@@ -31,7 +31,8 @@ layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrMesh {
 
 //
 layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrNode {
-    mat3x4 transform;
+    mat4x4 transform;
+    mat4x4 transformInverse;
     uint64_t meshBuffer;
     uint32_t meshIndex;
     uint32_t _;
@@ -63,7 +64,7 @@ struct nrBinding {
 struct nrTexBinding { vec4 col; int32_t tex, sam; };
 
 //
-vec4 readTexData(inout nrTexBinding B, in vec2 texcoord) {
+vec4 readTexData(in nrTexBinding B, in vec2 texcoord) {
     return B.tex >= 0 ? texture(sampler2D(textures[B.tex], samplers[B.sam]), texcoord.xy) : B.col;
 }
 
@@ -99,7 +100,7 @@ layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrMaterial 
 };
 
 //
-vec4 readFloatData(inout nrBinding binding, in uint index) {
+vec4 readFloatData(in nrBinding binding, in uint index) {
     const uint cnt = binding.format & 0x3;
     const uint is16bit = binding.format & 0x4;
     const uint isInt = binding.format & 0x8;
@@ -115,7 +116,7 @@ vec4 readFloatData(inout nrBinding binding, in uint index) {
 };
 
 //
-mat3x4 readFloatData3(inout nrBinding binding, in uvec3 index3) {
+mat3x4 readFloatData3(in nrBinding binding, in uvec3 index3) {
     return mat3x4(
         readFloatData(binding, index3.x),
         readFloatData(binding, index3.y),
@@ -124,7 +125,7 @@ mat3x4 readFloatData3(inout nrBinding binding, in uvec3 index3) {
 };
 
 //
-uvec3 readIndexData3(inout nrBinding binding, in uint index) {
+uvec3 readIndexData3(in nrBinding binding, in uint index) {
     const uint cnt = binding.format & 0x3;
     const uint is16bit = binding.format & 0x4;
     const uint isInt = binding.format & 0x8;
@@ -137,7 +138,7 @@ uvec3 readIndexData3(inout nrBinding binding, in uint index) {
 };
 
 //
-uint readIndexData(inout nrBinding binding, in uint index) {
+uint readIndexData(in nrBinding binding, in uint index) {
     const uint cnt = binding.format & 0x3;
     const uint is16bit = binding.format & 0x4;
     const uint isInt = binding.format & 0x8;

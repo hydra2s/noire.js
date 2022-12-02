@@ -9,21 +9,20 @@ struct RayTracedData {
     vec2 texcoord;
     vec4 origin;
     vec4 originalOrigin;
-    mat3x4 objectToWorld;
-    mat3x4 worldToObject;
+    //mat3x4 objectToWorld;
+    //mat3x4 worldToObject;
     vec3 originalNormal;
     vec3 surfaceNormal;
     vec3 dir;
 };
 
 //
-RayTracedData rasterize(in uvec2 coord) {
+RayTracedData rasterize(inout RayTracedData rayData, in uvec2 coord) {
     const vec3 bary = texelFetch(textures [framebuffers[1]], ivec2(coord), 0).xyz;
     const uvec4 sys = texelFetch(texturesU[framebuffers[0]], ivec2(coord), 0);
     const vec4 pos  = vec4(divW(texelFetch(textures [framebuffers[2]], ivec2(coord), 0)).xyz, 1.f);
 
     //
-    RayTracedData rayData;
     rayData.normal = vec4(0.f, 0.f, 0.5f, 0.f);
     rayData.diffuse = vec4(0.f.xxx, 1.f);
     rayData.surfaceNormal = normalize((modelView * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
@@ -56,13 +55,8 @@ RayTracedData rasterize(in uvec2 coord) {
         // Hosico
         // TODO: calculate normals
         rayData.originalNormal = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
-        rayData. surfaceNormal = normalize((
-            inverse(mat4x4(nodeData.transform[0], nodeData.transform[1], nodeData.transform[2], vec4(0.f.xxx, 1.f))) * 
-            vec4(rayData.originalNormal, 0.0f) 
-        ).xyz);
-
-        //
-        rayData.surfaceNormal = faceforward(rayData.surfaceNormal, rayData.dir, rayData.surfaceNormal);
+        rayData. surfaceNormal = normalize((nodeData.transformInverse * vec4(rayData.originalNormal, 0.0f)).xyz);
+        rayData. surfaceNormal = faceforward(rayData.surfaceNormal, rayData.dir, rayData.surfaceNormal);
 
         //
         rayData.emissive = readTexData(materialData.emissive, texcoord.xy);
@@ -76,8 +70,7 @@ RayTracedData rasterize(in uvec2 coord) {
 }
 
 //
-RayTracedData rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
-    RayTracedData rayData;
+RayTracedData rayTrace(inout RayTracedData rayData, in vec3 origin, in vec3 far, in vec3 dir) {
     rayData.normal = vec4(0.f, 0.f, 0.5f, 0.f);
     rayData.diffuse = vec4(0.f.xxx, 1.f);
     rayData.origin = vec4(far, 1.f);
@@ -129,14 +122,14 @@ RayTracedData rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
         nrMaterial materialData = nrMaterial(geometryData.materialAddress);
 
         //
-        rayData.objectToWorld = transpose(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true));
-        rayData.worldToObject = transpose(rayQueryGetIntersectionWorldToObjectEXT(rayQuery, true));
+        //rayData.objectToWorld = transpose(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true));
+        //rayData.worldToObject = transpose(rayQueryGetIntersectionWorldToObjectEXT(rayQuery, true));
 
         //
-        vec4 _origin = vec4(vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f) * rayData.objectToWorld, rayQueryGetIntersectionTEXT(rayQuery, true));
+        vec4 _origin = vec4(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true) * vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f), rayQueryGetIntersectionTEXT(rayQuery, true));
         //rayData.dir = normalize(rayData.origin.xyz - _origin.xyz);
         rayData.origin = _origin;
-        
+
         //
         rayData.texcoord = texcoord.xy;
         rayData.materialAddress = geometryData.materialAddress;
@@ -145,14 +138,9 @@ RayTracedData rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
         // Hosico
         // TODO: calculate normals
         rayData.originalNormal = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
-        rayData. surfaceNormal = normalize((
-            inverse(mat4x4(nodeData.transform[0], nodeData.transform[1], nodeData.transform[2], vec4(0.f.xxx, 1.f))) * 
-            vec4(rayData.originalNormal, 0.0f) 
-        ).xyz);
-
-        //
-        rayData.surfaceNormal = faceforward(rayData.surfaceNormal, rayData.dir, rayData.surfaceNormal);
-
+        rayData. surfaceNormal = normalize((nodeData.transformInverse * vec4(rayData.originalNormal, 0.0f)).xyz);
+        rayData. surfaceNormal = faceforward(rayData.surfaceNormal, rayData.dir, rayData.surfaceNormal);
+        
         //
         rayData.emissive = readTexData(materialData.emissive, texcoord.xy);
         rayData.diffuse = readTexData(materialData.diffuse, texcoord.xy);

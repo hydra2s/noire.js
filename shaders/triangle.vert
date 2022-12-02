@@ -41,7 +41,7 @@ void main() {
 	vec4 texcoord = readFloatData(geometryData.texcoord, indices);
 
 	//
-	vec4 _pos = vec4(vec4(vertex.xyz, 1.f) * nodeData.transform, 1.f) * modelView * perspective;
+	vec4 _pos = ((vec4(vertex.xyz, 1.f) * nodeData.transform) * modelView) * perspective;
 	gl_Position = _pos;
 	vIndices = sys;
 	vMaterialAddress = geometryData.materialAddress;

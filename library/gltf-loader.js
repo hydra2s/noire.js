@@ -37,7 +37,8 @@ const nrGeometry = new Proxy(V.CStructView, new V.CStruct("nrGeometry", {
 
 // in top level of AS
 const nrNode = new Proxy(V.CStructView, new V.CStruct("nrNode", {
-    transform: "f32[12]",
+    transform: "f32[16]",
+    transformInverse: "f32[16]",
     meshBuffer: "u64",
     meshIndex: "u32",
     _: "u32"
@@ -338,6 +339,7 @@ class GltfLoaderObj extends B.BasicObj {
                 })];
             } else {
                 const MTX = $M.mat4.transpose($M.mat4.create(), matrix);
+                const MTI = $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), matrix));
                 $node = [...$node, {
                     instance: {
                         "transform:f32[12]": Array.from(MTX.subarray(0, 12)),
@@ -348,7 +350,8 @@ class GltfLoaderObj extends B.BasicObj {
                         accelerationStructureReference: meshes[node.mesh].accelerationStructure.getDeviceAddress()
                     },
                     node: {
-                        "transform:f32[12]": Array.from(MTX.subarray(0, 12)),
+                        "transform:f32[16]": Array.from(MTX.subarray(0, 16)),
+                        "transformInverse:f32[16]": Array.from(MTI.subarray(0, 16)),
                         meshBuffer: meshes[node.mesh].meshDeviceAddress,
                         meshIndex: node.mesh
                     }

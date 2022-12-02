@@ -128,7 +128,8 @@ RayTracedData rayTrace(inout RayTracedData rayData, in vec3 origin, in vec3 far,
         //rayData.worldToObject = transpose(rayQueryGetIntersectionWorldToObjectEXT(rayQuery, true));
 
         //
-        vec4 _origin = vec4(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true) * vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f), rayQueryGetIntersectionTEXT(rayQuery, true));
+        vec4 vertex = readFloatData3(geometryData.vertex, indices) * bary;
+        vec4 _origin = vec4(vertex.xyz, 1.f) * nodeData.transform; //vec4(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true) * vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f), rayQueryGetIntersectionTEXT(rayQuery, true));
         //rayData.dir = normalize(rayData.origin.xyz - _origin.xyz);
         rayData.origin = _origin;
 
@@ -152,4 +153,103 @@ RayTracedData rayTrace(inout RayTracedData rayData, in vec3 origin, in vec3 far,
 
     //
     return rayData;
+}
+
+bool shadowTrace(inout RayTracedData rayData, in vec3 origin, in vec3 far, in vec3 dir) {
+    rayQueryEXT rayQuery;
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0001f, dir, 10000.f);
+
+    //
+    while(rayQueryProceedEXT(rayQuery)) {
+        const vec2 bary_ = rayQueryGetIntersectionBarycentricsEXT(rayQuery, false);
+        const vec3 bary = vec3(1.f - bary_.x - bary_.y, bary_.xy);
+        const uvec4 sys = uvec4(rayQueryGetIntersectionInstanceIdEXT(rayQuery, false), rayQueryGetIntersectionGeometryIndexEXT(rayQuery, false), rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, false), 0u);
+        const float T = rayQueryGetIntersectionTEXT(rayQuery, false);
+
+        //
+        nrNode nodeData = nrNode(nodeBuffer) + sys.x;
+        nrMesh meshData = nrMesh(nodeData.meshBuffer);
+        nrGeometry geometryData = nrGeometry(meshData.address) + sys.y;
+        uvec3 indices = readIndexData3(geometryData.indice, sys.z);
+        vec4 texcoord = readFloatData3(geometryData.texcoord, indices) * bary;
+
+        //
+        nrMaterial materialData = nrMaterial(geometryData.materialAddress);
+        const float transparency = readTexData(materialData.diffuse, texcoord.xy).a;
+
+        //
+        if (transparency > 0.f) {
+            rayQueryConfirmIntersectionEXT(rayQuery);
+        }
+    }
+
+    //
+    if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) {
+        return true;
+    }
+
+    //
+    return false;
+}
+
+struct GIData {
+    vec4 color;
+};
+
+GIData globalIllumination(inout RayTracedData rayData) {
+    const vec3 worldNormal = rayData.surfaceNormal;
+
+    //
+    const vec3 lightPos = vec3(10, 100, 0);
+    vec3 lightDir = normalize(lightPos - rayData.origin.xyz);
+    vec3 lightCol = 2.f.xxx;
+    float diff = sqrt(max(dot(rayData.surfaceNormal, lightDir), 0.0));
+
+    //
+    const float epsilon = 0.001f * pow(rayData.originalOrigin.z, 256.f);
+    const vec3 diffuseCol = rayData.diffuse.xyz * (diff + 0.2f) * 1.f;
+
+    //
+    vec4 fcolor = vec4(0.f.xxx, 1.f);
+    vec4 energy = vec4(1.f.xxx, 1.f);
+
+    //
+    bool shadowed = true;
+    float reflCoef = 1.f;
+    vec3 reflDir = rayData.dir;
+    vec3 reflCol = 1.f.xxx;
+    for (int I=0;I<2;I++) {
+        if ( dot(energy.xyz, 1.f.xxx) > 0.001f && any(greaterThan(rayData.bary, 0.f.xxx)) ) {
+            {   // shading
+                lightDir = normalize(lightPos - rayData.origin.xyz);
+                shadowed = shadowTrace(rayData, rayData.origin.xyz + rayData.surfaceNormal * epsilon, rayData.origin.xyz + rayData.surfaceNormal * epsilon + lightDir * 10000.f, lightDir);
+
+                // if reflection
+                reflDir = normalize(reflect(rayData.dir, rayData.surfaceNormal));
+                reflCoef = pow(max(dot(rayData.surfaceNormal.xyz, reflDir.xyz), 0.f), 2.f) * 0.9f + 0.1f;
+                reflCol = 1.f.xxx;
+
+                //
+                const vec3 shading = lightCol * (sqrt(max(dot(rayData.surfaceNormal, lightDir), 0.0)) * (shadowed?0.f:0.8f) + 0.2f) * rayData.diffuse.xyz;
+
+                //
+                fcolor += vec4(energy.xyz * shading * reflCoef, 0.f);
+
+                // if reflection
+                energy *= vec4(max(min(reflCol, 1.f.xxx), 0.f.xxx) * (1.f - reflCoef), 1.f);
+            }
+
+            // next step
+            if (dot(energy.xyz, 1.f.xxx) > 0.001f || I == 1) {
+                rayTrace(rayData, rayData.origin.xyz + rayData.surfaceNormal * epsilon, rayData.origin.xyz + rayData.surfaceNormal * epsilon + reflDir * 10000.f, reflDir);
+            }
+        } else {
+            break;
+        }
+    }
+
+    //
+    GIData data;
+    data.color = vec4(fcolor.xyz/fcolor.w, fcolor.w);
+    return data;
 }

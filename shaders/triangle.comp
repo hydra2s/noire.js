@@ -28,27 +28,11 @@ void main() {
     //
     RayTracedData data;
     rasterize(data, gl_GlobalInvocationID.xy);//
-    const vec3 worldNormal = data.surfaceNormal;
-    const vec3 lightPos = vec3(10, 100, 0);
-    const vec3 lightDir = normalize(lightPos - data.origin.xyz);  
-    const float diff = sqrt(max(dot(data.surfaceNormal, lightDir), 0.0));
-    const vec3 diffuseCol = data.diffuse.xyz * (diff + 0.2f) * 1.f;
+    
+    
+    GIData GI = globalIllumination(data/*, data.origin.xyz + worldNormal * epsilon, data.origin.xyz + worldNormal * epsilon + reflDir * 10000.f, reflDir*/);
 
     //
-    if (any(greaterThan(data.bary, 0.f.xxx))) {
-        const vec3 reflDir = normalize(reflect(data.dir, worldNormal));
-        const float fresnel = pow(1.f - max(dot(data.surfaceNormal.xyz, reflDir.xyz), 0.f), 2.f) * 0.9f + 0.1f;
-        const float epsilon = 0.001f * pow(data.originalOrigin.z, 256.f); // TODO: use depth for correct epsilon
-        rayTrace(data, data.origin.xyz + worldNormal * epsilon, data.origin.xyz + worldNormal * epsilon + reflDir * 10000.f, reflDir);
-        const vec3 reflLightDir = normalize(lightPos - data.origin.xyz);
-        const float reflDiff = sqrt(max(dot(data.surfaceNormal, reflLightDir), 0.0));
-        const vec3 reflDiffuseCol = data.diffuse.xyz * (reflDiff + 0.2f) * 1.f;
-        const vec3 fcolor = mix(diffuseCol, reflDiffuseCol, fresnel);
-        //const vec3 fcolor = data.surfaceNormal * 0.5f + 0.5f;
-
-        //
-        imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.x, height-1-gl_GlobalInvocationID.y), vec4(fcolor, 1.f));
-    } else {
-        imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.x, height-1-gl_GlobalInvocationID.y), vec4(0.f.xxx, 1.f));
-    }
+    vec3 fcolor = GI.color.xyz;
+    imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.x, height-1-gl_GlobalInvocationID.y), vec4(fcolor, 1.f));
 }

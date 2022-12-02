@@ -288,7 +288,7 @@ class GltfLoaderObj extends B.BasicObj {
 
             //
             const asGeometries = mesh.geometries.map((G,I)=>({
-                opaque: true,
+                opaque: false,
                 primitiveCount: geometries[G].primitiveCount,
                 geometry: {
                     indexData: geometries[G].indice?.$address,
@@ -364,7 +364,7 @@ class GltfLoaderObj extends B.BasicObj {
         //
         const nodeData = new nrNode(instancedData.map((ID)=>(ID.node)));
         const nodeAccelerationStructure = deviceObj.createTopLevelAccelerationStructure({
-            opaque: true,
+            opaque: false,
             memoryAllocator: memoryAllocatorObj.handle[0],
             instanced: instancedData.map((ID)=>(ID.instance))
         });

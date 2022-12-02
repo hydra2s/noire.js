@@ -10,6 +10,7 @@ struct RayTracedData {
     vec4 origin;
     mat3x4 objectToWorld;
     mat3x4 worldToObject;
+    vec3 originalNormal;
     vec3 surfaceNormal;
     vec3 dir;
 };
@@ -52,9 +53,10 @@ RayTracedData rasterize(in uvec2 coord) {
 
         // Hosico
         // TODO: calculate normals
-        rayData.surfaceNormal = normalize(divW(
+        rayData.originalNormal = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
+        rayData. surfaceNormal = normalize((
             inverse(mat4x4(nodeData.transform[0], nodeData.transform[1], nodeData.transform[2], vec4(0.f.xxx, 1.f))) * 
-            vec4(normalize((readFloatData3(geometryData.normal, indices) * bary).xyz), 0.0f) 
+            vec4(rayData.originalNormal, 0.0f) 
         ).xyz);
 
         //
@@ -140,9 +142,10 @@ RayTracedData rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
 
         // Hosico
         // TODO: calculate normals
-        rayData.surfaceNormal = normalize(divW(
+        rayData.originalNormal = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
+        rayData. surfaceNormal = normalize((
             inverse(mat4x4(nodeData.transform[0], nodeData.transform[1], nodeData.transform[2], vec4(0.f.xxx, 1.f))) * 
-            vec4(normalize((readFloatData3(geometryData.normal, indices) * bary).xyz), 0.0f) 
+            vec4(rayData.originalNormal, 0.0f) 
         ).xyz);
 
         //

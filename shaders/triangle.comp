@@ -31,7 +31,8 @@ void main() {
     const vec3 dir = normalize(eOrigin - bOrigin);
     const vec3 reflDir = normalize(reflect(dir, worldNormal));
 
-    RayTracedData reflData = rayTrace(data.origin.xyz + worldNormal * 0.0001f, data.origin.xyz + worldNormal * 0.0001f + reflDir * 10000.f, reflDir);
+    const float epsilon = 0.01f;
+    RayTracedData reflData = rayTrace(data.origin.xyz + worldNormal * epsilon, data.origin.xyz + worldNormal * epsilon + reflDir * 10000.f, reflDir);
     vec3     lightPos = vec3(10, 100, 0);
     vec3     lightDir = normalize(lightPos     - data.origin.xyz);  
     vec3 reflLightDir = normalize(lightPos - reflData.origin.xyz);  
@@ -41,9 +42,9 @@ void main() {
     float reflDiff = sqrt(max(dot(reflData.surfaceNormal, reflLightDir), 0.0));
 
     //
-    float fresnel = pow(1.f - max(dot(data.surfaceNormal.xyz, reflDir.xyz), 0.f), 2.f);
+    float fresnel = pow(1.f - max(dot(data.surfaceNormal.xyz, reflDir.xyz), 0.f), 2.f) * 0.9f + 0.1f;
     vec3 fcolor = mix( (data.diffuse.xyz * (diff + 0.2f)), (reflData.diffuse.xyz * (reflDiff + 0.2f)), fresnel);
-    //vec3 fcolor = worldNormal * 0.5f + 0.5f;
+    //vec3 fcolor = data.surfaceNormal * 0.5f + 0.5f;
 
     //
     imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.x, 719-gl_GlobalInvocationID.y), vec4(fcolor, 1.f));

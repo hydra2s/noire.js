@@ -25,6 +25,7 @@ layout (location = 0) pervertexEXT out Inputs {
 	uvec4 vIndices;
 	vec4 vTexcoord;
 	vec4 vPosition;
+	vec3 vNormal;
 	uint64_t vMaterialAddress;
 };
 
@@ -42,10 +43,15 @@ void main() {
 	vec4 texcoord = readFloatData(geometryData.texcoord, indices);
 
 	//
+	  vec3 normal = (modelViewInverse * (nodeData.transformInverse * vec4(readFloatData(geometryData.normal, indices).xyz, 0.f))).xyz;
+	//vec3 normal = (nodeData.transformInverse * (modelViewInverse * vec4(readFloatData(geometryData.normal, indices).xyz, 0.f))).xyz;
+
+	//
 	vec4 _pos = ((vec4(vertex.xyz, 1.f) * nodeData.transform) * modelView) * perspective;
 	gl_Position = _pos;
 	vIndices = sys;
 	vMaterialAddress = geometryData.materialAddress;
 	vTexcoord = texcoord;
 	vPosition = _pos;
+	vNormal = normal;
 }

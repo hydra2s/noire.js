@@ -15,7 +15,8 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     instanceCount: "u32",
     width: "u16", height: "u16",
     windowWidth: "u16", windowHeight: "u16",
-    framebuffers: "u32[4]",
+    _: "u16[2]",
+    framebuffers: "u16[8]",
     frameCount: "u32",
     linearSampler: "u32"
 }));
@@ -85,28 +86,44 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //
     const framebufferLayoutObj = deviceObj.createFramebufferLayout({
         colorAttachments: [
-            {
+            {   // data indices
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_UINT,
                 dynamicState: {
                     clearValue: new Uint32Array([0, 0, 0, 0])
                 }
             },
-            {
+            {   // barycentrics
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
                 dynamicState: {
                     clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
                 }
             },
-            {
+            {   // positions
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
                 dynamicState: {
                     clearValue: new Float32Array([0.0, 0.0, 1.0, 1.0]).as("u32[4]")
                 }
             },
-            {
+            {   // diffuse or render output
+                storage: true,
+                blend: {},
+                format: V.VK_FORMAT_R16G16B16A16_SFLOAT,
+                dynamicState: {
+                    clearValue: new Float32Array([0.0, 0.0, 0.0, 1.0]).as("u32[4]")
+                }
+            },
+            {   // re-output output
+                storage: true,
+                blend: {},
+                format: V.VK_FORMAT_R16G16B16A16_SFLOAT,
+                dynamicState: {
+                    clearValue: new Float32Array([0.0, 0.0, 0.0, 1.0]).as("u32[4]")
+                }
+            },
+            {   // normals
                 storage: true,
                 blend: {},
                 format: V.VK_FORMAT_R16G16B16A16_SFLOAT,
@@ -187,6 +204,12 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         code: await fs.promises.readFile("shaders/triangle.comp.spv")
     });
 
+    // Not Suitable
+    /*const denoiserObj = deviceObj.createComputePipeline({
+        framebufferLayout: framebufferLayoutObj.handle[0],
+        pipelineLayout: descriptorsObj.handle[0],
+        code: await fs.promises.readFile("shaders/denoise-phase-2.comp.spv")
+    });*/
 
 
     //
@@ -214,7 +237,15 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         accelerationStructure: gltfModel.nodeAccelerationStructure.getDeviceAddress(),
         nodeBuffer: gltfModel.nodeBufferGPU.getDeviceAddress(),
         instanceCount: gltfModel.nodeData.length,
-        framebuffers: [framebufferObj.colorImageViews[0].DSC_ID, framebufferObj.colorImageViews[1].DSC_ID, framebufferObj.colorImageViews[2].DSC_ID, framebufferObj.colorImageViews[3].DSC_ID],
+        framebuffers: [
+            framebufferObj.colorImageViews[0].DSC_ID, 
+            framebufferObj.colorImageViews[1].DSC_ID, 
+            framebufferObj.colorImageViews[2].DSC_ID, 
+            framebufferObj.colorImageViews[3].DSC_ID,
+            framebufferObj.colorImageViews[4].DSC_ID,
+            framebufferObj.colorImageViews[5].DSC_ID,
+            //framebufferObj.colorImageViews[6].DSC_ID
+        ],
         linearSampler: deviceObj.createSampler({
             pipelineLayout: descriptorsObj.handle[0],
             samplerInfo: {
@@ -276,6 +307,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         framebufferObj.cmdToGeneral(cmdBuf);
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
+        //denoiserObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/16), Math.ceil( frameSize[1]/16), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
         pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
         
         swapchainObj.cmdToPresent(cmdBuf);

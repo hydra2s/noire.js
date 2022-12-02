@@ -304,6 +304,6 @@ GIData globalIllumination() {
 
     //
     GIData data;
-    data.color = vec4(fcolor.xyz/fcolor.w, fcolor.w);
+    data.color = vec4(clamp(fcolor.xyz/fcolor.w, 0.001f, 1.f), /*fcolor.w*/1.f);
     return data;
 }

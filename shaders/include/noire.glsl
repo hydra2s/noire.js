@@ -15,7 +15,8 @@ layout (set = 2, binding = 0, scalar) uniform MData {
     uint32_t instanceCount;
     uint16_t width, height;
     uint16_t windowWidth, windowHeight;
-    uint32_t framebuffers[4];
+    uint16_t _[2];
+    uint16_t framebuffers[8];
     uint32_t frameCount;
     uint32_t linearSampler;
 };

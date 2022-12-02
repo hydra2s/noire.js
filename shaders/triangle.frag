@@ -22,12 +22,16 @@
 layout (location = 0) out uvec4 fIndices;
 layout (location = 1) out vec4 fBary;
 layout (location = 2) out vec4 fPos;
+layout (location = 3) out vec4 fOutput;
+layout (location = 4) out vec4 fReflection;
+layout (location = 5) out vec4 fNormal;
 
 //
 layout (location = 0) pervertexEXT in Inputs {
 	uvec4 vIndices;
 	vec4 vTexcoord;
 	vec4 vPosition;
+	vec3 vNormal;
 	uint64_t vMaterialAddress;
 } V[];
 
@@ -41,6 +45,7 @@ void main() {
 
 	//
 	vec4 texcoord = mat3x4(V[0].vTexcoord, V[1].vTexcoord, V[2].vTexcoord) * gl_BaryCoordEXT;
+	vec3 normal = mat3x3(V[0].vNormal, V[1].vNormal, V[2].vNormal) * gl_BaryCoordEXT;
 
 	//
 	nrMaterial materialData = nrMaterial(V[0].vMaterialAddress);
@@ -53,4 +58,5 @@ void main() {
 	fPos = mat3x4(V[0].vPosition, V[1].vPosition, V[2].vPosition) * gl_BaryCoordEXT;
 	fBary = vec4(gl_BaryCoordEXT, gl_FragCoord.z);
 	fIndices = V[0].vIndices;
+	fNormal = vec4(normalize(normal), 1.f);
 }

@@ -13,6 +13,7 @@ const float INV_PI = 0.3183098861837907;
 const float TWO_INV_PI = 0.6366197723675814;
 const float INV_TWO_PI = 0.15915494309189535;
 const float PHI = 1.61803398874989484820459;  // Φ = Golden Ratio   
+const float INV_SQRT_OF_2PI = 0.39894228040143267793994605993439;
 
 //
 int counter = 0;
@@ -77,3 +78,4 @@ vec3 coneSample(in vec3 N, in float cosTmax, in vec2 r, in float F) {
     const float s = sqrt(1.0 - r.y * r.y);
     return normalize(T * (cos(r.x) * s) + B * (sin(r.x) * s) + N * r.y);
 };
+

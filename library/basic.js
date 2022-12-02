@@ -143,13 +143,19 @@ const awaitFenceGen = async function*(device, fence) {
     return status;
 }
 
+const checkFence = (fence) => {
+    return (fence && (Array.isArray(fence) || fence[0])) ? BigInt(fence[0]) : BigInt(fence || 0n);
+}
+
 const awaitFenceAsync = async (device, fence) => {
     let status = V.VK_NOT_READY;
+    let fenceX = checkFence(fence);
     do {
         await awaitTick();
         if (status == V.VK_ERROR_DEVICE_LOST) { throw Error("Vulkan Device Lost"); break; };
         if (status != V.VK_NOT_READY) break;
-    } while((status = V.vkGetFenceStatus(device[0]||device, fence[0]||fence)) != V.VK_SUCCESS);
+        if (!(fenceX = checkFence(fence))) break;
+    } while((status = V.vkGetFenceStatus(device[0]||device, fenceX)) != V.VK_SUCCESS);
     return status;
 }
 

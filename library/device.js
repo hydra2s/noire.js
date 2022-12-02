@@ -227,10 +227,11 @@ class DeviceObj extends B.BasicObj {
         const deallocProcess = ()=>{
             const result = V.vkGetFenceStatus(this.handle[0], fence[0]);
             if (result != V.VK_NOT_READY) {
-                this.waitingProcesses.splice(this.waitingProcesses.indexOf(deallocProcess), 1); 
+                const index = this.waitingProcesses.indexOf(deallocProcess);
+                if (index >= 0) this.waitingProcesses.splice(index, 1);
             };
-            if (!manualFence) {
-                V.vkDestroyFence(this.handle[0], fence[0], null);
+            if (!manualFence && fence[0]) {
+                V.vkDestroyFence(this.handle[0], fence[0], null); fence[0] = 0n;
             }
         };
         this.waitingProcesses.push(deallocProcess);
@@ -268,11 +269,12 @@ class DeviceObj extends B.BasicObj {
             const result = V.vkGetFenceStatus(this.handle[0], fence[0]);
             if (result != V.VK_NOT_READY) {
                 V.vkFreeCommandBuffers(this.handle[0], this.queueFamilies[queueFamilyIndex].cmdPool, cmdBuf.length, cmdBuf);
-                this.waitingProcesses.splice(this.waitingProcesses.indexOf(deallocProcess), 1); 
+                const index = this.waitingProcesses.indexOf(deallocProcess);
+                if (index >= 0) this.waitingProcesses.splice(index, 1); 
             };
-            if (!manualFence) {
+            if (!manualFence && fence[0]) {
                 // BROKEN!
-                //V.vkDestroyFence(this.handle[0], fence[0], null);
+                V.vkDestroyFence(this.handle[0], fence[0], null); fence[0] = 0n;
             }
         };
         this.waitingProcesses.push(deallocProcess);

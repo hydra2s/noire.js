@@ -8,6 +8,7 @@ struct RayTracedData {
     uint64_t materialAddress;
     vec2 texcoord;
     vec4 origin;
+    vec4 originalOrigin;
     mat3x4 objectToWorld;
     mat3x4 worldToObject;
     vec3 originalNormal;
@@ -25,8 +26,9 @@ RayTracedData rasterize(in uvec2 coord) {
     RayTracedData rayData;
     rayData.normal = vec4(0.f, 0.f, 0.5f, 0.f);
     rayData.diffuse = vec4(0.f.xxx, 1.f);
-    rayData.origin = divW(  vec4((vec2(coord) / vec2(1280, 720) * 2.0 - 1.0) * vec2(1.f, 1.f), 1.0, 1.0) * inverse(perspective) * modelViewInverse);
+    rayData.origin = divW(  vec4((vec2(coord) / vec2(width, height) * 2.0 - 1.0) * vec2(1.f, 1.f), 1.0, 1.0) * inverse(perspective) * modelViewInverse);
     rayData.surfaceNormal = normalize((modelView * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
+    rayData.originalOrigin = pos;
 
     //
     if (any(greaterThan(bary, 0.f.xxx))) {
@@ -84,7 +86,7 @@ RayTracedData rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
 
     //
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), 0, 0xFF, origin, 0.0001f, dir, 10000.f);
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT, 0xFF, origin, 0.0001f, dir, 10000.f);
 
     //
     while(rayQueryProceedEXT(rayQuery)) {

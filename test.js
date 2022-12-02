@@ -13,7 +13,7 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     accelerationStructure: "u64",
     nodeBuffer: "u64",
     instanceCount: "u32",
-    _: "u32",
+    width: "u16", height: "u16",
     framebuffers: "u32[4]"
 }));
 
@@ -43,11 +43,11 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     });
 
     //
-    const bufferObj = memoryAllocatorObj.allocateMemory({  }, deviceObj.createBuffer({ size: 256*4 }));
-    const hostBufferObj = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: 256*4 }));
+    //const bufferObj = memoryAllocatorObj.allocateMemory({  }, deviceObj.createBuffer({ size: 256*4 }));
+    //const hostBufferObj = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: 256*4 }));
 
     //
-    const fenceC = deviceObj.submitOnce({
+    /*const fenceC = deviceObj.submitOnce({
         queueFamilyIndex: 0,
         queueIndex: 0,
         cmdBufFn: (cmdBuf)=>{
@@ -59,7 +59,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     });
 
     //
-    await B.awaitFenceAsync(deviceObj.handle[0], fenceC[0]);
+    await B.awaitFenceAsync(deviceObj.handle[0], fenceC[0]);*/
 
     //
     const gltfLoaderA = new K.GltfLoaderObj(deviceObj.handle, {
@@ -72,15 +72,15 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //console.log();
 
     //
-    const readData = new Uint32Array(hostBufferObj.map());
-    console.log(readData);
+    //const readData = new Uint32Array(hostBufferObj.map());
+    //console.log(readData);
 
     // // // // // // //
     // THE CONTINUE!  //
     // // // // // // //
 
-    //
-    const windowObj = instanceObj.createWindow({ width: 1280, height: 720 });
+    // TODO: DPI support
+    const windowObj = instanceObj.createWindow({ width: 1920, height: 1080 });
     const swapchainObj = deviceObj.createSwapChain({ window: windowObj, pipelineLayout: descriptorsObj.handle[0] });
 
     //
@@ -189,6 +189,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     const perspective = Array.from($M.mat4.perspective($M.mat4.create(), 60.0 * Math.PI / 180.0, windowSize[0]/windowSize[1], 0.001, 10000.0));
     const modelView = $M.mat4.lookAt($M.mat4.create(), eye, center, up);
     const uniformData = new nrUniformData({
+        width: windowSize[0], height: windowSize[1],
         perspective: $M.mat4.transpose($M.mat4.create(), perspective),
         perspectiveInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), perspective)),
         modelView: $M.mat4.transpose($M.mat4.create(), modelView),
@@ -210,7 +211,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     const cmdBufs = deviceObj.allocatePrimaryCommands((cmdBuf, imageIndex)=>{
         
         // for test FPS
-        gltfModel.meshes.map((mesh)=>{
+        /*gltfModel.meshes.map((mesh)=>{
             mesh.accelerationStructure.cmdBuild(cmdBuf, mesh.geometries.map((G,I)=>({
                 primitiveCount: gltfModel.geometries[G].primitiveCount,
                 primitiveOffset: 0,
@@ -224,12 +225,12 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             primitiveOffset: 0,
             firstVertex: 0,
             transformOffset: 0
-        }]);
-
-
-        swapchainObj.cmdToGeneral(cmdBuf);
+        }]);*/
 
         //
+        swapchainObj.cmdToGeneral(cmdBuf);
+
+        // 
         descriptorsObj.cmdBarrier(cmdBuf);
         framebufferObj.cmdToAttachment(cmdBuf);
         graphicsPipelineObj.cmdDraw({ cmdBuf, vertexCount: 0, scissor, viewport, framebuffer: framebufferObj.handle[0] });
@@ -240,9 +241,6 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         });
         graphicsPipelineObj.cmdBarrier(cmdBuf);
         framebufferObj.cmdToGeneral(cmdBuf);
-        //
-
-        //descriptorsObj.cmdUpdateUniform(cmdBuf, uniformData.buffer); // because it's frozen operation
         triangleObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/4), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
 
 
@@ -259,23 +257,9 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     });
 
     //
+    let mX = 0, mY = 0;
     V.glfwSetCursorPosCallback(windowObj.getWindow(), (window, dx, dy)=>{
-        if (mouseMoving) {
-            const dX = dx - lastX;
-            const dY = dy - lastY;
-
-            //
-            const modelView = $M.mat4.transpose($M.mat4.create(), $M.mat4.lookAt($M.mat4.create(), eye, $M.vec3.add($M.vec3.create(), eye, viewDir), up));
-            const xrot = $M.mat4.fromRotation($M.mat4.create(), dX / 720.0, $M.vec3.fromValues(0.0, -1.0, 0.0));
-            const yrot = $M.mat4.fromRotation($M.mat4.create(), dY / 720.0, $M.vec3.fromValues(-1.0, 0.0, 0.0));
-
-            //
-            let localView = $M.vec4.transformMat4($M.vec4.create(), $M.vec4.fromValues(...viewDir, 0.0), $M.mat4.invert($M.mat4.create(), modelView));
-            localView = $M.vec4.transformMat4($M.vec4.create(), localView, xrot);
-            localView = $M.vec4.transformMat4($M.vec4.create(), localView, yrot);
-            viewDir = $M.vec4.transformMat4($M.vec4.create(), localView, modelView).subarray(0, 3);
-        }
-        lastX = dx, lastY = dy;
+        mX = dx, mY = dy;
     });
 
     //
@@ -290,15 +274,21 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     let camTime = performance.now();
     const handleCamera = ()=>{
         const modelView = $M.mat4.lookAt($M.mat4.create(), eye, $M.vec3.add($M.vec3.create(), eye, viewDir), up);
+        const modelViewInverse = $M.mat4.invert($M.mat4.create(), modelView);
         const currentTime = performance.now();
         const dT = currentTime - camTime;
         camTime = currentTime;
 
         //
+        const dX = (mX - lastX) / dT * 0.01;
+        const dY = (mY - lastY) / dT * 0.01;
+
+        //
         const viewSpeed = 0.0001;
-        let localEye = $M.vec4.transformMat4($M.vec4.create(), $M.vec4.fromValues(...eye, 1.0), modelView).subarray(0, 3);
+        let localEye = $M.vec4.transformMat4($M.vec4.create(), $M.vec4.fromValues(...eye, 1.0), $M.mat4.copy($M.mat4.create(), modelView)).subarray(0, 3);
         let moveVec = $M.vec3.create(0,0,0);
 
+        //
         if (keys[V.GLFW_KEY_W]) { moveVec = $M.vec3.add($M.vec3.create(), moveVec, $M.vec3.fromValues(0,0,-1)); };
         if (keys[V.GLFW_KEY_S]) { moveVec = $M.vec3.add($M.vec3.create(), moveVec, $M.vec3.fromValues(0,0,1)); };
         if (keys[V.GLFW_KEY_A]) { moveVec = $M.vec3.add($M.vec3.create(), moveVec, $M.vec3.fromValues(-1,0,0)); };
@@ -306,6 +296,11 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         if (keys[V.GLFW_KEY_LEFT_SHIFT]) { moveVec = $M.vec3.add($M.vec3.create(), moveVec, $M.vec3.fromValues(0,-1,0)); };
         if (keys[V.GLFW_KEY_SPACE]) { moveVec = $M.vec3.add($M.vec3.create(), moveVec, $M.vec3.fromValues(0,1,0)); };
 
+        // TODO: DPI scaling support
+        const xrot = $M.mat4.fromRotation($M.mat4.create(), dX /*/ windowSize[1]*/, $M.vec3.fromValues(0.0, -1.0, 0.0));
+        const yrot = $M.mat4.fromRotation($M.mat4.create(), dY /*/ windowSize[1]*/, $M.vec3.fromValues(-1.0, 0.0, 0.0));
+
+        //
         eye = $M.vec4.transformMat4(
             $M.vec4.create(), 
             $M.vec4.fromValues(
@@ -323,8 +318,20 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
                 ),
                 1.0
             ), 
-            $M.mat4.invert($M.mat4.create(), modelView)
+            $M.mat4.copy($M.mat4.create(), modelViewInverse)
         ).subarray(0, 3);
+
+        //
+        if (mouseMoving) {
+            let localView = $M.vec4.transformMat4($M.vec4.create(), $M.vec4.fromValues(...viewDir, 0.0), $M.mat4.transpose($M.mat4.create(), modelViewInverse));
+            localView = $M.vec4.transformMat4($M.vec4.create(), localView, xrot);
+            localView = $M.vec4.transformMat4($M.vec4.create(), localView, yrot);
+            viewDir = $M.vec4.transformMat4($M.vec4.create(), localView, $M.mat4.transpose($M.mat4.create(), modelView)).subarray(0, 3);
+        }
+
+        //
+        lastX = mX, lastY = mY;
+
     };
 
     //
@@ -345,6 +352,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         // TODO: use host memory for synchronize
         // use mapped memory
+        updateMatrices();
         descriptorsObj.updateUniformDirect(uniformData);
 
         //
@@ -393,7 +401,6 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         //
         handleCamera();
-        updateMatrices();
 
         //await awaitTick(); // crap, it's needed for async!
         // as you can see, async isn't so async

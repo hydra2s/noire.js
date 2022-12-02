@@ -183,7 +183,9 @@ class DescriptorsObj extends B.BasicObj {
         // create BARZ buffers
         this.resourceDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isBAR: true }, deviceObj.createBuffer({ size: this.resourceDescriptorSetLayoutSize[0], usage: V.VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT }));
         this. samplerDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isBAR: true }, deviceObj.createBuffer({ size: this.samplerDescriptorSetLayoutSize[0], usage: V.VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT }));
-        this. uniformDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isBAR: true }, deviceObj.createBuffer({ size: this.uniformBufferSize, usage: V.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT }));
+
+        this. uniformDescriptorBuffer = memoryAllocatorObj.allocateMemory({  isDevice: true }, deviceObj.createBuffer({ size: this.uniformBufferSize, usage: V.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT }));
+        this. uniformDescriptorBufferCPU = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: this.uniformBufferSize, usage: V.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT }));
 
         // 
         V.vkGetDescriptorSetLayoutBindingOffsetEXT(this.base[0], this.descriptorLayout[0], 0, this.resourceDescriptorOffset = new BigUint64Array(1));
@@ -195,8 +197,8 @@ class DescriptorsObj extends B.BasicObj {
     }
 
     updateUniformDirect(rawData, byteOffset = 0n) {
-        this.uniformDescriptorBuffer.map().set(rawData, byteOffset);
-        this.uniformDescriptorBuffer.unmap();
+        this.uniformDescriptorBufferCPU.map().set(rawData, byteOffset);
+        this.uniformDescriptorBufferCPU.unmap();
     }
 
     cmdBarrier(cmdBuf, queueFamilyIndex = ~0) {
@@ -211,24 +213,9 @@ class DescriptorsObj extends B.BasicObj {
             offset: 0,
             size: this.uniformBufferSize
         });
-        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: this.bufferBarrier.length, pBufferMemoryBarriers: this.bufferBarrier }));
-    }
-
-    cmdUpdateUniform(cmdBuf, rawData, byteOffset = 0n, queueFamilyIndex = ~0) {
-        this.bufferBarrier = new V.VkBufferMemoryBarrier2({ 
-            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | V.VK_PIPELINE_STAGE_2_HOST_BIT,
-            srcAccessMask: V.VK_ACCESS_2_TRANSFER_WRITE_BIT,
-            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
-            srcQueueFamilyIndex: queueFamilyIndex,
-            dstQueueFamilyIndex: queueFamilyIndex,
-            $buffer: this.uniformDescriptorBuffer.handle[0],
-            offset: byteOffset,
-            size: rawData.byteLength
-        });
 
         //
-        V.vkCmdUpdateBuffer(cmdBuf[0]||cmdBuf, this.uniformDescriptorBuffer.handle[0], byteOffset, rawData.byteLength, rawData);
+        this.uniformDescriptorBufferCPU.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, this.uniformDescriptorBuffer.handle[0], [{srcOffset: 0, dstOffset: 0, size: this.uniformBufferSize}]);
         V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: this.bufferBarrier.length, pBufferMemoryBarriers: this.bufferBarrier }));
     }
 

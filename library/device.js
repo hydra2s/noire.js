@@ -271,7 +271,8 @@ class DeviceObj extends B.BasicObj {
                 this.waitingProcesses.splice(this.waitingProcesses.indexOf(deallocProcess), 1); 
             };
             if (!manualFence) {
-                V.vkDestroyFence(this.handle[0], fence[0], null);
+                // BROKEN!
+                //V.vkDestroyFence(this.handle[0], fence[0], null);
             }
         };
         this.waitingProcesses.push(deallocProcess);

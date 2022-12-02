@@ -13,7 +13,7 @@ layout (set = 2, binding = 0, scalar) uniform MData {
     uint64_t accStruct;
     uint64_t nodeBuffer;
     uint32_t instanceCount;
-    uint32_t _;
+    uint16_t width, height;
     uint32_t framebuffers[4];
 };
 

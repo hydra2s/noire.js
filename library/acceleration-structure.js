@@ -21,7 +21,7 @@ class AccelerationStructure extends B.BasicObj {
 
         //
         this.asGeometryInfo = this.asLevel == V.VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR ? new V.VkAccelerationStructureGeometryKHR({
-            flags: (options.opaque ? V.VK_GEOMETRY_OPAQUE_BIT_KHR : 0),
+            flags: (options.opaque ? V.VK_GEOMETRY_OPAQUE_BIT_KHR : 0) | V.VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR,
             geometryType: V.VK_GEOMETRY_TYPE_INSTANCES_KHR,
             ["geometry:VkAccelerationStructureGeometryInstancesDataKHR"]: {
                 sType: V.VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
@@ -29,7 +29,7 @@ class AccelerationStructure extends B.BasicObj {
                 ...options.instanced
             }
         }) : new V.VkAccelerationStructureGeometryKHR(new Array(options.geometries.length).fill({}).map((_, I)=>({
-            flags: (options.geometries[I].opaque ? V.VK_GEOMETRY_OPAQUE_BIT_KHR : 0),
+            flags: (options.geometries[I].opaque ? V.VK_GEOMETRY_OPAQUE_BIT_KHR : 0) | V.VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR,
             geometryType: V.VK_GEOMETRY_TYPE_TRIANGLES_KHR,
             ["geometry:VkAccelerationStructureGeometryTrianglesDataKHR"]: {
                 sType: V.VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,

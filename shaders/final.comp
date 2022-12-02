@@ -1,0 +1,47 @@
+#version 460 core
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_ray_query : enable
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int32 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_buffer_reference : enable
+#extension GL_EXT_buffer_reference2 : enable
+#extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_EXT_shared_memory_block : enable
+
+//
+#include "include/math.glsl"
+#include "include/noire.glsl"
+#include "include/raytracing.glsl"
+
+//
+layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
+
+//
+vec4 tex2DBiLinear( in vec2 texCoord_f )
+{
+    const ivec2 texCoord_i = ivec2(texCoord_f * vec2(width, height));
+    const vec4 p0q0 = imageLoad(images[framebuffers[3]], texCoord_i);
+    const vec4 p1q0 = imageLoad(images[framebuffers[3]], texCoord_i + ivec2(1, 0));
+    const vec4 p0q1 = imageLoad(images[framebuffers[3]], texCoord_i + ivec2(0, 1));
+    const vec4 p1q1 = imageLoad(images[framebuffers[3]], texCoord_i + ivec2(1, 1));
+    const float a = fract( texCoord_f.x * width - 0.5f ); // Get Interpolation factor for X direction.
+    const vec4 pInterp_q0 = mix( p0q0, p1q0, a ); // Interpolates top row in X direction.
+    const vec4 pInterp_q1 = mix( p0q1, p1q1, a ); // Interpolates bottom row in X direction.
+    const float b = fract( texCoord_f.y * height - 0.5f );// Get Interpolation factor for Y direction.
+    return mix( pInterp_q0, pInterp_q1, b ); // Interpolate in Y direction.
+}
+
+//
+void main() {
+    // TODO: linear interpolation support (virtual sampler)
+    vec3 fcolor = tex2DBiLinear( (vec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y) + 0.5f) / vec2(windowWidth, windowHeight)).xyz;
+    
+    //
+    imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(fcolor, 1.f));
+}

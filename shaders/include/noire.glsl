@@ -14,8 +14,10 @@ layout (set = 2, binding = 0, scalar) uniform MData {
     uint64_t nodeBuffer;
     uint32_t instanceCount;
     uint16_t width, height;
+    uint16_t windowWidth, windowHeight;
     uint32_t framebuffers[4];
     uint32_t frameCount;
+    uint32_t linearSampler;
 };
 
 layout (push_constant) uniform PConst {
@@ -62,7 +64,7 @@ struct nrBinding {
 };
 
 //
-struct nrTexBinding { vec4 col; int32_t tex, sam; };
+struct nrTexBinding { vec4 col; int16_t tex, sam; };
 
 //
 f16vec4 readTexData(in nrTexBinding B, in vec2 texcoord) {

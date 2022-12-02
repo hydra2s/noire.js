@@ -38,7 +38,7 @@ class ComputePipelineObj extends PipelineObj {
 
         const memoryBarrier = new V.VkMemoryBarrier2({ 
             srcStageMask: V.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            srcAccessMask: V.VK_ACCESS_2_SHADER_READ_BIT | V.VK_ACCESS_2_SHADER_WRITE_BIT,
+            srcAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
             dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
             dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
             srcQueueFamilyIndex: ~0,
@@ -48,6 +48,19 @@ class ComputePipelineObj extends PipelineObj {
         descriptorsObj.cmdBindBuffers(cmdBuf[0]||cmdBuf, V.VK_PIPELINE_BIND_POINT_COMPUTE);
         V.vkCmdBindPipeline(cmdBuf[0]||cmdBuf, V.VK_PIPELINE_BIND_POINT_COMPUTE, this.handle[0]);
         V.vkCmdDispatch(cmdBuf[0]||cmdBuf, x, y, z);
+        this.cmdBarrier(cmdBuf[0]||cmdBuf);
+    }
+
+    //
+    cmdBarrier(cmdBuf) {
+        const memoryBarrier = new V.VkMemoryBarrier2({ 
+            srcStageMask: V.VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            srcAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        });
         V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ memoryBarrierCount: memoryBarrier.length, pMemoryBarriers: memoryBarrier }));
     }
 }
@@ -104,7 +117,7 @@ class GraphicsPipelineObj extends PipelineObj {
             rasterizerDiscardEnable: false,
             polygonMode: V.VK_POLYGON_MODE_FILL,
             cullMode: V.VK_CULL_MODE_BACK_BIT, // TODO: manual 
-            frontFace: V.VK_FRONT_FACE_CLOCKWISE,
+            frontFace: V.VK_FRONT_FACE_COUNTER_CLOCKWISE,
             depthBiasEnable: false,
             depthBiasConstantFactor: 0.0,
             depthBiasClamp: 0.0,
@@ -246,7 +259,7 @@ class GraphicsPipelineObj extends PipelineObj {
 
         //
         const viewport_ = new V.VkViewport(viewport);
-        const scissor_ = new V.VkRect2D(scissor);
+        const  scissor_ = new V.VkRect2D  (scissor);
 
         //
         const colorDynamicRendering = new V.VkRenderingAttachmentInfo(Math.min(framebufferObj.colorImageViews.length, framebufferLayoutObj.colorAttachmentDynamicRenderInfo.length));

@@ -85,6 +85,7 @@ class FramebufferObj extends B.BasicObj {
 
         //
         let extent = {width: Math.max(cInfo.extent.width || 2, 2), height: Math.max(cInfo.extent.height || 2, 2), depth: cInfo.extent.depth || 1};
+        console.log(extent);
 
         //
         this.colorImages = framebufferLayoutObj.colorFormats.map((F)=>(memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createImage({
@@ -92,7 +93,8 @@ class FramebufferObj extends B.BasicObj {
         }))));
 
         //
-        this.colorImageViews = this.colorImages.map((IMG)=>(IMG.createImageView({
+        this.colorImageViews = this.colorImages.map((IMG, I)=>(IMG.createImageView({
+            type: framebufferLayoutObj.cInfo.colorAttachments[I].storage ? "storage" : "sampled",
             pipelineLayout: descriptorsObj.handle[0],
             subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 }
         })));

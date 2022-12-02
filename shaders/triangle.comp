@@ -29,11 +29,11 @@ void main() {
 
     //
     rasterize(gl_GlobalInvocationID.xy);//
-    
-    
+
+    //
     GIData GI = globalIllumination(/*, data.origin.xyz + worldNormal * epsilon, data.origin.xyz + worldNormal * epsilon + reflDir * 10000.f, reflDir*/);
 
     //
     vec3 fcolor = pow(GI.color.xyz, 1.f.xxx/2.2f);
-    imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.x, height-1-gl_GlobalInvocationID.y), vec4(fcolor, 1.f));
+    imageStore(images[framebuffers[3]], ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(fcolor, 1.f));
 }

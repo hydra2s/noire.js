@@ -46,7 +46,7 @@ const nrNode = new Proxy(V.CStructView, new V.CStruct("nrNode", {
 
 //
 const nrTexBinding = new Proxy(V.CStructView, new V.CStruct("nrTexBinding", {
-    col: "f32[4]", tex: "i32", sam: "i32"
+    col: "f32[4]", tex: "i16", sam: "i16"
 }));
 
 //

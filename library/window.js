@@ -13,6 +13,11 @@ class WindowObj extends B.BasicObj {
         //this.handle = new BigUint64Array([this.window]); // TODO: native pointers of GLFW window
     }
 
+    getDPI() {
+        V.glfwGetWindowContentScale(this.window, this.DPI = new Float32Array(2));
+        return this.DPI;
+    }
+
     getSurface() {
         return this.surface[0];
     }

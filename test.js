@@ -280,8 +280,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         camTime = currentTime;
 
         //
-        const dX = (mX - lastX) / dT * 0.01;
-        const dY = (mY - lastY) / dT * 0.01;
+        const dX = (mX - lastX) / dT * 0.015;
+        const dY = (mY - lastY) / dT * 0.015;
 
         //
         const viewSpeed = 0.0001;

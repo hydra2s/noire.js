@@ -26,7 +26,6 @@ RayTracedData rasterize(in uvec2 coord) {
     RayTracedData rayData;
     rayData.normal = vec4(0.f, 0.f, 0.5f, 0.f);
     rayData.diffuse = vec4(0.f.xxx, 1.f);
-    rayData.origin = divW(  vec4((vec2(coord) / vec2(width, height) * 2.0 - 1.0) * vec2(1.f, 1.f), 1.0, 1.0) * inverse(perspective) * modelViewInverse);
     rayData.surfaceNormal = normalize((modelView * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
     rayData.originalOrigin = pos;
 
@@ -46,8 +45,9 @@ RayTracedData rasterize(in uvec2 coord) {
         //rayData.worldToObject = transpose(rayQueryGetIntersectionWorldToObjectEXT(rayQuery, true));
         //rayData.origin = vec4(vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f) * rayData.objectToWorld, rayQueryGetIntersectionTEXT(rayQuery, true));
 
-        vec4 _origin = divW(pos * inverse(perspective) * modelViewInverse);
-        rayData.dir = normalize(rayData.origin.xyz - _origin.xyz);
+        vec4 _camera = divW(pos * inverse(perspective));
+        vec4 _origin = divW(_camera * modelViewInverse);
+        rayData.dir = normalize((modelView * normalize(_camera)).xyz);
         rayData.origin = _origin;
         rayData.texcoord = texcoord.xy;
         rayData.materialAddress = geometryData.materialAddress;

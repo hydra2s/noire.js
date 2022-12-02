@@ -20,11 +20,13 @@
 //
 layout (location = 0) out uvec4 fIndices;
 layout (location = 1) out vec4 fBary;
+layout (location = 2) out vec4 fPos;
 
 //
 layout (location = 0) pervertexEXT in Inputs {
 	uvec4 vIndices;
 	vec4 vTexcoord;
+	vec4 vPosition;
 	uint64_t vMaterialAddress;
 } V[];
 
@@ -47,6 +49,7 @@ void main() {
 	if (transparency <= 0.f) { discard; };
 
 	//
+	fPos = mat3x4(V[0].vPosition, V[1].vPosition, V[2].vPosition) * gl_BaryCoordEXT;
 	fBary = vec4(gl_BaryCoordEXT, gl_FragCoord.z);
 	fIndices = V[0].vIndices;
 }

@@ -14,7 +14,7 @@ layout (set = 2, binding = 0, scalar) uniform MData {
     uint64_t nodeBuffer;
     uint32_t instanceCount;
     uint32_t _;
-    uint32_t framebuffers[2];
+    uint32_t framebuffers[4];
 };
 
 layout (push_constant) uniform PConst {
@@ -61,6 +61,11 @@ struct nrBinding {
 
 //
 struct nrTexBinding { vec4 col; int32_t tex, sam; };
+
+//
+vec4 readTexData(inout nrTexBinding B, in vec2 texcoord) {
+    return B.tex >= 0 ? texture(sampler2D(textures[B.tex], samplers[B.sam]), texcoord.xy) : B.col;
+}
 
 //
 layout (buffer_reference, scalar, buffer_reference_align = 1) buffer nrGeometry {

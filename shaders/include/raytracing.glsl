@@ -10,18 +10,24 @@ struct RayTracedData {
     vec4 origin;
     mat3x4 objectToWorld;
     mat3x4 worldToObject;
+    vec3 surfaceNormal;
+    vec3 dir;
 };
 
 //
 RayTracedData rasterize(in uvec2 coord) {
-    const vec3 bary = texelFetch(textures[framebuffers[1]], ivec2(coord), 0).xyz;
+    const vec3 bary = texelFetch(textures [framebuffers[1]], ivec2(coord), 0).xyz;
     const uvec4 sys = texelFetch(texturesU[framebuffers[0]], ivec2(coord), 0);
+    const vec4 pos  = vec4(divW(texelFetch(textures [framebuffers[2]], ivec2(coord), 0)).xyz, 1.f);
 
     //
     RayTracedData rayData;
     rayData.normal = vec4(0.f, 0.f, 0.5f, 0.f);
     rayData.diffuse = vec4(0.f.xxx, 1.f);
+    rayData.origin = divW(  vec4((vec2(coord) / vec2(1280, 720) * 2.0 - 1.0) * vec2(1.f, 1.f), 1.0, 1.0) * inverse(perspective) * modelViewInverse);
+    rayData.surfaceNormal = normalize((modelView * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
 
+    //
     if (any(greaterThan(bary, 0.f.xxx))) {
         nrNode nodeData = nrNode(nodeBuffer) + sys.x;
         nrMesh meshData = nrMesh(nodeData.meshBuffer);
@@ -36,24 +42,43 @@ RayTracedData rasterize(in uvec2 coord) {
         //rayData.objectToWorld = transpose(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true));
         //rayData.worldToObject = transpose(rayQueryGetIntersectionWorldToObjectEXT(rayQuery, true));
         //rayData.origin = vec4(vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f) * rayData.objectToWorld, rayQueryGetIntersectionTEXT(rayQuery, true));
+
+        vec4 _origin = divW(pos * inverse(perspective) * modelViewInverse);
+        rayData.dir = normalize(rayData.origin.xyz - _origin.xyz);
+        rayData.origin = _origin;
         rayData.texcoord = texcoord.xy;
         rayData.materialAddress = geometryData.materialAddress;
         rayData.indices = sys;
 
+        // Hosico
+        // TODO: calculate normals
+        rayData.surfaceNormal = normalize(divW(
+            inverse(mat4x4(nodeData.transform[0], nodeData.transform[1], nodeData.transform[2], vec4(0.f.xxx, 1.f))) * 
+            vec4(normalize((readFloatData3(geometryData.normal, indices) * bary).xyz), 0.0f) 
+        ).xyz);
+
         //
-        rayData.emissive = materialData.emissive.tex >= 0 ? texture(sampler2D(textures[materialData.emissive.tex], samplers[materialData.emissive.sam]), texcoord.xy) : materialData.emissive.col;
-        rayData.diffuse = materialData.diffuse.tex >= 0 ? texture(sampler2D(textures[materialData.diffuse.tex], samplers[materialData.diffuse.sam]), texcoord.xy) : materialData.diffuse.col;
-        rayData.normal = materialData.normal.tex >= 0 ? texture(sampler2D(textures[materialData.normal.tex], samplers[materialData.normal.sam]), texcoord.xy) : materialData.normal.col;
-        rayData.PBR = materialData.PBR.tex >= 0 ? texture(sampler2D(textures[materialData.PBR.tex], samplers[materialData.PBR.sam]), texcoord.xy) : materialData.PBR.col;
+        rayData.surfaceNormal = faceforward(rayData.surfaceNormal, rayData.dir, rayData.surfaceNormal);
+
+        //
+        rayData.emissive = readTexData(materialData.emissive, texcoord.xy);
+        rayData.diffuse = readTexData(materialData.diffuse, texcoord.xy);
+        rayData.normal = readTexData(materialData.normal, texcoord.xy);;
+        rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
     }
+
+    //
     return rayData;
 }
 
 //
-RayTracedData rayTrace(in vec3 origin, in vec3 dir) {
+RayTracedData rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
     RayTracedData rayData;
     rayData.normal = vec4(0.f, 0.f, 0.5f, 0.f);
     rayData.diffuse = vec4(0.f.xxx, 1.f);
+    rayData.origin = vec4(far, 1.f);
+    rayData.surfaceNormal = normalize((modelView * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
+    rayData.dir = dir;
 
     //
     rayQueryEXT rayQuery;
@@ -75,7 +100,7 @@ RayTracedData rayTrace(in vec3 origin, in vec3 dir) {
 
         //
         nrMaterial materialData = nrMaterial(geometryData.materialAddress);
-        const float transparency = materialData.diffuse.tex >= 0 ? texture(sampler2D(textures[nonuniformEXT(materialData.diffuse.tex)], samplers[nonuniformEXT(materialData.diffuse.sam)]), texcoord.xy).a : materialData.diffuse.col.a;
+        const float transparency = readTexData(materialData.diffuse, texcoord.xy).a;
 
         //
         if (transparency > 0.f) {
@@ -102,16 +127,32 @@ RayTracedData rayTrace(in vec3 origin, in vec3 dir) {
         //
         rayData.objectToWorld = transpose(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true));
         rayData.worldToObject = transpose(rayQueryGetIntersectionWorldToObjectEXT(rayQuery, true));
-        rayData.origin = vec4(vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f) * rayData.objectToWorld, rayQueryGetIntersectionTEXT(rayQuery, true));
+
+        //
+        vec4 _origin = vec4(vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f) * rayData.objectToWorld, rayQueryGetIntersectionTEXT(rayQuery, true));
+        //rayData.dir = normalize(rayData.origin.xyz - _origin.xyz);
+        rayData.origin = _origin;
+        
+        //
         rayData.texcoord = texcoord.xy;
         rayData.materialAddress = geometryData.materialAddress;
         rayData.indices = sys;
 
+        // Hosico
+        // TODO: calculate normals
+        rayData.surfaceNormal = normalize(divW(
+            inverse(mat4x4(nodeData.transform[0], nodeData.transform[1], nodeData.transform[2], vec4(0.f.xxx, 1.f))) * 
+            vec4(normalize((readFloatData3(geometryData.normal, indices) * bary).xyz), 0.0f) 
+        ).xyz);
+
         //
-        rayData.emissive = materialData.emissive.tex >= 0 ? texture(sampler2D(textures[nonuniformEXT(materialData.emissive.tex)], samplers[nonuniformEXT(materialData.emissive.sam)]), texcoord.xy) : materialData.emissive.col;
-        rayData.diffuse = materialData.diffuse.tex >= 0 ? texture(sampler2D(textures[nonuniformEXT(materialData.diffuse.tex)], samplers[nonuniformEXT(materialData.diffuse.sam)]), texcoord.xy) : materialData.diffuse.col;
-        rayData.normal = materialData.normal.tex >= 0 ? texture(sampler2D(textures[nonuniformEXT(materialData.normal.tex)], samplers[nonuniformEXT(materialData.normal.sam)]), texcoord.xy) : materialData.normal.col;
-        rayData.PBR = materialData.PBR.tex >= 0 ? texture(sampler2D(textures[nonuniformEXT(materialData.PBR.tex)], samplers[nonuniformEXT(materialData.PBR.sam)]), texcoord.xy) : materialData.PBR.col;
+        rayData.surfaceNormal = faceforward(rayData.surfaceNormal, rayData.dir, rayData.surfaceNormal);
+
+        //
+        rayData.emissive = readTexData(materialData.emissive, texcoord.xy);
+        rayData.diffuse = readTexData(materialData.diffuse, texcoord.xy);
+        rayData.normal = readTexData(materialData.normal, texcoord.xy);;
+        rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
     }
 
     //

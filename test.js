@@ -14,7 +14,7 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     nodeBuffer: "u64",
     instanceCount: "u32",
     _: "u32",
-    framebuffers: "u32[2]"
+    framebuffers: "u32[4]"
 }));
 
 
@@ -89,12 +89,23 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             {
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_UINT,
-                dynamicState: {}
+                dynamicState: {
+                    clearValue: new Uint32Array([0, 0, 0, 0])
+                }
             },
             {
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
-                dynamicState: {}
+                dynamicState: {
+                    clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
+                }
+            },
+            {
+                blend: {},
+                format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
+                dynamicState: {
+                    clearValue: new Float32Array([0.0, 0.0, 1.0, 1.0]).as("u32[4]")
+                }
             }
         ],
         depthAttachment: {
@@ -152,8 +163,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     //
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
-    const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
+    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
@@ -185,7 +196,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         accelerationStructure: gltfModel.nodeAccelerationStructure.getDeviceAddress(),
         nodeBuffer: gltfModel.nodeBufferGPU.getDeviceAddress(),
         instanceCount: gltfModel.nodeData.length,
-        framebuffers: [framebufferObj.colorImageViews[0].DSC_ID, framebufferObj.colorImageViews[1].DSC_ID]
+        framebuffers: [framebufferObj.colorImageViews[0].DSC_ID, framebufferObj.colorImageViews[1].DSC_ID, framebufferObj.colorImageViews[2].DSC_ID, 0]
     });
 
     //

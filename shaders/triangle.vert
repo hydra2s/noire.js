@@ -23,6 +23,7 @@ out gl_PerVertex { vec4 gl_Position; };
 layout (location = 0) pervertexEXT out Inputs {
 	uvec4 vIndices;
 	vec4 vTexcoord;
+	vec4 vPosition;
 	uint64_t vMaterialAddress;
 };
 
@@ -40,8 +41,10 @@ void main() {
 	vec4 texcoord = readFloatData(geometryData.texcoord, indices);
 
 	//
-	gl_Position = vec4(vec4(vertex.xyz, 1.f) * nodeData.transform, 1.f) * modelView * perspective;
+	vec4 _pos = vec4(vec4(vertex.xyz, 1.f) * nodeData.transform, 1.f) * modelView * perspective;
+	gl_Position = _pos;
 	vIndices = sys;
 	vMaterialAddress = geometryData.materialAddress;
 	vTexcoord = texcoord;
+	vPosition = _pos;
 }

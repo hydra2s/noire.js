@@ -6,6 +6,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int32 : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_buffer_reference : enable
@@ -33,6 +34,6 @@ void main() {
     GIData GI = globalIllumination(/*, data.origin.xyz + worldNormal * epsilon, data.origin.xyz + worldNormal * epsilon + reflDir * 10000.f, reflDir*/);
 
     //
-    vec3 fcolor = GI.color.xyz;
+    vec3 fcolor = pow(GI.color.xyz, 1.f.xxx/2.2f);
     imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.x, height-1-gl_GlobalInvocationID.y), vec4(fcolor, 1.f));
 }

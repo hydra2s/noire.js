@@ -1,9 +1,9 @@
 //
 struct RayTracedData {
-    vec4 diffuse;
-    vec4 normal;
-    vec4 PBR;
-    vec4 emissive;
+    f16vec4 diffuse;
+    f16vec4 normal;
+    f16vec4 PBR;
+    f16vec4 emissive;
     uvec4 indices;
     uint64_t materialAddress;
     vec2 texcoord;
@@ -32,8 +32,8 @@ void rasterize(in uvec2 coord) {
     const vec4 pos  = vec4(divW(texelFetch(textures [framebuffers[2]], ivec2(coord), 0)).xyz, 1.f);
 
     //
-    rayData.normal = vec4(0.f, 0.f, 0.5f, 0.f);
-    rayData.diffuse = vec4(0.f.xxx, 1.f);
+    rayData.normal = f16vec4(0.f, 0.f, 0.5f, 0.f);
+    rayData.diffuse = f16vec4(0.f.xxx, 1.f);
     rayData.surfaceNormal = normalize((modelView * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
     rayData.originalOrigin = pos;
     rayData.bary = bary;
@@ -81,6 +81,7 @@ void rasterize(in uvec2 coord) {
         rayData.diffuse = readTexData(materialData.diffuse, texcoord.xy);
         rayData.normal = readTexData(materialData.normal, texcoord.xy);;
         rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
+        rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
     }
 
     //
@@ -89,8 +90,8 @@ void rasterize(in uvec2 coord) {
 
 //
 void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
-    rayData.normal = vec4(0.f, 0.f, 0.5f, 0.f);
-    rayData.diffuse = vec4(0.f.xxx, 1.f);
+    rayData.normal = f16vec4(0.f, 0.f, 0.5f, 0.f);
+    rayData.diffuse = f16vec4(0.f.xxx, 1.f);
     rayData.origin = vec4(far, 1.f);
     rayData.surfaceNormal = normalize((modelView * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
     rayData.dir = dir;
@@ -173,6 +174,7 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
         rayData.diffuse = readTexData(materialData.diffuse, texcoord.xy);
         rayData.normal = readTexData(materialData.normal, texcoord.xy);;
         rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
+        rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
     }
 
     //
@@ -275,8 +277,8 @@ GIData globalIllumination() {
                     const float weight = 2.f * (1.f - cosL);
 
                     //
-                     reflDir = normalize(cosineWeightedPoint(TBN, C));
-                    lightDir = coneSample(LC * inversesqrt(dt), cosL, C);
+                     reflDir = normalize(cosineWeightedPoint(TBN, C, F));
+                    lightDir = coneSample(LC * inversesqrt(dt), cosL, C, F);
 
                     // 
                     shadowed = shadowTrace(rayData.origin.xyz + TBN[2] * epsilon, SO, lightDir);
@@ -284,7 +286,7 @@ GIData globalIllumination() {
 
                     //
                      fcolor += vec4(lightCol * energy.xyz * directLight, 0.f);
-                    reflCol *= min(max(rayData.diffuse.xyz, 0.f.xxx), 1.f);
+                    reflCol *= min(max(rayData.diffuse.xyz, 0.hf.xxx), 1.hf);
                 }
 
                 // if reflection

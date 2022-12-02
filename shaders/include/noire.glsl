@@ -65,8 +65,8 @@ struct nrBinding {
 struct nrTexBinding { vec4 col; int32_t tex, sam; };
 
 //
-vec4 readTexData(in nrTexBinding B, in vec2 texcoord) {
-    return B.tex >= 0 ? texture(sampler2D(textures[B.tex], samplers[B.sam]), texcoord.xy) : B.col;
+f16vec4 readTexData(in nrTexBinding B, in vec2 texcoord) {
+    return f16vec4(B.tex >= 0 ? texture(sampler2D(textures[B.tex], samplers[B.sam]), texcoord.xy) : B.col);
 }
 
 //

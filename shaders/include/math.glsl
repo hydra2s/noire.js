@@ -27,9 +27,9 @@ float unorm(in float snorm) {
     return snorm * 0.5f + 0.5f;
 }
 
-// TODO: reserved
-vec3 cosineWeightedPoint(in vec2 uv) {
-    uv = vec2(unorm(gold_noise(uv, 1.f)), unorm(gold_noise(uv, 2.f)));
+// 
+vec3 cosineWeightedPoint(in vec2 uv, in float F) {
+    uv = vec2(unorm(gold_noise(uv, F+1.f)), unorm(gold_noise(uv, F+2.f)));
     const float radial = sqrt(uv.x);
     const float theta = TWO_PI * uv.y;
     const float x = radial * cos(theta);
@@ -37,9 +37,9 @@ vec3 cosineWeightedPoint(in vec2 uv) {
     return normalize(vec3(x, y, sqrt(1 - uv.x)));
 };
 
-// TODO: reserved
-vec3 cosineWeightedPoint(in mat3x3 tbn, in vec2 uv) {
-    return normalize(tbn * cosineWeightedPoint(uv));
+// 
+vec3 cosineWeightedPoint(in mat3x3 tbn, in vec2 uv, in float F) {
+    return normalize(tbn * cosineWeightedPoint(uv, F));
 };
 
 // TODO: replace by real tangent
@@ -69,8 +69,8 @@ void genTB(in vec3 N, out vec3 T, out vec3 B) {
 };
 
 // TODO: replace by real tangent
-vec3 coneSample(in vec3 N, in float cosTmax, in vec2 r) {
-    r = vec2(unorm(gold_noise(r, 1.f)), unorm(gold_noise(r, 2.f)));
+vec3 coneSample(in vec3 N, in float cosTmax, in vec2 r, in float F) {
+    r = vec2(unorm(gold_noise(r, F+1.f)), unorm(gold_noise(r, F+2.f)));
     vec3 T, B; genTB(N, T, B);
     r.x *= 2.0 * PI;
     r.y = 1.0 - r.y * (1.0 - cosTmax);

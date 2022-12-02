@@ -4,6 +4,7 @@ struct RayTracedData {
     vec4 normal;
     vec4 PBR;
     vec4 emissive;
+    vec4 tangent;
     uvec4 indices;
     uint64_t materialAddress;
     vec2 texcoord;
@@ -11,8 +12,8 @@ struct RayTracedData {
     vec4 originalOrigin;
     //mat3x4 objectToWorld;
     //mat3x4 worldToObject;
-    vec3 originalNormal;
     vec3 surfaceNormal;
+    vec3 biNormal;
     vec3 dir;
     vec3 bary;
 };
@@ -55,10 +56,19 @@ RayTracedData rasterize(inout RayTracedData rayData, in uvec2 coord) {
         rayData.indices = sys;
 
         // Hosico
-        // TODO: calculate normals
-        rayData.originalNormal = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
-        rayData. surfaceNormal = normalize((nodeData.transformInverse * vec4(rayData.originalNormal, 0.0f)).xyz);
+        const vec3 NOR = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
+        rayData. surfaceNormal = normalize((nodeData.transformInverse * vec4(NOR, 0.0f)).xyz);
         rayData. surfaceNormal = faceforward(rayData.surfaceNormal, rayData.dir, rayData.surfaceNormal);
+
+        // TOO PISSFUL for FPS
+        const vec4 TAN = readFloatData3(geometryData.tangent, indices) * bary;
+        rayData. tangent = nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f);
+        rayData. tangent.xyz = normalize(rayData. tangent.xyz) * (TAN.w * 2.f - 1.f);
+        rayData. tangent.xyz = normalize(rayData. tangent.xyz - dot(rayData. tangent.xyz, rayData. surfaceNormal) * rayData. surfaceNormal);
+        //rayData. tangent.xyz = faceforward(rayData.tangent.xyz, rayData.dir, rayData.tangent.xyz);
+
+        //
+        rayData.biNormal = normalize(cross(rayData.tangent.xyz, rayData.surfaceNormal));
 
         //
         rayData.emissive = readTexData(materialData.emissive, texcoord.xy);
@@ -139,11 +149,20 @@ RayTracedData rayTrace(inout RayTracedData rayData, in vec3 origin, in vec3 far,
         rayData.indices = sys;
 
         // Hosico
-        // TODO: calculate normals
-        rayData.originalNormal = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
-        rayData. surfaceNormal = normalize((nodeData.transformInverse * vec4(rayData.originalNormal, 0.0f)).xyz);
+        const vec3 NOR = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
+        rayData. surfaceNormal = normalize((nodeData.transformInverse * vec4(NOR, 0.0f)).xyz);
         rayData. surfaceNormal = faceforward(rayData.surfaceNormal, rayData.dir, rayData.surfaceNormal);
-        
+
+        // TOO PISSFUL for FPS
+        const vec4 TAN = readFloatData3(geometryData.tangent, indices) * bary;
+        rayData. tangent = nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f);
+        rayData. tangent.xyz = normalize(rayData. tangent.xyz) * (TAN.w * 2.f - 1.f);
+        rayData. tangent.xyz = normalize(rayData. tangent.xyz - dot(rayData. tangent.xyz, rayData. surfaceNormal) * rayData. surfaceNormal);
+        //rayData. tangent.xyz = faceforward(rayData.tangent.xyz, rayData.dir, rayData.tangent.xyz);
+
+        //
+        rayData.biNormal = normalize(cross(rayData.tangent.xyz, rayData.surfaceNormal));
+
         //
         rayData.emissive = readTexData(materialData.emissive, texcoord.xy);
         rayData.diffuse = readTexData(materialData.diffuse, texcoord.xy);
@@ -157,7 +176,7 @@ RayTracedData rayTrace(inout RayTracedData rayData, in vec3 origin, in vec3 far,
 
 bool shadowTrace(inout RayTracedData rayData, in vec3 origin, in vec3 far, in vec3 dir) {
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0001f, dir, 10000.f);
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0001f, dir, distance(origin, far));
 
     //
     while(rayQueryProceedEXT(rayQuery)) {
@@ -196,14 +215,16 @@ struct GIData {
     vec4 color;
 };
 
+
+
 //
 GIData globalIllumination(inout RayTracedData rayData) {
     const vec3 worldNormal = rayData.surfaceNormal;
 
     //
-    const vec3 lightPos = vec3(0, 100, 10);
-    vec3 lightDir = normalize(lightPos - rayData.origin.xyz);
-    vec3 lightCol = 2.f.xxx;
+    const vec4 lightPos = vec4(0, 100, 10, 1);
+    vec3 lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
+    vec3 lightCol = 8.f.xxx;
     float diff = sqrt(max(dot(rayData.surfaceNormal, lightDir), 0.0));
 
     //
@@ -222,30 +243,43 @@ GIData globalIllumination(inout RayTracedData rayData) {
 
     //
     vec2 C = vec2(gl_GlobalInvocationID.xy);
-    float F = float(frameCount) / 1000.f;
+    float F = frameCount % 256;
 
     //
     for (int I=0;I<2;I++) {
         if ( dot(energy.xyz, 1.f.xxx) > 0.001f && any(greaterThan(rayData.bary, 0.f.xxx)) ) {
             {   // shading
-                lightDir = normalize(lightPos - rayData.origin.xyz);
+                lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
                 reflCol = 1.f.xxx;
 
+                // TODO: fix negative normal
+                mat3x3 TBN = mat3x3(rayData.tangent.xyz, rayData.biNormal.xyz, rayData.surfaceNormal.xyz);
+                TBN[2] = TBN * (rayData.normal.xyz * 2.0 - 1.0);
+                TBN[1] = normalize(cross(TBN[2], TBN[0]));
+
                 // if reflection
-                if (unorm(gold_noise(C, 1.0+F)) <= (reflCoef = pow(1.f - max(dot(rayData.surfaceNormal.xyz, -reflDir.xyz), 0.f), 2.f) * 0.9f + 0.1)) {
-                    reflDir = normalize(reflect(rayData.dir, rayData.surfaceNormal));
+                if (unorm(gold_noise(C, 1.0+F)) <= (reflCoef = pow(1.f - max(dot(TBN[2], -reflDir.xyz), 0.f), 2.f) * 0.9f + 0.1)) {
+                    reflDir = normalize(reflect(rayData.dir, TBN[2]));
                 } else 
 
                 // if diffuse
                 if (unorm(gold_noise(C, 2.0+F)) < 1.f) {
-                    reflDir = normalize(cosineWeightedDirection(C, 3.0+F, rayData.surfaceNormal.xyz));
-
-                    // TODO: correct diffuse coefficient
-                    shadowed = shadowTrace(rayData, rayData.origin.xyz + rayData.surfaceNormal * epsilon, rayData.origin.xyz + rayData.surfaceNormal * epsilon + lightDir * 10000.f, lightDir);
-                    const vec3 directLight = (sqrt(max(dot(rayData.surfaceNormal, lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f) * rayData.diffuse.xyz;
+                    const vec3 SO = lightPos.xyz + (vec4(0.f.xxx, 1.f) * modelViewInverse).xyz;
+                    const vec3 LC = SO - rayData.origin.xyz;
+                    const float dt = dot(LC, LC);
+                    const float cosL = sqrt(1.f - clamp((lightPos.w * lightPos.w) / dt, 0.f, 1.f));
+                    const float weight = 2.f * (1.f - cosL);
 
                     //
-                    fcolor += vec4(lightCol * energy.xyz * directLight, 0.f);
+                     reflDir = normalize(cosineWeightedPoint(TBN, C));
+                    lightDir = coneSample(LC * inversesqrt(dt), cosL, C);
+
+                    // 
+                    shadowed = shadowTrace(rayData, rayData.origin.xyz + TBN[2] * epsilon, SO, lightDir);
+                    const vec3 directLight = (sqrt(max(dot(TBN[2], lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f) * rayData.diffuse.xyz;
+
+                    //
+                     fcolor += vec4(lightCol * energy.xyz * directLight, 0.f);
                     reflCol *= min(max(rayData.diffuse.xyz, 0.f.xxx), 1.f);
                 }
 

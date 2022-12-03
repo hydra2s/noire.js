@@ -8,8 +8,15 @@ import { default as $M } from "gl-matrix"
 const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     perspective: "f32[16]",
     perspectiveInverse: "f32[16]",
+
+    // it's array
     modelView: "f32[16]",
+    previousModelView: "f32[16]",
+
+    // it's array
     modelViewInverse: "f32[16]",
+    previousModelViewInverse: "f32[16]",
+
     accelerationStructure: "u64",
     nodeBuffer: "u64",
     instanceCount: "u32",
@@ -232,6 +239,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         perspectiveInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), perspective)),
         modelView: $M.mat4.transpose($M.mat4.create(), modelView),
         modelViewInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView)),
+        previousModelView: $M.mat4.transpose($M.mat4.create(), modelView),
+        previousModelViewInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView)),
         accelerationStructure: gltfModel.nodeAccelerationStructure.getDeviceAddress(),
         nodeBuffer: gltfModel.nodeBufferGPU.getDeviceAddress(),
         instanceCount: gltfModel.nodeData.length,
@@ -263,6 +272,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     let frameCount = 0;
     const updateMatrices = ()=>{
         const modelView = $M.mat4.lookAt($M.mat4.create(), eye, $M.vec3.add($M.vec3.create(), eye, viewDir), up);
+        uniformData.previousModelView = $M.mat4.clone($M.mat4.create(), uniformData.modelView);
+        uniformData.previousModelViewInverse = $M.mat4.clone($M.mat4.create(), $M.mat4.create(), uniformData.modelViewInverse);
         uniformData.modelView = $M.mat4.transpose($M.mat4.create(), modelView);
         uniformData.modelViewInverse = $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView));
         uniformData.frameCount = frameCount++;

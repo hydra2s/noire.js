@@ -43,11 +43,11 @@ void main() {
 	vec4 texcoord = readFloatData(geometryData.texcoord, indices);
 
 	//
-	  vec3 normal = (modelViewInverse * (nodeData.transformInverse * vec4(readFloatData(geometryData.normal, indices).xyz, 0.f))).xyz;
+	  vec3 normal = (modelViewInverse[0] * (nodeData.transformInverse * vec4(readFloatData(geometryData.normal, indices).xyz, 0.f))).xyz;
 	//vec3 normal = (nodeData.transformInverse * (modelViewInverse * vec4(readFloatData(geometryData.normal, indices).xyz, 0.f))).xyz;
 
 	//
-	vec4 _pos = ((vec4(vertex.xyz, 1.f) * nodeData.transform) * modelView) * perspective;
+	vec4 _pos = ((vec4(vertex.xyz, 1.f) * nodeData.transform) * modelView[0]) * perspective;
 	gl_Position = _pos;
 	vIndices = sys;
 	vMaterialAddress = geometryData.materialAddress;

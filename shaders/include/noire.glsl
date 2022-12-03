@@ -14,8 +14,8 @@ layout (set = 1, binding = 0) uniform sampler samplers[];
 layout (set = 2, binding = 0, scalar) uniform MData { 
     mat4x4 perspective;
     mat4x4 perspectiveInverse;
-    mat4x4 modelView;
-    mat4x4 modelViewInverse;
+    mat4x4 modelView[2];
+    mat4x4 modelViewInverse[2];
     uint64_t accStruct;
     uint64_t nodeBuffer;
     uint32_t instanceCount;

@@ -34,7 +34,7 @@ void rasterize(in uvec2 coord) {
     //
     rayData.normal = f16vec4(0.f, 0.f, 0.5f, 0.f);
     rayData.diffuse = f16vec4(0.f.xxx, 1.f);
-    rayData.surfaceNormal = normalize((modelView * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
+    rayData.surfaceNormal = normalize((modelView[0] * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
     rayData.originalOrigin = pos;
     rayData.bary = bary;
 
@@ -55,8 +55,8 @@ void rasterize(in uvec2 coord) {
         //rayData.origin = vec4(vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f) * rayData.objectToWorld, rayQueryGetIntersectionTEXT(rayQuery, true));
 
         vec4 _camera = divW(pos * perspectiveInverse);
-        vec4 _origin = divW(_camera * modelViewInverse);
-        rayData.dir = normalize((modelView * normalize(_camera)).xyz);
+        vec4 _origin = divW(_camera * modelViewInverse[0]);
+        rayData.dir = normalize((modelView[0] * normalize(_camera)).xyz);
         rayData.origin = _origin;
         rayData.texcoord = texcoord.xy;
         rayData.materialAddress = geometryData.materialAddress;
@@ -93,7 +93,7 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
     rayData.normal = f16vec4(0.f, 0.f, 0.5f, 0.f);
     rayData.diffuse = f16vec4(0.f.xxx, 1.f);
     rayData.origin = vec4(far, 1.f);
-    rayData.surfaceNormal = normalize((modelView * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
+    rayData.surfaceNormal = normalize((modelView[0] * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
     rayData.dir = dir;
 
     //
@@ -270,7 +270,7 @@ GIData globalIllumination() {
 
                 // if diffuse
                 if (unorm(gold_noise(C, 2.0+F)) < 1.f) {
-                    const vec3 SO = lightPos.xyz + (vec4(0.f.xxx, 1.f) * modelViewInverse).xyz;
+                    const vec3 SO = lightPos.xyz + (vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz;
                     const vec3 LC = SO - rayData.origin.xyz;
                     const float dt = dot(LC, LC);
                     const float cosL = sqrt(1.f - clamp((lightPos.w * lightPos.w) / dt, 0.f, 1.f));

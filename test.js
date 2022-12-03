@@ -161,7 +161,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         memoryAllocator: memoryAllocatorObj.handle[0],
 
         // for original, previous, reprojected
-        layerCount: [2, 2, 1, 1],
+        layerCount: [3, 3, 2, 2],
 
         // colors, reflections, 
         formats: [V.VK_FORMAT_R16G16B16A16_SFLOAT, V.VK_FORMAT_R16G16B16A16_SFLOAT, V.VK_FORMAT_R16G16B16A16_SFLOAT, V.VK_FORMAT_R16G16B16A16_SFLOAT]

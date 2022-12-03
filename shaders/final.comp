@@ -21,15 +21,15 @@
 
 //
 layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
-
+//texture2DArray
 //
 vec4 tex2DBiLinear( in uint F, in vec2 texCoord_f )
 {
     const ivec2 texCoord_i = ivec2(texCoord_f * vec2(width, height));
-    const vec4 p0q0 = imageLoad(images[framebuffers[F]], texCoord_i);
-    const vec4 p1q0 = imageLoad(images[framebuffers[F]], texCoord_i + ivec2(1, 0));
-    const vec4 p0q1 = imageLoad(images[framebuffers[F]], texCoord_i + ivec2(0, 1));
-    const vec4 p1q1 = imageLoad(images[framebuffers[F]], texCoord_i + ivec2(1, 1));
+    const vec4 p0q0 = imageLoad(SETF[imageSets[F]], ivec3(texCoord_i, 0));
+    const vec4 p1q0 = imageLoad(SETF[imageSets[F]], ivec3(texCoord_i + ivec2(1, 0), 0));
+    const vec4 p0q1 = imageLoad(SETF[imageSets[F]], ivec3(texCoord_i + ivec2(0, 1), 0));
+    const vec4 p1q1 = imageLoad(SETF[imageSets[F]], ivec3(texCoord_i + ivec2(1, 1), 0));
     const float a = fract( texCoord_f.x * width - 0.5f ); // Get Interpolation factor for X direction.
     const vec4 pInterp_q0 = mix( p0q0, p1q0, a ); // Interpolates top row in X direction.
     const vec4 pInterp_q1 = mix( p0q1, p1q1, a ); // Interpolates bottom row in X direction.
@@ -53,7 +53,7 @@ vec4 smartDeNoise(uint tex, vec2 uv, float sigma, float kSigma, float threshold)
 
     float zBuff = 0.0;
     vec4 aBuff = vec4(0.0);
-    vec2 size = vec2(imageSize(images[framebuffers[tex]]));
+    vec2 size = vec2(imageSize(SETF[framebuffers[tex]]));
 
     vec2 d;
     for (d.x=-radius; d.x <= radius; d.x++) {
@@ -144,21 +144,21 @@ vec3 denoiseDiffuse(in ivec2 fragCoord) {
     float c_phi = 8.0;
     float n_phi = 1.0;
     //float p_phi = 0.3;
-	vec3 cval = imageLoad(images[framebuffers[3]], fragCoord).xyz;
-	vec3 nval = imageLoad(images[framebuffers[5]], fragCoord).xyz; nval.xyz = normalize(nval.xyz) * 0.5f + 0.5f;
+	vec3 cval =  imageLoad(SETF[   imageSets[0]], ivec3(fragCoord, 0)).xyz;
+	vec3 nval = texelFetch(FBOF[framebuffers[3]], ivec3(fragCoord, 0), 0).xyz; nval.xyz = normalize(nval.xyz) * 0.5f + 0.5f;
 	//vec4 pval = texelFetch(iChannel2, ivec2(fragCoord), 0);
     
     float cum_w = 0.0;
     for(int i=0; i<25; i++)
     {
         vec2 uv = fragCoord+offset[i]*denoiseStrength;
-        
-        vec3 ctmp = imageLoad(images[framebuffers[3]], ivec2(uv)).xyz;
+
+        vec3 ctmp = imageLoad(SETF[imageSets[0]], ivec3(uv, 0)).xyz;
         vec3 t = cval - ctmp;
         float dist2 = dot(t,t);
         float c_w = min(exp(-(dist2)/c_phi), 1.0);
         
-        vec3 ntmp = imageLoad(images[framebuffers[5]], ivec2(uv)).xyz; ntmp.xyz = normalize(ntmp.xyz) * 0.5f + 0.5f;
+        vec3 ntmp = texelFetch(FBOF[framebuffers[3]], ivec3(uv, 0), 0).xyz; ntmp.xyz = normalize(ntmp.xyz) * 0.5f + 0.5f;
         t = nval - ntmp;
         dist2 = max(dot(t,t), 0.0);
         float n_w = min(exp(-(dist2)/n_phi), 1.0);
@@ -186,5 +186,5 @@ void main() {
     //fcolor = fcolor * 0.5f + 0.5f;
 
     //
-    imageStore(images[imageIndex], ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(fcolor, 1.f));
+    imageStore(SWAP[imageIndex], ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(fcolor, 1.f));
 }

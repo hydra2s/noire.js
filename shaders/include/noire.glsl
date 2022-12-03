@@ -1,7 +1,13 @@
 //
-layout (set = 0, binding = 0) uniform texture2D textures[];
-layout (set = 0, binding = 0) uniform utexture2D texturesU[];
-layout (set = 0, binding = 0, rgba8) uniform image2D images[];
+layout (set = 0, binding = 0) uniform  texture2D textures[];
+
+layout (set = 0, binding = 0) uniform  texture2DArray FBOF[];
+layout (set = 0, binding = 0) uniform utexture2DArray FBOU[];
+layout (set = 0, binding = 0, rgba16f ) uniform  image2DArray SETF[];
+layout (set = 0, binding = 0, rgba32ui) uniform uimage2DArray SETU[];
+
+layout (set = 0, binding = 0, rgba8 ) uniform  image2D SWAP[];
+
 layout (set = 1, binding = 0) uniform sampler samplers[];
 
 //
@@ -16,7 +22,8 @@ layout (set = 2, binding = 0, scalar) uniform MData {
     uint16_t width, height;
     uint16_t windowWidth, windowHeight;
     uint16_t _[2];
-    uint16_t framebuffers[8];
+    uint16_t framebuffers[4];
+    uint16_t imageSets[4];
     uint32_t frameCount;
     uint32_t linearSampler;
 };

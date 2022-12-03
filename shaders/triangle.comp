@@ -35,5 +35,5 @@ void main() {
 
     //
     vec3 fcolor = pow(GI.color.xyz, 1.f.xxx/2.2f);
-    imageStore(images[framebuffers[3]], ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(fcolor, 1.f));
+    imageStore(SETF[imageSets[0]], ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 0), vec4(fcolor, 1.f));
 }

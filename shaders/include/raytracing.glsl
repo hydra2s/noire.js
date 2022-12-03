@@ -27,9 +27,9 @@ RayTracedData rayData;
 
 //
 void rasterize(in uvec2 coord) {
-    const vec3 bary = texelFetch(textures [framebuffers[1]], ivec2(coord), 0).xyz;
-    const uvec4 sys = texelFetch(texturesU[framebuffers[0]], ivec2(coord), 0);
-    const vec4 pos  = vec4(divW(texelFetch(textures [framebuffers[2]], ivec2(coord), 0)).xyz, 1.f);
+    const vec3 bary = texelFetch(FBOF[framebuffers[1]], ivec3(coord, 0), 0).xyz;
+    const uvec4 sys = texelFetch(FBOU[framebuffers[0]], ivec3(coord, 0), 0);
+    const vec4 pos  = vec4(divW(texelFetch(FBOF[framebuffers[2]], ivec3(coord, 0), 0)).xyz, 1.f);
 
     //
     rayData.normal = f16vec4(0.f, 0.f, 0.5f, 0.f);

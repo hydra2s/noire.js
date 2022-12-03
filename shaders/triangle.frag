@@ -22,9 +22,7 @@
 layout (location = 0) out uvec4 fIndices;
 layout (location = 1) out vec4 fBary;
 layout (location = 2) out vec4 fPos;
-layout (location = 3) out vec4 fOutput;
-layout (location = 4) out vec4 fReflection;
-layout (location = 5) out vec4 fNormal;
+layout (location = 3) out vec4 fNormal;
 
 //
 layout (location = 0) pervertexEXT in Inputs {
@@ -37,13 +35,6 @@ layout (location = 0) pervertexEXT in Inputs {
 
 //
 void main() {
-	// Too slow in fragment shaders...
-	//nrNode nodeData = nrNode(nodeBuffer) + fIndices.x;
-	//nrMesh meshData = nrMesh(nodeData.meshBuffer);
-	//nrGeometry geometryData = nrGeometry(meshData.address) + fIndices.y;
-	//uvec3 indices = readIndexData3(geometryData.indice, fIndices.z);
-
-	//
 	vec4 texcoord = mat3x4(V[0].vTexcoord, V[1].vTexcoord, V[2].vTexcoord) * gl_BaryCoordEXT;
 	vec3 normal = mat3x3(V[0].vNormal, V[1].vNormal, V[2].vNormal) * gl_BaryCoordEXT;
 

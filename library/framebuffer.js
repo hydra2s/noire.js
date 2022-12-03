@@ -70,6 +70,90 @@ class FramebufferLayoutObj extends B.BasicObj {
 }
 
 //
+class ImageSetObj extends B.BasicObj {
+    constructor(base, cInfo){
+        super(base, null); this.cInfo = cInfo;
+        this.handle = new BigUint64Array([0n]);
+        this.handle[0] = this.handle.address();
+        B.Handles[this.handle[0]] = this;
+
+        //
+        const deviceObj = B.Handles[this.base[0]];
+        const descriptorsObj = deviceObj.Descriptors[this.cInfo.pipelineLayout[0] || this.cInfo.pipelineLayout];
+        //const framebufferLayoutObj = B.Handles[(this.cInfo.framebufferLayout ? this.cInfo.framebufferLayout[0] : null) || this.cInfo.framebufferLayout] || B.DefaulFramebufferLayoutObj;
+        const memoryAllocatorObj = B.Handles[this.cInfo.memoryAllocator[0] || this.cInfo.memoryAllocator];
+
+        //
+        let extent = {width: Math.max(cInfo.extent.width || 2, 2), height: Math.max(cInfo.extent.height || 2, 2), depth: cInfo.extent.depth || 1};
+        //console.log(extent);
+
+        //
+        this.images = this.cInfo.formats.map((F)=>(memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createImage({
+            format: F, usage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT, extent, arrayLayers: cInfo.layerCount || 1
+        }))));
+
+        //
+        this.imageViews = this.images.map((IMG, I)=>(IMG.createImageView({
+            type: "storage",
+            pipelineLayout: descriptorsObj.handle[0],
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: cInfo.layerCount || 1 }
+        })));
+
+        //
+        this.toAttachmentTemplate = {
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            srcSccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            dstAccessMask: V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            newLayout: V.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        };
+
+        //
+        this.toGeneralTemplate = {
+            srcStageMask: V.VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            srcAccessMask:  V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        };
+
+        // 
+        this.fromUndefinedTemplate = {
+            srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
+            srcAccessMask: V.VK_ACCESS_2_NONE,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | V.VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
+            newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        };
+
+    }
+
+    cmdFromUndefined(cmdBuf) {
+        const imageBarriers = new V.VkImageMemoryBarrier2(this.images.map((IMG, I)=>({...this.fromUndefinedTemplate, image: IMG.handle[0], subresourceRange: this.imageViews[I].imageViewInfo.subresourceRange})));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: imageBarriers.length, pImageMemoryBarriers: imageBarriers }));
+    }
+
+    cmdToGeneral(cmdBuf) {
+        const imageBarriers = new V.VkImageMemoryBarrier2(this.images.map((IMG, I)=>({...this.toGeneralTemplate, image: IMG.handle[0], subresourceRange: this.imageViews[I].imageViewInfo.subresourceRange})));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: imageBarriers.length, pImageMemoryBarriers: imageBarriers }));
+    }
+
+    cmdToAttachment(cmdBuf) {
+        const imageBarriers = new V.VkImageMemoryBarrier2(this.images.map((IMG, I)=>({...this.toAttachmentTemplate, image: IMG.handle[0], subresourceRange: this.imageViews[I].imageViewInfo.subresourceRange})));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: imageBarriers.length, pImageMemoryBarriers: imageBarriers }));
+    }
+};
+
+//
 class FramebufferObj extends B.BasicObj {
     constructor(base, cInfo){
         super(base, null); this.cInfo = cInfo;
@@ -85,18 +169,17 @@ class FramebufferObj extends B.BasicObj {
 
         //
         let extent = {width: Math.max(cInfo.extent.width || 2, 2), height: Math.max(cInfo.extent.height || 2, 2), depth: cInfo.extent.depth || 1};
-        console.log(extent);
 
         //
         this.colorImages = framebufferLayoutObj.colorFormats.map((F)=>(memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createImage({
-            format: F, usage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT, extent,
+            format: F, usage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT, extent, arrayLayers: cInfo.layerCount || 1
         }))));
 
         //
         this.colorImageViews = this.colorImages.map((IMG, I)=>(IMG.createImageView({
-            type: framebufferLayoutObj.cInfo.colorAttachments[I].storage ? "storage" : "sampled",
+            type: "sampled",
             pipelineLayout: descriptorsObj.handle[0],
-            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 }
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: cInfo.layerCount || 1 }
         })));
 
         //console.log(this.colorImageViews);
@@ -111,7 +194,7 @@ class FramebufferObj extends B.BasicObj {
             //
             this.depthStencilImageView = this.depthStencilImage.createImageView({
                 pipelineLayout: descriptorsObj.handle[0],
-                subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_DEPTH_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: 1 }
+                subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_DEPTH_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: cInfo.layerCount || 1 }
             });
         }
 
@@ -226,6 +309,7 @@ class FramebufferObj extends B.BasicObj {
 //
 B.FramebufferLayoutObj = FramebufferLayoutObj;
 B.FramebufferObj = FramebufferObj;
+B.ImageSetObj = ImageSetObj;
 
 //
 const DefaulFramebufferLayoutObj = new FramebufferLayoutObj(null, {
@@ -248,4 +332,4 @@ const DefaulFramebufferLayoutObj = new FramebufferLayoutObj(null, {
 B.DefaulFramebufferLayoutObj = DefaulFramebufferLayoutObj;
 
 //
-export default { FramebufferLayoutObj, DefaulFramebufferLayoutObj, FramebufferObj };
+export default { FramebufferLayoutObj, DefaulFramebufferLayoutObj, FramebufferObj, ImageSetObj };

@@ -174,6 +174,10 @@ class DeviceObj extends B.BasicObj {
         return new B.FramebufferLayoutObj(this.handle, cInfo);
     }
 
+    createImageSet(cInfo) {
+        return new B.ImageSetObj(this.handle, cInfo);
+    }
+
     createImageView(cInfo) {
         return new B.ImageViewObj(this.handle, cInfo);
     }

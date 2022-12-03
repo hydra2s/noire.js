@@ -358,6 +358,63 @@ class ImageObj extends AllocationObj {
             depth : (this.cInfo.extent.depth  || this.cInfo.extent.z || this.cInfo.extent[2]) || 1};
     }
 
+    cmdCopyToImage(cmdBuf, image, regions, imageLayout = V.VK_IMAGE_LAYOUT_GENERAL) {
+        //
+        const memoryBarrierTemplate = { 
+            srcStageMask: V.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+            srcAccessMask: 0,
+            dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+            srcQueueFamilyIndex: ~0,
+            dstQueueFamilyIndex: ~0,
+        };
+
+        // TODO: single object support
+        // TODO: autofill support
+        const regionsCp = new V.VkImageCopy2(regions.length);
+        const srcMemoryBarrier = new V.VkImageMemoryBarrier2(regions.length);
+        const dstMemoryBarrier = new V.VkImageMemoryBarrier2(regions.length);
+        for (let I=0;I<regions.length;I++) {
+            regionsCp[I] = {
+                bufferOffset: 0, 
+                bufferRowLength: 0, 
+                bufferImageHeight: 0, 
+                srcImageOffset: {x:0,y:0,z:0}, 
+                srcSubresource:{aspectMask:V.VK_IMAGE_ASPECT_COLOR_BIT,mipLevel:0,baseArrayLayer:0,layerCount:1}, 
+                dstImageOffset: {x:0,y:0,z:0}, 
+                dstSubresource:{aspectMask:V.VK_IMAGE_ASPECT_COLOR_BIT,mipLevel:0,baseArrayLayer:0,layerCount:1}, 
+                extent:{width:1,height:1,depth:1}, 
+                ...(regions[I].serialize ? regions[I].serialize() : regions[I])
+            };
+            dstMemoryBarrier[I] = {...memoryBarrierTemplate, 
+                srcAccessMask: V.VK_ACCESS_2_TRANSFER_WRITE_BIT, 
+                image: image[0] || image, 
+                subresourceRange: {aspectMask: regionsCp[I].imageSubresource.aspectMask, baseMipLevel: regionsCp[I].imageSubresource.mipLevel, levelCount: 1, baseArrayLayer: regionsCp[I].imageSubresource.baseArrayLayer, layerCount: regionsCp[I].imageSubresource.layerCount}, 
+                oldLayout: imageLayout, 
+                newLayout: imageLayout
+            };
+            srcMemoryBarrier[I] = {...memoryBarrierTemplate, 
+                srcAccessMask: V.VK_ACCESS_2_TRANSFER_READ_BIT, 
+                image: this.handle[0], 
+                subresourceRange: {aspectMask: regionsCp[I].imageSubresource.aspectMask, baseMipLevel: regionsCp[I].imageSubresource.mipLevel, levelCount: 1, baseArrayLayer: regionsCp[I].imageSubresource.baseArrayLayer, layerCount: regionsCp[I].imageSubresource.layerCount}, 
+                oldLayout: imageLayout, 
+                newLayout: imageLayout
+            };
+        }
+
+        // 
+        V.vkCmdCopyImage2(cmdBuf[0]||cmdBuf, new V.VkCopyImageInfo2({
+            srcImage: this.handle[0],
+            srcImageLayout: imageLayout,
+            dstImage: image[0] || image, 
+            dstImageLayout: imageLayout,
+            regionCount: regionsCp.length,
+            pRegions: regionsCp
+        }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: srcMemoryBarrier.length, pImageMemoryBarriers: srcMemoryBarrier }));
+        V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: dstMemoryBarrier.length, pImageMemoryBarriers: dstMemoryBarrier }));
+    }
+
     cmdCopyToBuffer(cmdBuf, buffer, regions, imageLayout = V.VK_IMAGE_LAYOUT_GENERAL) {
         //
         const memoryBarrierTemplate = { 

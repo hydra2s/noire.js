@@ -16,7 +16,8 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     width: "u16", height: "u16",
     windowWidth: "u16", windowHeight: "u16",
     _: "u16[2]",
-    framebuffers: "u16[8]",
+    framebuffers: "u16[4]",
+    imageSets: "u16[4]",
     frameCount: "u32",
     linearSampler: "u32"
 }));
@@ -85,6 +86,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     //
     const framebufferLayoutObj = deviceObj.createFramebufferLayout({
+        layerCount: 2,
         colorAttachments: [
             {   // data indices
                 blend: {},
@@ -107,24 +109,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
                     clearValue: new Float32Array([0.0, 0.0, 1.0, 1.0]).as("u32[4]")
                 }
             },
-            {   // diffuse or render output
-                storage: true,
-                blend: {},
-                format: V.VK_FORMAT_R16G16B16A16_SFLOAT,
-                dynamicState: {
-                    clearValue: new Float32Array([0.0, 0.0, 0.0, 1.0]).as("u32[4]")
-                }
-            },
-            {   // re-output output
-                storage: true,
-                blend: {},
-                format: V.VK_FORMAT_R16G16B16A16_SFLOAT,
-                dynamicState: {
-                    clearValue: new Float32Array([0.0, 0.0, 0.0, 1.0]).as("u32[4]")
-                }
-            },
             {   // normals
-                storage: true,
+                
                 blend: {},
                 format: V.VK_FORMAT_R16G16B16A16_SFLOAT,
                 dynamicState: {
@@ -142,6 +128,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         }
     });
 
+
     //
     const graphicsPipelineObj = deviceObj.createGraphicsPipeline({
         framebufferLayout: framebufferLayoutObj.handle[0],
@@ -155,6 +142,17 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //
     const windowSize = windowObj.getWindowSize();
     const frameSize = new Uint16Array([1920, 1080]);
+
+    //
+    const imageSetObj = deviceObj.createImageSet({
+        extent: {width: frameSize[0], height: frameSize[1], depth: 1},
+        pipelineLayout: descriptorsObj.handle[0],
+        memoryAllocator: memoryAllocatorObj.handle[0],
+        layerCount: 2,
+
+        // motion-vector pre-cache, 
+        formats: [V.VK_FORMAT_R16G16B16A16_SFLOAT]
+    });
 
     //
     const framebufferObj = deviceObj.createFramebuffer({
@@ -241,10 +239,13 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             framebufferObj.colorImageViews[0].DSC_ID, 
             framebufferObj.colorImageViews[1].DSC_ID, 
             framebufferObj.colorImageViews[2].DSC_ID, 
-            framebufferObj.colorImageViews[3].DSC_ID,
-            framebufferObj.colorImageViews[4].DSC_ID,
-            framebufferObj.colorImageViews[5].DSC_ID,
-            //framebufferObj.colorImageViews[6].DSC_ID
+            framebufferObj.colorImageViews[3].DSC_ID
+        ],
+        imageSets: [
+            imageSetObj.imageViews[0].DSC_ID,
+            //imageSetObj.imageViews[1].DSC_ID,
+            //imageSetObj.imageViews[2].DSC_ID,
+            //imageSetObj.imageViews[3].DSC_ID
         ],
         linearSampler: deviceObj.createSampler({
             pipelineLayout: descriptorsObj.handle[0],

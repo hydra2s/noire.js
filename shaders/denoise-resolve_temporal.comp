@@ -15,29 +15,26 @@
 #extension GL_EXT_shared_memory_block : enable
 
 //
+#define A_GLSL
+#define A_GPU
+//#define A_HLSL_6_2
+#define A_HALF
+#define A_LONG
+
+// broken AU1_AW4
+//#define A_WAVE
+//#define A_NO_16_BIT_CAST
+
+//
 #include "include/hlsl_map.glsl"
 #include "include/math.glsl"
 #include "include/noire.glsl"
-#include "include/raytracing.glsl"
 
 //
-layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
+#include "include/ffx_a.h"
+#include "include/ffx_denoiser_reflections_resolve_temporal.h"
 
 //
 void main() {
-    //
-    rasterize(gl_GlobalInvocationID.xy);//
 
-    //
-    GIData GI = globalIllumination(/*, data.origin.xyz + worldNormal * epsilon, data.origin.xyz + worldNormal * epsilon + reflDir * 10000.f, reflDir*/);
-
-    //
-    vec3 fcolor = pow(GI.color.xyz, 1.f.xxx/2.2f);
-    ivec3 coord = ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 0);
-
-    //
-    imageStore(SETF[imageSets[0]], coord, vec4(fcolor, 1.f));
-    //imageStore(SETF[imageSets[1]], coord, vec4(0.f.xxx, 1.f));
-    imageStore(SETF[imageSets[2]], coord, texelFetch(FBOU[framebuffers[2]], coord, 0));
-    imageStore(SETF[imageSets[3]], coord, texelFetch(FBOU[framebuffers[3]], coord, 2) + texelFetch(FBOU[framebuffers[3]], coord, 0));
 }

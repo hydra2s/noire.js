@@ -25,19 +25,7 @@ layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 
 //
 void main() {
-    //
-    rasterize(gl_GlobalInvocationID.xy);//
-
-    //
-    GIData GI = globalIllumination(/*, data.origin.xyz + worldNormal * epsilon, data.origin.xyz + worldNormal * epsilon + reflDir * 10000.f, reflDir*/);
-
-    //
-    vec3 fcolor = pow(GI.color.xyz, 1.f.xxx/2.2f);
     ivec3 coord = ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 0);
-
-    //
-    imageStore(SETF[imageSets[0]], coord, vec4(fcolor, 1.f));
-    //imageStore(SETF[imageSets[1]], coord, vec4(0.f.xxx, 1.f));
-    imageStore(SETF[imageSets[2]], coord, texelFetch(FBOU[framebuffers[2]], coord, 0));
-    imageStore(SETF[imageSets[3]], coord, texelFetch(FBOU[framebuffers[3]], coord, 2) + texelFetch(FBOU[framebuffers[3]], coord, 0));
+    ivec3 coordReproj = ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 3);
+    //imageStore(SETF[imageSets[0]], coord, imageLoad(SETF[imageSets[0]], coordReproj));
 }

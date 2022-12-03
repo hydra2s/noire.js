@@ -178,3 +178,87 @@ vec4 tex2DBiLinear( in uint F, in vec2 texCoord_f)
 {
     return tex2DBiLinear(F, texCoord_f, 0);
 }
+
+
+/*
+//
+float FFX_DNSR_Reflections_GetRandom(int2 pixel_coordinate) { return gold_noise(float2(pixel_coordinate), 0); }
+
+//
+float FFX_DNSR_Shadows_GetDepthSimilaritySigma() { return 1.f; }
+float FFX_DNSR_Reflections_LoadDepth       (int2 pixel_coordinate) { return divW(FBOF[U.framebuffers[2]][int3(pixel_coordinate, 0)]).z; }
+float FFX_DNSR_Reflections_LoadDepthHistory(int2 pixel_coordinate) { return divW(FBOF[U.framebuffers[2]][int3(pixel_coordinate, 1)]).z; }
+float FFX_DNSR_Reflections_SampleDepthHistory(float2 uv)           { return divW(FBOF[U.framebuffers[2]].SampleLevel(SAM[U.linearSampler], float3(uv, 1.f), 0)).z; }
+
+// 
+float FFX_DNSR_Reflections_GetLinearDepth(float2 uv, float history) { return divW(FBOF[U.framebuffers[2]].SampleLevel(SAM[U.linearSampler], float3(uv, 0.f), 0)).z; };
+
+//
+half3 FFX_DNSR_Reflections_LoadRadiance           (int2 pixel_coordinate) { float4 _samp = SETF[U.imageSets[0]][int3(pixel_coordinate, 0)]; return _samp.xyz; }
+half3 FFX_DNSR_Reflections_LoadRadianceHistory    (int2 pixel_coordinate) { float4 _samp = SETF[U.imageSets[0]][int3(pixel_coordinate, 1)]; return _samp.xyz; }
+half3 FFX_DNSR_Reflections_LoadRadianceReprojected(int2 pixel_coordinate) { float4 _samp = SETF[U.imageSets[0]][int3(pixel_coordinate, 2)]; return _samp.xyz; }
+half3 FFX_DNSR_Reflections_SampleRadianceHistory  (float2 uv) { return tex2DBiLinear(0, uv, 1).xyz;  }
+void  FFX_DNSR_Reflections_StoreRadianceReprojected   (int2 pixel_coordinate, half3 value)                         { SETF[U.imageSets[0]][int3(pixel_coordinate, 2)].xyz = value; }
+void  FFX_DNSR_Reflections_StoreTemporalAccumulation  (int2 pixel_coordinate, half3 new_signal, half new_variance) { SETF[U.imageSets[0]][int3(pixel_coordinate, 0)] = float4(new_signal, new_variance); };
+void  FFX_DNSR_Reflections_StorePrefilteredReflections(int2 pixel_coordinate, half3   radiance, half     variance) { SETF[U.imageSets[0]][int3(pixel_coordinate, 2)] = float4(radiance  ,     variance); };
+
+//
+half3 FFX_DNSR_Reflections_SampleAverageRadiance        (float2 uv) { return (tex2DBNearest(1, uv / 1.f, 0)).xyz; }
+half3 FFX_DNSR_Reflections_SamplePreviousAverageRadiance(float2 uv) { return (tex2DBNearest(1, uv / 1.f, 1)).xyz; }
+void  FFX_DNSR_Reflections_StoreAverageRadiance         (int2 pixel_coordinate, half3 value) { SETF[U.imageSets[1]][int3(pixel_coordinate, 0)].xyz = value; }; // unsupported
+
+//
+half FFX_DNSR_Reflections_LoadVariance (int2 pixel_coordinate) {                     return SETF[U.imageSets[0]][int3(pixel_coordinate, 0)].w; }
+void FFX_DNSR_Reflections_StoreVariance(int2 pixel_coordinate, half  value) { float4 _col = SETF[U.imageSets[0]][int3(pixel_coordinate, 0)].w = value; }
+half FFX_DNSR_Reflections_SampleVarianceHistory(float2 uv) { return tex2DBiLinear(0, uv, 1).w; }
+
+//
+half3 FFX_DNSR_Reflections_LoadWorldSpaceNormal(int2 pixel_coordinate)        { return normalize(mul(U.modelView[0], float4(FBOF[U.framebuffers[3]][int3(pixel_coordinate, 0)].xyz, 0.0)).xyz); }
+half3 FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(int2 pixel_coordinate) { return normalize(mul(U.modelView[0], float4(FBOF[U.framebuffers[3]][int3(pixel_coordinate, 1)].xyz, 0.0)).xyz); }
+half3 FFX_DNSR_Reflections_SampleWorldSpaceNormalHistory(float2 uv)           { return normalize(mul(U.modelView[0], float4(FBOF[U.framebuffers[3]].SampleLevel(SAM[U.linearSampler], float3(uv, 1.f), 0).xyz, 0.0)).xyz); }
+
+// 
+half FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return 1.f; }
+half FFX_DNSR_Reflections_LoadRoughnessHistory(int2 pixel_coordinate) { return 1.f; }
+half FFX_DNSR_Reflections_SampleRoughnessHistory(float2 uv)           { return FBOF[U.framebuffers[4]].SampleLevel(SAM[U.linearSampler], float3(uv, 1.f), 0).r; }
+
+// we has only static, lol
+float2 FFX_DNSR_Reflections_LoadMotionVector(int2 pixel_coordinate) { return float2(0.f, 0.f); }
+
+// currently, unsupported, we have no enough slots
+half FFX_DNSR_Reflections_LoadRayLength(int2 pixel_coordinate) { return 1.f; }
+
+//
+half FFX_DNSR_Reflections_SampleNumSamplesHistory(float2 uv)                  { return tex2DBiLinear(1, uv, 1).w; }
+half FFX_DNSR_Reflections_LoadNumSamples (int2 pixel_coordinate)              { return SETF[U.imageSets[1]][int3(pixel_coordinate, 0)].w; }
+void FFX_DNSR_Reflections_StoreNumSamples(int2 pixel_coordinate, half  value) {        SETF[U.imageSets[1]][int3(pixel_coordinate, 0)].w = value; }
+
+//
+void FFX_DNSR_Reflections_LoadNeighborhood(int2 pixel_coordinate, out half3 radiance, out half variance, out half3 normal, out float depth, int2 screen_size) {
+    depth = divW(FBOF[U.framebuffers[2]][int3(pixel_coordinate, 0)]).z;
+    normal =     FBOF[U.framebuffers[3]][int3(pixel_coordinate, 0)].xyz;//normalize(mul(U.modelView[0], float4(FBOF[U.framebuffers[3]][int3(pixel_coordinate, 0)].xyz, 0.0)).xyz);
+    radiance = SETF[0][int3(pixel_coordinate, 0)].xyz;
+    variance = SETF[0][int3(pixel_coordinate, 0)].w;
+}
+
+//
+half3 FFX_DNSR_Reflections_ScreenSpaceToViewSpace(in half3 v3) {
+    return divW(mul(half4(v3, 1.f), U.perspectiveInverse));
+}
+
+//
+half3 FFX_DNSR_Reflections_ViewSpaceToWorldSpace(in half4 v3) {
+    return mul(v3, U.modelViewInverse[0]);
+}
+
+//
+half4 FFX_DNSR_Reflections_WorldSpaceToScreenSpacePrevious(in half3 v3) {
+    float4 pos = divW(mul(mul(half4(v3, 1.f), U.modelView[0]), U.perspective));
+    return pos;
+}
+
+//
+bool FFX_DNSR_Reflections_IsMirrorReflection(float roughness) { return roughness < 0.001f; };
+bool FFX_DNSR_Reflections_IsGlossyReflection(int2 pixel_coordinate) { return true; };
+
+*/

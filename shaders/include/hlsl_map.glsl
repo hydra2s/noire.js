@@ -4,6 +4,11 @@
 #define uint4 uvec4
 
 //
+#define int2 ivec2
+#define int3 ivec3
+#define int4 ivec4
+
+//
 #define min16float float
 #define min16float2 vec2
 #define min16float3 vec3
@@ -25,3 +30,11 @@ float f16tof32(in uint f) { return unpackHalf2x16(f).x; };
 vec2 f16tof32(in uvec2 f) { return vec2(unpackHalf2x16(f.x).x, unpackHalf2x16(f.y).x); };
 vec3 f16tof32(in uvec3 f) { return vec3(unpackHalf2x16(f.x).x, unpackHalf2x16(f.y).x, unpackHalf2x16(f.z).x); };
 vec4 f16tof32(in uvec4 f) { return vec4(unpackHalf2x16(f.x).x, unpackHalf2x16(f.y).x, unpackHalf2x16(f.z).x, unpackHalf2x16(f.w).x); };
+
+//
+#define frac fract
+#define lerp mix
+#define groupshared shared
+
+//
+#define GroupMemoryBarrierWithGroupSync() groupMemoryBarrier(); barrier();

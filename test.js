@@ -208,13 +208,23 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     });
 
     //
+    const dReproject = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-reproject.comp.spv") });
+    const dPrefilter = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-prefilter.comp.spv") });
+    const dResolveTemporal = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-resolve_temporal.comp.spv") });
+
+    //
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
-    const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
+    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
         code: await fs.promises.readFile("shaders/triangle.comp.spv")
+    });
+
+    const postfactObj = deviceObj.createComputePipeline({
+        pipelineLayout: descriptorsObj.handle[0],
+        code: await fs.promises.readFile("shaders/postfact.comp.spv")
     });
 
     // Not Suitable
@@ -238,17 +248,27 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     let up = $M.vec3.fromValues(0,1,0);
 
     //
+    let _modelView = [];
+    let _modelViewInverse = [];
+
+    //
     const perspective = Array.from($M.mat4.perspective($M.mat4.create(), 60.0 * Math.PI / 180.0, frameSize[0]/frameSize[1], 0.001, 10000.0));
     const modelView = $M.mat4.lookAt($M.mat4.create(), eye, center, up);
+
+    //
+    _modelView = $M.mat4.transpose($M.mat4.create(), modelView);
+    _modelViewInverse = $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView));
+
+    //
     const uniformData = new nrUniformData({
         width: frameSize[0], height: frameSize[1],
         windowWidth: windowSize[0], windowHeight: windowSize[1],
         perspective: $M.mat4.transpose($M.mat4.create(), perspective),
         perspectiveInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), perspective)),
-        modelView: $M.mat4.transpose($M.mat4.create(), modelView),
-        modelViewInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView)),
-        previousModelView: $M.mat4.transpose($M.mat4.create(), modelView),
-        previousModelViewInverse: $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView)),
+        modelView: _modelView,
+        modelViewInverse: _modelViewInverse,
+        previousModelView: _modelView,
+        previousModelViewInverse: _modelViewInverse,
         accelerationStructure: gltfModel.nodeAccelerationStructure.getDeviceAddress(),
         nodeBuffer: gltfModel.nodeBufferGPU.getDeviceAddress(),
         instanceCount: gltfModel.nodeData.length,
@@ -281,11 +301,18 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     let frameCount = 0;
     const updateMatrices = ()=>{
         const modelView = $M.mat4.lookAt($M.mat4.create(), eye, $M.vec3.add($M.vec3.create(), eye, viewDir), up);
-        uniformData.previousModelView = $M.mat4.clone($M.mat4.create(), uniformData.modelView);
-        uniformData.previousModelViewInverse = $M.mat4.clone($M.mat4.create(), $M.mat4.create(), uniformData.modelViewInverse);
-        uniformData.modelView = $M.mat4.transpose($M.mat4.create(), modelView);
-        uniformData.modelViewInverse = $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView));
+
+        //
+        uniformData.previousModelView = $M.mat4.clone($M.mat4.create(), _modelView);
+        uniformData.previousModelViewInverse = $M.mat4.clone($M.mat4.create(), $M.mat4.create(), _modelViewInverse);
+
+        //
+        uniformData.modelView = $M.mat4.transpose(_modelView, modelView);
+        uniformData.modelViewInverse = $M.mat4.transpose(_modelViewInverse, $M.mat4.invert($M.mat4.create(), modelView));
+
+        //
         uniformData.frameCount = frameCount++;
+        return uniformData;
     };
 
     // 
@@ -315,8 +342,6 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         // 
         swapchainObj.cmdToGeneral(cmdBuf);
-        framebufferObj.cmdBackstage(cmdBuf);
-        imageSetObj.cmdBackstage(cmdBuf); // for temporal technology
 
         // 
         descriptorsObj.cmdBarrier(cmdBuf);
@@ -329,11 +354,28 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         });
         graphicsPipelineObj.cmdBarrier(cmdBuf);
 
+        // 
         framebufferObj.cmdToGeneral(cmdBuf);
+
+        //
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
+        postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
         //denoiserObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/16), Math.ceil( frameSize[1]/16), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
-        pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
+
+        //
+        dReproject.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/8), Math.ceil( frameSize[1]/8), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
+        //dPrefilter.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/8), Math.ceil( frameSize[1]/8), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
+        dResolveTemporal.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/8), Math.ceil( frameSize[1]/8), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
+
+        //
         
+        pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
+
+        //
+        framebufferObj.cmdBackstage(cmdBuf);
+        imageSetObj.cmdBackstage(cmdBuf); // for temporal technology
+
+        //
         swapchainObj.cmdToPresent(cmdBuf);
     }, swapchainObj.getImageCount(), 0);
 
@@ -442,8 +484,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         // TODO: use host memory for synchronize
         // use mapped memory
-        updateMatrices();
-        descriptorsObj.updateUniformDirect(uniformData);
+        descriptorsObj.updateUniformDirect(updateMatrices());
 
         //
         const previousTime = thisLoop;

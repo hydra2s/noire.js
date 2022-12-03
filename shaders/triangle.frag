@@ -15,6 +15,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
 
 //
+#include "include/hlsl_map.glsl"
 #include "include/math.glsl"
 #include "include/noire.glsl"
 
@@ -23,6 +24,7 @@ layout (location = 0) out uvec4 fIndices;
 layout (location = 1) out vec4 fBary;
 layout (location = 2) out vec4 fPos;
 layout (location = 3) out vec4 fNormal;
+layout (location = 4) out vec4 fPBR;
 
 //
 layout (location = 0) pervertexEXT in Inputs {
@@ -35,12 +37,14 @@ layout (location = 0) pervertexEXT in Inputs {
 
 //
 void main() {
-	vec4 texcoord = mat3x4(V[0].vTexcoord, V[1].vTexcoord, V[2].vTexcoord) * gl_BaryCoordEXT;
-	vec3 normal = mat3x3(V[0].vNormal, V[1].vNormal, V[2].vNormal) * gl_BaryCoordEXT;
+	const vec4 texcoord = mat3x4(V[0].vTexcoord, V[1].vTexcoord, V[2].vTexcoord) * gl_BaryCoordEXT;
+	const vec3 normal = mat3x3(V[0].vNormal, V[1].vNormal, V[2].vNormal) * gl_BaryCoordEXT;
 
 	//
 	nrMaterial materialData = nrMaterial(V[0].vMaterialAddress);
-	const float transparency = materialData.diffuse.tex >= 0 ? texture(sampler2D(textures[nonuniformEXT(materialData.diffuse.tex)], samplers[nonuniformEXT(materialData.diffuse.sam)]), texcoord.xy).a : materialData.diffuse.col.a;
+	const vec4 diffuse = readTexData(materialData.diffuse, texcoord.xy);
+	const vec4 PBR = readTexData(materialData.PBR, texcoord.xy);
+	const float transparency = diffuse.a;
 
 	//
 	if (transparency <= 0.f) { discard; };
@@ -50,4 +54,5 @@ void main() {
 	fBary = vec4(gl_BaryCoordEXT, gl_FragCoord.z);
 	fIndices = V[0].vIndices;
 	fNormal = vec4(normalize(normal), 1.f);
+	fPBR = PBR;
 }

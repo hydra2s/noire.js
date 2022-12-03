@@ -1,3 +1,5 @@
+// TODO: unify with HLSL
+
 
 //
 vec4 divW(in vec4 v) {
@@ -12,7 +14,7 @@ const float E = 2.7182818284590452353602874713526624977572;
 const float INV_PI = 0.3183098861837907;
 const float TWO_INV_PI = 0.6366197723675814;
 const float INV_TWO_PI = 0.15915494309189535;
-const float PHI = 1.61803398874989484820459;  // Φ = Golden Ratio   
+const float PHI = 1.61803398874989484820459; 
 const float INV_SQRT_OF_2PI = 0.39894228040143267793994605993439;
 
 //

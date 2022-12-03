@@ -137,6 +137,17 @@ class ImageSetObj extends B.BasicObj {
 
     }
 
+    cmdBackstage(cmdBuf) {
+        const cInfo = this.cInfo;
+        this.images.map((IMG)=>{
+            IMG.cmdCopyToImage(cmdBuf, IMG.handle[0], [{
+                extent: {width: Math.max(cInfo.extent.width || 2, 2), height: Math.max(cInfo.extent.height || 2, 2), depth: cInfo.extent.depth || 1},
+                srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0, layerCount: 1 },
+                dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 1, layerCount: 1 }
+            }]);
+        });
+    }
+
     cmdFromUndefined(cmdBuf) {
         const imageBarriers = new V.VkImageMemoryBarrier2(this.images.map((IMG, I)=>({...this.fromUndefinedTemplate, image: IMG.handle[0], subresourceRange: this.imageViews[I].imageViewInfo.subresourceRange})));
         V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: imageBarriers.length, pImageMemoryBarriers: imageBarriers }));
@@ -279,6 +290,17 @@ class FramebufferObj extends B.BasicObj {
             });
         }
 
+    }
+
+    cmdBackstage(cmdBuf) {
+        const cInfo = this.cInfo;
+        this.colorImages.map((IMG)=>{
+            IMG.cmdCopyToImage(cmdBuf, IMG.handle[0], [{
+                extent: {width: Math.max(cInfo.extent.width || 2, 2), height: Math.max(cInfo.extent.height || 2, 2), depth: cInfo.extent.depth || 1},
+                srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0, layerCount: 1 },
+                dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 1, layerCount: 1 }
+            }]);
+        });
     }
 
     cmdFromUndefined(cmdBuf) {

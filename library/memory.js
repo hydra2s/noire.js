@@ -389,14 +389,14 @@ class ImageObj extends AllocationObj {
             dstMemoryBarrier[I] = {...memoryBarrierTemplate, 
                 srcAccessMask: V.VK_ACCESS_2_TRANSFER_WRITE_BIT, 
                 image: image[0] || image, 
-                subresourceRange: {aspectMask: regionsCp[I].imageSubresource.aspectMask, baseMipLevel: regionsCp[I].imageSubresource.mipLevel, levelCount: 1, baseArrayLayer: regionsCp[I].imageSubresource.baseArrayLayer, layerCount: regionsCp[I].imageSubresource.layerCount}, 
+                subresourceRange: {aspectMask: regionsCp[I].dstSubresource.aspectMask, baseMipLevel: regionsCp[I].dstSubresource.mipLevel, levelCount: 1, baseArrayLayer: regionsCp[I].dstSubresource.baseArrayLayer, layerCount: regionsCp[I].dstSubresource.layerCount}, 
                 oldLayout: imageLayout, 
                 newLayout: imageLayout
             };
             srcMemoryBarrier[I] = {...memoryBarrierTemplate, 
                 srcAccessMask: V.VK_ACCESS_2_TRANSFER_READ_BIT, 
                 image: this.handle[0], 
-                subresourceRange: {aspectMask: regionsCp[I].imageSubresource.aspectMask, baseMipLevel: regionsCp[I].imageSubresource.mipLevel, levelCount: 1, baseArrayLayer: regionsCp[I].imageSubresource.baseArrayLayer, layerCount: regionsCp[I].imageSubresource.layerCount}, 
+                subresourceRange: {aspectMask: regionsCp[I].srcSubresource.aspectMask, baseMipLevel: regionsCp[I].srcSubresource.mipLevel, levelCount: 1, baseArrayLayer: regionsCp[I].srcSubresource.baseArrayLayer, layerCount: regionsCp[I].srcSubresource.layerCount}, 
                 oldLayout: imageLayout, 
                 newLayout: imageLayout
             };

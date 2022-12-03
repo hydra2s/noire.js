@@ -184,6 +184,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         queueFamilyIndex: 0,
         queueIndex: 0,
         cmdBufFn: (cmdBuf)=>{
+            imageSetObj.cmdFromUndefined(cmdBuf);
             framebufferObj.cmdFromUndefined(cmdBuf);
             swapchainObj.cmdFromUndefined(cmdBuf);
         }
@@ -305,6 +306,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         //
         swapchainObj.cmdToGeneral(cmdBuf);
+        imageSetObj.cmdBackstage(cmdBuf); // for temporal technology
 
         // 
         descriptorsObj.cmdBarrier(cmdBuf);

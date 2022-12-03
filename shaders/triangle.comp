@@ -24,9 +24,6 @@ layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 
 //
 void main() {
-    //const vec3 bOrigin = divW(  divW(vec4((vec2(gl_GlobalInvocationID.xy) / vec2(width, height) * 2.0 - 1.0) * vec2(1.f, 1.f), 0.0, 1.0) * perspectiveInverse) * modelViewInverse).xyz;
-    //const vec3 eOrigin = divW(  divW(vec4((vec2(gl_GlobalInvocationID.xy) / vec2(width, height) * 2.0 - 1.0) * vec2(1.f, 1.f), 1.0, 1.0) * perspectiveInverse) * modelViewInverse).xyz;
-
     //
     rasterize(gl_GlobalInvocationID.xy);//
 
@@ -35,5 +32,11 @@ void main() {
 
     //
     vec3 fcolor = pow(GI.color.xyz, 1.f.xxx/2.2f);
-    imageStore(SETF[imageSets[0]], ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 0), vec4(fcolor, 1.f));
+    ivec3 coord = ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 0);
+
+    //
+    imageStore(SETF[imageSets[0]], coord, vec4(fcolor, 1.f));
+    imageStore(SETF[imageSets[1]], coord, vec4(0.f.xxx, 1.f));
+    imageStore(SETF[imageSets[2]], coord, texelFetch(FBOU[framebuffers[2]], coord, 0));
+    imageStore(SETF[imageSets[3]], coord, texelFetch(FBOU[framebuffers[3]], coord, 0));
 }

@@ -14,6 +14,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
 
 //
+#include "include/hlsl_map.glsl"
 #include "include/math.glsl"
 #include "include/noire.glsl"
 

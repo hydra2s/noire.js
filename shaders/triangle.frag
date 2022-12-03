@@ -50,7 +50,8 @@ void main() {
 	if (transparency <= 0.f) { discard; };
 
 	//
-	fPos = mat3x4(V[0].vPosition, V[1].vPosition, V[2].vPosition) * gl_BaryCoordEXT;
+	fPos = vec4(gl_FragCoord.xy/vec2(width, height)*2.f-1.f, gl_FragCoord.z, 1.f);
+	fPos.y *= -1.f;
 	fBary = vec4(gl_BaryCoordEXT, gl_FragCoord.z);
 	fIndices = V[0].vIndices;
 	fNormal = vec4(normalize(normal), 1.f);

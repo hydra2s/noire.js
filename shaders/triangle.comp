@@ -36,8 +36,9 @@ void main() {
     ivec3 coord = ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 0);
 
     //
-    imageStore(SETF[imageSets[0]], coord, vec4(fcolor, 1.f));
-    //imageStore(SETF[imageSets[1]], coord, vec4(0.f.xxx, 1.f));
-    imageStore(SETF[imageSets[2]], coord, texelFetch(FBOU[framebuffers[2]], coord, 0));
-    imageStore(SETF[imageSets[3]], coord, texelFetch(FBOU[framebuffers[3]], coord, 2) + texelFetch(FBOU[framebuffers[3]], coord, 0));
+    imageStore(SETF[storeSets[0]], coord, vec4(fcolor, 1.f));
+
+    //imageStore(SETF[loadSets[1]], coord, vec4(0.f.xxx, 1.f));
+    //imageStore(SETF[loadSets[2]], coord, texelFetch(FBOU[framebuffers[2]], coord, 0));
+    //imageStore(SETF[loadSets[3]], coord, texelFetch(FBOU[framebuffers[3]], coord, 2) + texelFetch(FBOU[framebuffers[3]], coord, 0));
 }

@@ -25,7 +25,16 @@ layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 
 //
 void main() {
-    ivec3 coord = ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 0);
-    ivec3 coordReproj = ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 3);
-    //imageStore(SETF[imageSets[0]], coord, imageLoad(SETF[imageSets[0]], coordReproj));
+    ivec3 coord       = ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 0);
+    ivec3 coordAccum  = ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 3);
+    ivec3 coordReproj = ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 2);
+
+    //
+    vec4 radReproj = imageLoad(SETF[loadSets[0]], coordReproj);
+    vec4 radAccum  = imageLoad(SETF[loadSets[0]], coordAccum);
+    vec4 rad       = imageLoad(SETF[loadSets[0]], coord);
+
+    //
+    //imageStore(SETF[loadSets[0]], coordReproj, vec4(radReproj.xyz + rad.xyz, rad.w));
+    //imageStore(SETF[loadSets[0]], coordAccum , vec4(radAccum.xyz + rad.xyz, radAccum.w));
 }

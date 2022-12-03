@@ -22,7 +22,8 @@ layout (set = 2, binding = 0, scalar) uniform MData {
     uint16_t width, height;
     uint16_t windowWidth, windowHeight;
     uint16_t framebuffers[6];
-    uint16_t imageSets[4];
+    uint16_t loadSets[4];
+    uint16_t storeSets[4];
     uint32_t frameCount;
     uint32_t linearSampler;
 };
@@ -162,103 +163,167 @@ uint readIndexData(in nrBinding binding, in uint index) {
 
 vec4 tex2DBiLinear( in uint F, in vec2 texCoord_f, in int layer )
 {
-    const ivec3 texCoord_i = ivec3(texCoord_f * vec2(width, height), layer);
-    const vec4 p0q0 = imageLoad(SETF[imageSets[F]], texCoord_i);
-    const vec4 p1q0 = imageLoad(SETF[imageSets[F]], texCoord_i + ivec3(1, 0, 0));
-    const vec4 p0q1 = imageLoad(SETF[imageSets[F]], texCoord_i + ivec3(0, 1, 0));
-    const vec4 p1q1 = imageLoad(SETF[imageSets[F]], texCoord_i + ivec3(1, 1, 0));
-    const float a = fract( texCoord_f.x * width - 0.5f ); // Get Interpolation factor for X direction.
+    const vec2 imageSize = vec2(imageSize(SETF[loadSets[F]]).xy);
+    const ivec3 texCoord_i = ivec3(texCoord_f * imageSize.xy - 0.5f, layer);
+    const vec4 p0q0 = imageLoad(SETF[loadSets[F]], texCoord_i);
+    const vec4 p1q0 = imageLoad(SETF[loadSets[F]], texCoord_i + ivec3(1, 0, 0));
+    const vec4 p0q1 = imageLoad(SETF[loadSets[F]], texCoord_i + ivec3(0, 1, 0));
+    const vec4 p1q1 = imageLoad(SETF[loadSets[F]], texCoord_i + ivec3(1, 1, 0));
+    const float a = fract( texCoord_f.x * imageSize.x - 0.5f ); // Get Interpolation factor for X direction.
     const vec4 pInterp_q0 = mix( p0q0, p1q0, a ); // Interpolates top row in X direction.
     const vec4 pInterp_q1 = mix( p0q1, p1q1, a ); // Interpolates bottom row in X direction.
-    const float b = fract( texCoord_f.y * height - 0.5f );// Get Interpolation factor for Y direction.
+    const float b = fract( texCoord_f.y * imageSize.y - 0.5f );// Get Interpolation factor for Y direction.
     return mix( pInterp_q0, pInterp_q1, b ); // Interpolate in Y direction.
 };
 
-vec4 tex2DBiLinear( in uint F, in vec2 texCoord_f) 
+/*vec4 tex2DBiLinear( in uint F, in vec2 texCoord_f) 
 {
     return tex2DBiLinear(F, texCoord_f, 0);
+}*/
+
+vec4 tex2DBNearest( in uint F, in vec2 texCoord_f, in int layer ) {
+    const ivec3 texCoord_i = ivec3(texCoord_f * imageSize(SETF[loadSets[F]]).xy, layer);
+    return imageLoad(SETF[loadSets[F]], texCoord_i);
 }
 
+float linearize_depth(float d,float zNear,float zFar)
+{
+    return zNear * zFar / (zFar + d * (zNear - zFar));
+}
 
-/*
+// framebuffers
+#define _POSITION 2
+#define _NORMAL 3
+#define _PBR 4
+
+// image sets
+#define _DIFFUSE 0
+//#define _METAPBR 1
+#define _AVERAGE 2
+
 //
-float FFX_DNSR_Reflections_GetRandom(int2 pixel_coordinate) { return gold_noise(float2(pixel_coordinate), 0); }
+#ifdef _ENABLE_FXD
+vec4 imageLoad(in int IMG_STORE, in ivec2 coord, in int layer) {
+    return imageLoad(SETF[loadSets[IMG_STORE]], ivec3(coord, layer));
+}
+
+//
+vec4 textureLod(in int TEX_STORE, in vec2 coord, in int layer) {
+    return textureLod(sampler2DArray(FBOF[framebuffers[TEX_STORE]], samplers[linearSampler]), vec3(coord, float(layer) /*/ textureSize(FBOF[framebuffers[TEX_STORE]], 0).z*/), 0.0);
+}
+
+//
+vec4 texelFetch(in int TEX_STORE, in ivec2 coord, in int layer) {
+    return texelFetch(FBOF[framebuffers[TEX_STORE]], ivec3(coord, layer), 0);
+}
+
+//
+void imageStore(in int IMG_STORE, in ivec2 coord, in vec4 RGBA, in int layer) {
+    imageStore(SETF[storeSets[IMG_STORE]], ivec3(coord, layer), RGBA);
+}
+
+void imageStoreRGB(in int IMG_STORE, in ivec2 coord, in vec3 RGB, in int layer) {
+    const vec4 C = vec4(RGB, imageLoad(SETF[storeSets[IMG_STORE]], ivec3(coord, layer)).a);
+    imageStore(SETF[storeSets[IMG_STORE]], ivec3(coord, layer), C);
+}
+
+void imageStoreA(in int IMG_STORE, in ivec2 coord, in float A, in int layer) {
+    const vec4 C = vec4(imageLoad(SETF[storeSets[IMG_STORE]], ivec3(coord, layer)).rgb, A);
+    imageStore(SETF[storeSets[IMG_STORE]], ivec3(coord, layer), C);
+}
+
+//
+float FFX_DNSR_Reflections_GetRandom(int2 pixel_coordinate) { return gold_noise(float2(pixel_coordinate), 0.0 + float(frameCount)) * 0.5f + 0.5f; }
 
 //
 float FFX_DNSR_Shadows_GetDepthSimilaritySigma() { return 1.f; }
-float FFX_DNSR_Reflections_LoadDepth       (int2 pixel_coordinate) { return divW(FBOF[U.framebuffers[2]][int3(pixel_coordinate, 0)]).z; }
-float FFX_DNSR_Reflections_LoadDepthHistory(int2 pixel_coordinate) { return divW(FBOF[U.framebuffers[2]][int3(pixel_coordinate, 1)]).z; }
-float FFX_DNSR_Reflections_SampleDepthHistory(float2 uv)           { return divW(FBOF[U.framebuffers[2]].SampleLevel(SAM[U.linearSampler], float3(uv, 1.f), 0)).z; }
+float FFX_DNSR_Reflections_LoadDepth       (int2 pixel_coordinate)  { return divW(texelFetch(_POSITION, pixel_coordinate, 0)).z; }
+float FFX_DNSR_Reflections_LoadDepthHistory(int2 pixel_coordinate)  { return divW(texelFetch(_POSITION, pixel_coordinate, 1)).z; }
+float FFX_DNSR_Reflections_SampleDepthHistory(float2 uv)            { return divW(textureLod(_POSITION, uv, 1)).z; }
+float FFX_DNSR_Reflections_GetLinearDepth(float2 uv, float history) { return linearize_depth(divW(textureLod(_POSITION, uv, 0)).z, 0.0001, 10000.0); }
+
+//
+min16float3 FFX_DNSR_Reflections_LoadRadiance           (int2 pixel_coordinate) { return imageLoad(_DIFFUSE, pixel_coordinate, 0).xyz; }
+min16float3 FFX_DNSR_Reflections_LoadRadianceHistory    (int2 pixel_coordinate) { return imageLoad(_DIFFUSE, pixel_coordinate, 1).xyz; }
+min16float3 FFX_DNSR_Reflections_LoadRadianceReprojected(int2 pixel_coordinate) { return imageLoad(_DIFFUSE, pixel_coordinate, 2).xyz; }
+min16float3 FFX_DNSR_Reflections_SampleRadianceHistory  (float2 uv)             { return tex2DBiLinear(_DIFFUSE, uv, 1).xyz;;  }
+
+//
+void  FFX_DNSR_Reflections_StoreRadianceReprojected   (int2 pixel_coordinate, min16float3 value)                            { imageStoreRGB(_DIFFUSE, pixel_coordinate, value, 2); }
+void  FFX_DNSR_Reflections_StoreTemporalAccumulation  (int2 pixel_coordinate, min16float3 new_signal, min16float new_variance) { imageStore(_DIFFUSE, pixel_coordinate, vec4(new_signal, new_variance), 0); }
+void  FFX_DNSR_Reflections_StorePrefilteredReflections(int2 pixel_coordinate, min16float3   radiance, min16float     variance) { imageStore(_DIFFUSE, pixel_coordinate, vec4(radiance  ,     variance), 0); };
+
+//
+min16float3 FFX_DNSR_Reflections_SampleAverageRadiance        (float2 uv) { return (tex2DBiLinear(_AVERAGE, uv, 0)).xyz; }
+min16float3 FFX_DNSR_Reflections_SamplePreviousAverageRadiance(float2 uv) { return (tex2DBiLinear(_AVERAGE, uv, 1)).xyz; }
+void  FFX_DNSR_Reflections_StoreAverageRadiance         (int2 pixel_coordinate, min16float3 value) { imageStoreRGB(_AVERAGE, pixel_coordinate, value, 0); };
+
+//
+min16float FFX_DNSR_Reflections_LoadVariance (int2 pixel_coordinate) {       return imageLoad    (_DIFFUSE, pixel_coordinate, 0).w; }
+void FFX_DNSR_Reflections_StoreVariance(int2 pixel_coordinate, min16float  value) { imageStoreA  (_DIFFUSE, pixel_coordinate, value, 0); }
+min16float FFX_DNSR_Reflections_SampleVarianceHistory(float2 uv)           { return tex2DBiLinear(_DIFFUSE, uv, 1).w; }
+
+//
+min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormal(int2 pixel_coordinate)        { return normalize((modelView[0] * vec4(texelFetch(_NORMAL, pixel_coordinate, 0).rgb, 0)).xyz); }
+min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(int2 pixel_coordinate) { return normalize((modelView[1] * vec4(texelFetch(_NORMAL, pixel_coordinate, 1).rgb, 0)).xyz); }
+min16float3 FFX_DNSR_Reflections_SampleWorldSpaceNormalHistory(float2 uv)           { return normalize((modelView[1] * vec4(textureLod(_NORMAL, uv, 1).rgb, 0)).xyz); }
 
 // 
-float FFX_DNSR_Reflections_GetLinearDepth(float2 uv, float history) { return divW(FBOF[U.framebuffers[2]].SampleLevel(SAM[U.linearSampler], float3(uv, 0.f), 0)).z; };
-
-//
-half3 FFX_DNSR_Reflections_LoadRadiance           (int2 pixel_coordinate) { float4 _samp = SETF[U.imageSets[0]][int3(pixel_coordinate, 0)]; return _samp.xyz; }
-half3 FFX_DNSR_Reflections_LoadRadianceHistory    (int2 pixel_coordinate) { float4 _samp = SETF[U.imageSets[0]][int3(pixel_coordinate, 1)]; return _samp.xyz; }
-half3 FFX_DNSR_Reflections_LoadRadianceReprojected(int2 pixel_coordinate) { float4 _samp = SETF[U.imageSets[0]][int3(pixel_coordinate, 2)]; return _samp.xyz; }
-half3 FFX_DNSR_Reflections_SampleRadianceHistory  (float2 uv) { return tex2DBiLinear(0, uv, 1).xyz;  }
-void  FFX_DNSR_Reflections_StoreRadianceReprojected   (int2 pixel_coordinate, half3 value)                         { SETF[U.imageSets[0]][int3(pixel_coordinate, 2)].xyz = value; }
-void  FFX_DNSR_Reflections_StoreTemporalAccumulation  (int2 pixel_coordinate, half3 new_signal, half new_variance) { SETF[U.imageSets[0]][int3(pixel_coordinate, 0)] = float4(new_signal, new_variance); };
-void  FFX_DNSR_Reflections_StorePrefilteredReflections(int2 pixel_coordinate, half3   radiance, half     variance) { SETF[U.imageSets[0]][int3(pixel_coordinate, 2)] = float4(radiance  ,     variance); };
-
-//
-half3 FFX_DNSR_Reflections_SampleAverageRadiance        (float2 uv) { return (tex2DBNearest(1, uv / 1.f, 0)).xyz; }
-half3 FFX_DNSR_Reflections_SamplePreviousAverageRadiance(float2 uv) { return (tex2DBNearest(1, uv / 1.f, 1)).xyz; }
-void  FFX_DNSR_Reflections_StoreAverageRadiance         (int2 pixel_coordinate, half3 value) { SETF[U.imageSets[1]][int3(pixel_coordinate, 0)].xyz = value; }; // unsupported
-
-//
-half FFX_DNSR_Reflections_LoadVariance (int2 pixel_coordinate) {                     return SETF[U.imageSets[0]][int3(pixel_coordinate, 0)].w; }
-void FFX_DNSR_Reflections_StoreVariance(int2 pixel_coordinate, half  value) { float4 _col = SETF[U.imageSets[0]][int3(pixel_coordinate, 0)].w = value; }
-half FFX_DNSR_Reflections_SampleVarianceHistory(float2 uv) { return tex2DBiLinear(0, uv, 1).w; }
-
-//
-half3 FFX_DNSR_Reflections_LoadWorldSpaceNormal(int2 pixel_coordinate)        { return normalize(mul(U.modelView[0], float4(FBOF[U.framebuffers[3]][int3(pixel_coordinate, 0)].xyz, 0.0)).xyz); }
-half3 FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(int2 pixel_coordinate) { return normalize(mul(U.modelView[0], float4(FBOF[U.framebuffers[3]][int3(pixel_coordinate, 1)].xyz, 0.0)).xyz); }
-half3 FFX_DNSR_Reflections_SampleWorldSpaceNormalHistory(float2 uv)           { return normalize(mul(U.modelView[0], float4(FBOF[U.framebuffers[3]].SampleLevel(SAM[U.linearSampler], float3(uv, 1.f), 0).xyz, 0.0)).xyz); }
-
-// 
-half FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return 1.f; }
-half FFX_DNSR_Reflections_LoadRoughnessHistory(int2 pixel_coordinate) { return 1.f; }
-half FFX_DNSR_Reflections_SampleRoughnessHistory(float2 uv)           { return FBOF[U.framebuffers[4]].SampleLevel(SAM[U.linearSampler], float3(uv, 1.f), 0).r; }
+min16float FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return /*texelFetch(_PBR, pixel_coordinate, 0).r*/ 1.f; }
+min16float FFX_DNSR_Reflections_LoadRoughnessHistory(int2 pixel_coordinate) { return /*texelFetch(_PBR, pixel_coordinate, 1).r*/ 1.f; }
+min16float FFX_DNSR_Reflections_SampleRoughnessHistory(float2 uv)           { return /*textureLod(_PBR, uv, 1).r*/ 1.f; }
 
 // we has only static, lol
 float2 FFX_DNSR_Reflections_LoadMotionVector(int2 pixel_coordinate) { return float2(0.f, 0.f); }
 
-// currently, unsupported, we have no enough slots
-half FFX_DNSR_Reflections_LoadRayLength(int2 pixel_coordinate) { return 1.f; }
+// 
+min16float FFX_DNSR_Reflections_LoadRayLength(int2 pixel_coordinate) { return 0.f;/*length(divW(divW(texelFetch(_POSITION, pixel_coordinate, 0)) * perspectiveInverse));*/ }
 
 //
-half FFX_DNSR_Reflections_SampleNumSamplesHistory(float2 uv)                  { return tex2DBiLinear(1, uv, 1).w; }
-half FFX_DNSR_Reflections_LoadNumSamples (int2 pixel_coordinate)              { return SETF[U.imageSets[1]][int3(pixel_coordinate, 0)].w; }
-void FFX_DNSR_Reflections_StoreNumSamples(int2 pixel_coordinate, half  value) {        SETF[U.imageSets[1]][int3(pixel_coordinate, 0)].w = value; }
+min16float FFX_DNSR_Reflections_SampleNumSamplesHistory(float2 uv)                  { return tex2DBiLinear(_DIFFUSE, uv, 2).w; }
+min16float FFX_DNSR_Reflections_LoadNumSamples (int2 pixel_coordinate)              { return imageLoad    (_DIFFUSE, pixel_coordinate, 2).w; }
+void FFX_DNSR_Reflections_StoreNumSamples(int2 pixel_coordinate, min16float  value) {        imageStoreA  (_DIFFUSE, pixel_coordinate, value, 2); }
 
 //
-void FFX_DNSR_Reflections_LoadNeighborhood(int2 pixel_coordinate, out half3 radiance, out half variance, out half3 normal, out float depth, int2 screen_size) {
-    depth = divW(FBOF[U.framebuffers[2]][int3(pixel_coordinate, 0)]).z;
-    normal =     FBOF[U.framebuffers[3]][int3(pixel_coordinate, 0)].xyz;//normalize(mul(U.modelView[0], float4(FBOF[U.framebuffers[3]][int3(pixel_coordinate, 0)].xyz, 0.0)).xyz);
-    radiance = SETF[0][int3(pixel_coordinate, 0)].xyz;
-    variance = SETF[0][int3(pixel_coordinate, 0)].w;
+void FFX_DNSR_Reflections_LoadNeighborhood(int2 pixel_coordinate, out min16float3 radiance, out min16float variance, out min16float3 normal, out float depth, int2 screen_size) {
+    depth = linearize_depth(FFX_DNSR_Reflections_LoadDepth(pixel_coordinate), 0.0001, 10000.0);
+    normal = FFX_DNSR_Reflections_LoadWorldSpaceNormal(pixel_coordinate);
+    radiance = FFX_DNSR_Reflections_LoadRadiance(pixel_coordinate);
+    variance = FFX_DNSR_Reflections_LoadVariance(pixel_coordinate);
 }
 
 //
-half3 FFX_DNSR_Reflections_ScreenSpaceToViewSpace(in half3 v3) {
-    return divW(mul(half4(v3, 1.f), U.perspectiveInverse));
+vec3 ndc(in vec3 v3) {
+    v3.y *= -1.f;
+    v3.xy = v3.xy * 0.5f + 0.5f;
+    //v3.z = v3.z * 0.5f + 0.5f;
+    return v3;
 }
 
 //
-half3 FFX_DNSR_Reflections_ViewSpaceToWorldSpace(in half4 v3) {
-    return mul(v3, U.modelViewInverse[0]);
+vec3 undc(in vec3 v3) {
+    v3.xy = v3.xy * 2.f - 1.f;
+    v3.y *= -1.f;
+    //v3.z = v3.z * 2.f - 1.f;
+    return v3;
 }
 
 //
-half4 FFX_DNSR_Reflections_WorldSpaceToScreenSpacePrevious(in half3 v3) {
-    float4 pos = divW(mul(mul(half4(v3, 1.f), U.modelView[0]), U.perspective));
-    return pos;
+min16float3 FFX_DNSR_Reflections_ScreenSpaceToViewSpace(in min16float3 v3) {
+    return divW(vec4(undc(v3), 1.f) * perspectiveInverse).xyz;
 }
 
 //
-bool FFX_DNSR_Reflections_IsMirrorReflection(float roughness) { return roughness < 0.001f; };
-bool FFX_DNSR_Reflections_IsGlossyReflection(int2 pixel_coordinate) { return true; };
+min16float3 FFX_DNSR_Reflections_ViewSpaceToWorldSpace(in min16float4 v3) {
+    return (vec4(v3.xyz, 1.f) * modelViewInverse[0]).xyz;
+}
 
-*/
+//
+min16float3 FFX_DNSR_Reflections_WorldSpaceToScreenSpacePrevious(in min16float3 v3) {
+    return ndc(divW((vec4(v3, 1.f)*modelView[1]) * perspective).xyz);
+}
+
+//
+bool FFX_DNSR_Reflections_IsMirrorReflection(float roughness) { return /*roughness < 0.001f*/ false; };
+bool FFX_DNSR_Reflections_IsGlossyReflection(float roughness) { /*roughness >= 0.001f;*/ return true; };
+#endif

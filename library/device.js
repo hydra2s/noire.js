@@ -229,7 +229,7 @@ class DeviceObj extends B.BasicObj {
 
         //
         const deallocProcess = ()=>{
-            const result = V.vkGetFenceStatus(this.handle[0], fence[0]);
+            const result = fence[0] ? V.vkGetFenceStatus(this.handle[0], fence[0]) : V.VK_SUCCESS;
             if (result != V.VK_NOT_READY) {
                 const index = this.waitingProcesses.indexOf(deallocProcess);
                 if (index >= 0) this.waitingProcesses.splice(index, 1);
@@ -270,7 +270,7 @@ class DeviceObj extends B.BasicObj {
 
         //
         const deallocProcess = ()=>{
-            const result = V.vkGetFenceStatus(this.handle[0], fence[0]);
+            const result = fence[0] ? V.vkGetFenceStatus(this.handle[0], fence[0]) : V.VK_SUCCESS;
             if (result != V.VK_NOT_READY) {
                 V.vkFreeCommandBuffers(this.handle[0], this.queueFamilies[queueFamilyIndex].cmdPool, cmdBuf.length, cmdBuf);
                 const index = this.waitingProcesses.indexOf(deallocProcess);

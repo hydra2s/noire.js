@@ -15,9 +15,20 @@
 #define min16float4 vec4
 
 //
+#define float16_t2 f16vec2
+#define float16_t3 f16vec3
+#define float16_t4 f16vec4
+
+//
 #define float2 vec2
 #define float3 vec3
 #define float4 vec4
+
+//
+#define half float16_t
+#define half2 float16_t2
+#define half3 float16_t3
+#define half4 float16_t4
 
 //
 uint f32tof16(in float f) { return uint(packHalf2x16(vec2(f,0.0))); };

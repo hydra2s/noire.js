@@ -196,6 +196,11 @@ class DescriptorsObj extends B.BasicObj {
         this.writeDescriptors();
     }
 
+    cmdUpdateUniform(cmdBuf, rawData, byteOffset = 0n) {
+        V.vkCmdUpdateBuffer(cmdBuf[0]||cmdBuf, this.uniformDescriptorBuffer.handle[0], byteOffset, rawData.byteLength, rawData);
+        this.cmdBarrier(cmdBuf);
+    }
+
     updateUniformDirect(rawData, byteOffset = 0n) {
         this.uniformDescriptorBufferCPU.map().set(rawData, byteOffset);
         this.uniformDescriptorBufferCPU.unmap();
@@ -214,8 +219,8 @@ class DescriptorsObj extends B.BasicObj {
             size: this.uniformBufferSize
         });
 
-        //
-        this.uniformDescriptorBufferCPU.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, this.uniformDescriptorBuffer.handle[0], [{srcOffset: 0, dstOffset: 0, size: this.uniformBufferSize}]);
+        // TODO: fix dirrect update
+        //this.uniformDescriptorBufferCPU.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, this.uniformDescriptorBuffer.handle[0], [{srcOffset: 0, dstOffset: 0, size: this.uniformBufferSize}]);
         V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ bufferMemoryBarrierCount: this.bufferBarrier.length, pBufferMemoryBarriers: this.bufferBarrier }));
     }
 

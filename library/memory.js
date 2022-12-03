@@ -315,8 +315,10 @@ class ImageObj extends AllocationObj {
                 height: (cInfo.extent.height || cInfo.extent.y || cInfo.extent[1]) || 1, 
                 depth : (cInfo.extent.depth  || cInfo.extent.z || cInfo.extent[2]) || 1};
 
+            // TODO: support for flags
             // TODO: support for external memory allocators
             V.vkCreateImage(this.base[0], this.pInfo = new V.VkImageCreateInfo({
+                flags: V.VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT,
                 imageType: extent.depth > 1 ? V.VK_IMAGE_TYPE_3D : (extent.height > 1 ? V.VK_IMAGE_TYPE_2D : V.VK_IMAGE_TYPE_1D),
                 format: cInfo.format,
                 extent: extent,

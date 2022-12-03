@@ -22,8 +22,7 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     instanceCount: "u32",
     width: "u16", height: "u16",
     windowWidth: "u16", windowHeight: "u16",
-    _: "u16[2]",
-    framebuffers: "u16[4]",
+    framebuffers: "u16[6]",
     imageSets: "u16[4]",
     frameCount: "u32",
     linearSampler: "u32"
@@ -93,7 +92,6 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     //
     const framebufferLayoutObj = deviceObj.createFramebufferLayout({
-        layerCount: 2,
         colorAttachments: [
             {   // data indices
                 blend: {},
@@ -117,7 +115,13 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
                 }
             },
             {   // normals
-                
+                blend: {},
+                format: V.VK_FORMAT_R16G16B16A16_SFLOAT,
+                dynamicState: {
+                    clearValue: new Float32Array([0.0, 0.0, 0.0, 1.0]).as("u32[4]")
+                }
+            },
+            {   // PBR
                 blend: {},
                 format: V.VK_FORMAT_R16G16B16A16_SFLOAT,
                 dynamicState: {
@@ -155,14 +159,17 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         extent: {width: frameSize[0], height: frameSize[1], depth: 1},
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
-        layerCount: 2,
 
-        // motion-vector pre-cache, 
-        formats: [V.VK_FORMAT_R16G16B16A16_SFLOAT]
+        // for original, previous, reprojected
+        layerCount: [2, 2, 1, 1],
+
+        // colors, reflections, 
+        formats: [V.VK_FORMAT_R16G16B16A16_SFLOAT, V.VK_FORMAT_R16G16B16A16_SFLOAT, V.VK_FORMAT_R16G16B16A16_SFLOAT, V.VK_FORMAT_R16G16B16A16_SFLOAT]
     });
 
     //
     const framebufferObj = deviceObj.createFramebuffer({
+        layerCount: 2,
         memoryAllocator: memoryAllocatorObj.handle[0],
         framebufferLayout: framebufferLayoutObj.handle[0],
         pipelineLayout: descriptorsObj.handle[0],
@@ -249,13 +256,14 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             framebufferObj.colorImageViews[0].DSC_ID, 
             framebufferObj.colorImageViews[1].DSC_ID, 
             framebufferObj.colorImageViews[2].DSC_ID, 
-            framebufferObj.colorImageViews[3].DSC_ID
+            framebufferObj.colorImageViews[3].DSC_ID, 
+            framebufferObj.colorImageViews[4].DSC_ID
         ],
         imageSets: [
             imageSetObj.imageViews[0].DSC_ID,
-            //imageSetObj.imageViews[1].DSC_ID,
-            //imageSetObj.imageViews[2].DSC_ID,
-            //imageSetObj.imageViews[3].DSC_ID
+            imageSetObj.imageViews[1].DSC_ID,
+            imageSetObj.imageViews[2].DSC_ID,
+            imageSetObj.imageViews[3].DSC_ID
         ],
         linearSampler: deviceObj.createSampler({
             pipelineLayout: descriptorsObj.handle[0],
@@ -286,7 +294,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     // When change resolution, needs rebuild commands too.
     // Uniform buffer currently not required to command rebuild.
     const cmdBufs = deviceObj.allocatePrimaryCommands((cmdBuf, imageIndex)=>{
-        
+
         // for test FPS
         gltfModel.meshes.map((mesh)=>{
             mesh.accelerationStructure.cmdBuild(cmdBuf, mesh.geometries.map((G,I)=>({
@@ -297,6 +305,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             })))
         });
 
+        //
         gltfModel.nodeAccelerationStructure.cmdBuild(cmdBuf, [{
             primitiveCount: gltfModel.instancedData.length,
             primitiveOffset: 0,
@@ -304,8 +313,9 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             transformOffset: 0
         }]);
 
-        //
+        // 
         swapchainObj.cmdToGeneral(cmdBuf);
+        framebufferObj.cmdBackstage(cmdBuf);
         imageSetObj.cmdBackstage(cmdBuf); // for temporal technology
 
         // 

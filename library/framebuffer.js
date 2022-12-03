@@ -88,15 +88,15 @@ class ImageSetObj extends B.BasicObj {
         //console.log(extent);
 
         //
-        this.images = this.cInfo.formats.map((F)=>(memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createImage({
-            format: F, usage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT, extent, arrayLayers: cInfo.layerCount || 1
+        this.images = this.cInfo.formats.map((F, I)=>(memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createImage({
+            format: F, usage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT, extent, arrayLayers: cInfo.layerCount[I] || 1
         }))));
 
         //
         this.imageViews = this.images.map((IMG, I)=>(IMG.createImageView({
             type: "storage",
             pipelineLayout: descriptorsObj.handle[0],
-            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: cInfo.layerCount || 1 }
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: cInfo.layerCount[I] || 1 }
         })));
 
         //
@@ -139,12 +139,14 @@ class ImageSetObj extends B.BasicObj {
 
     cmdBackstage(cmdBuf) {
         const cInfo = this.cInfo;
-        this.images.map((IMG)=>{
-            IMG.cmdCopyToImage(cmdBuf, IMG.handle[0], [{
-                extent: {width: Math.max(cInfo.extent.width || 2, 2), height: Math.max(cInfo.extent.height || 2, 2), depth: cInfo.extent.depth || 1},
-                srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0, layerCount: 1 },
-                dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 1, layerCount: 1 }
-            }]);
+        this.images.map((IMG, I)=>{
+            if (this.imageViews[I].imageViewInfo.subresourceRange.layerCount > 1) {
+                IMG.cmdCopyToImage(cmdBuf, IMG.handle[0], [{
+                    extent: {width: Math.max(cInfo.extent.width || 2, 2), height: Math.max(cInfo.extent.height || 2, 2), depth: cInfo.extent.depth || 1},
+                    srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0, layerCount: 1 },
+                    dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 1, layerCount: 1 }
+                }]);
+            }
         });
     }
 
@@ -199,7 +201,7 @@ class FramebufferObj extends B.BasicObj {
         if (framebufferLayoutObj.depthFormat || framebufferLayoutObj.stencilFormat) {
             //
             this.depthStencilImage = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createImage({
-                format: framebufferLayoutObj.depthFormat, usage: V.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT, extent,
+                format: framebufferLayoutObj.depthFormat, usage: V.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT, extent, arrayLayers: cInfo.layerCount || 1
             }));
 
             //

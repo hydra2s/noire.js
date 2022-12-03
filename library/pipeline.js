@@ -212,7 +212,7 @@ class GraphicsPipelineObj extends PipelineObj {
     };
 
     // 
-    cmdDraw({cmdBuf, vertexInfo = [], vertexCount = 3, instanceCount = 1, firstVertex = 0, firstInstance = 0, dispatch = {x: 1, y: 1, z: 1}, pushConstRaw = null, pushConstByteOffset = 0n, viewport, scissor, framebuffer}) {
+    cmdDraw({cmdBuf, vertexInfo = [], vertexCount = 3, instanceCount = 1, firstVertex = 0, firstInstance = 0, dispatch = {x: 1, y: 1, z: 1}, layerCount = 1, pushConstRaw = null, pushConstByteOffset = 0n, viewport, scissor, framebuffer}) {
         
 
         //
@@ -267,7 +267,7 @@ class GraphicsPipelineObj extends PipelineObj {
         const colorAttachmentClear = new V.VkClearAttachment(colorTransitionBarrier.length);
 
         //
-        let layerCount = framebufferObj.colorImageViews[0].imageViewInfo.subresourceRange.layerCount || 1;
+        //let layerCount = framebufferObj.colorImageViews[0].imageViewInfo.subresourceRange.layerCount || 1;
         for (let I=0;I<colorTransitionBarrier.length;I++) {
             colorAttachmentClear[I] = { 
                 aspectMask: framebufferObj.colorImageViews[I].imageViewInfo.subresourceRange.aspectMask, 
@@ -295,7 +295,7 @@ class GraphicsPipelineObj extends PipelineObj {
             };
 
             //
-            layerCount = Math.min(framebufferObj.colorImageViews[I].imageViewInfo.subresourceRange.layerCount || 1, 1);
+            //layerCount = Math.min(framebufferObj.colorImageViews[I].imageViewInfo.subresourceRange.layerCount || 1, 1);
         }
 
         // 

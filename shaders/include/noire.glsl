@@ -21,8 +21,7 @@ layout (set = 2, binding = 0, scalar) uniform MData {
     uint32_t instanceCount;
     uint16_t width, height;
     uint16_t windowWidth, windowHeight;
-    uint16_t _[2];
-    uint16_t framebuffers[4];
+    uint16_t framebuffers[6];
     uint16_t imageSets[4];
     uint32_t frameCount;
     uint32_t linearSampler;
@@ -161,3 +160,21 @@ uint readIndexData(in nrBinding binding, in uint index) {
     return index;
 };
 
+vec4 tex2DBiLinear( in uint F, in vec2 texCoord_f, in int layer )
+{
+    const ivec3 texCoord_i = ivec3(texCoord_f * vec2(width, height), layer);
+    const vec4 p0q0 = imageLoad(SETF[imageSets[F]], texCoord_i);
+    const vec4 p1q0 = imageLoad(SETF[imageSets[F]], texCoord_i + ivec3(1, 0, 0));
+    const vec4 p0q1 = imageLoad(SETF[imageSets[F]], texCoord_i + ivec3(0, 1, 0));
+    const vec4 p1q1 = imageLoad(SETF[imageSets[F]], texCoord_i + ivec3(1, 1, 0));
+    const float a = fract( texCoord_f.x * width - 0.5f ); // Get Interpolation factor for X direction.
+    const vec4 pInterp_q0 = mix( p0q0, p1q0, a ); // Interpolates top row in X direction.
+    const vec4 pInterp_q1 = mix( p0q1, p1q1, a ); // Interpolates bottom row in X direction.
+    const float b = fract( texCoord_f.y * height - 0.5f );// Get Interpolation factor for Y direction.
+    return mix( pInterp_q0, pInterp_q1, b ); // Interpolate in Y direction.
+};
+
+vec4 tex2DBiLinear( in uint F, in vec2 texCoord_f) 
+{
+    return tex2DBiLinear(F, texCoord_f, 0);
+}

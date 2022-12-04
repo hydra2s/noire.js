@@ -13,6 +13,7 @@
 #extension GL_EXT_buffer_reference2 : enable
 #extension GL_EXT_samplerless_texture_functions : enable
 #extension GL_EXT_shared_memory_block : enable
+#extension GL_EXT_shader_atomic_float : enable
 
 //
 #include "include/hlsl_map.glsl"
@@ -29,7 +30,9 @@ void main() {
     rasterize(gl_GlobalInvocationID.xy);//
     GIData GI = globalIllumination();
 
-    //
-    imageStore(_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(GI.color.xyz, 1.f), 0);
-    imageStore(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), GI.meta, 0);
+    //GI.meta
+    vec4 currentMeta = imageLoad(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 0);
+    imageStore (_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(GI.color.xyz, 1.f), 0);
+    imageStore (_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(GI.meta.x, currentMeta.yz, GI.meta.w), 0);
+    //imageStoreU(_RINDICE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), GI.indices, 0);
 }

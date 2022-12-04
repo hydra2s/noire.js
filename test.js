@@ -23,8 +23,8 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     width: "u16", height: "u16",
     windowWidth: "u16", windowHeight: "u16",
     framebuffers: "u16[6]",
-    loadSets: "u16[4]",
-    storeSets: "u16[4]",
+    loadSets: "u16[6]",
+    storeSets: "u16[6]",
     frameCount: "u32",
     linearSampler: "u16",
     nearestSampler: "u16",
@@ -168,12 +168,13 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             {width: frameSize[0], height: frameSize[1], depth: 1},
             {width: frameSize[0], height: frameSize[1], depth: 1},
             {width: frameSize[0]>>3, height: frameSize[1]>>3, depth: 1}
+            //{width: frameSize[0], height: frameSize[1], depth: 1},
         ],
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
 
         // for original, previous, reprojected
-        layerCount: [3, 2, 2],
+        layerCount: [3, 2, 2, 2],
 
         // colors, reflections, 
         formats: [
@@ -224,14 +225,15 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     });
 
     //
+    const dMotion = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-mod-reflection.comp.spv") });
     const dReproject = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-reproject.comp.spv") });
     const dPrefilter = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-prefilter.comp.spv") });
     const dResolveTemporal = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-resolve_temporal.comp.spv") });
 
     //
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
-    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
+    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
@@ -297,19 +299,31 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             imageSetObj.imageViews[0][0].DSC_ID,
             imageSetObj.imageViews[0][1].DSC_ID,
             imageSetObj.imageViews[0][2].DSC_ID,
-            //imageSetObj.imageViews[0][3].DSC_ID
+            //imageSetObj.imageViews[0][3].DSC_ID,
+            //imageSetObj.imageViews[0][4].DSC_ID
         ],
         storeSets: [
             imageSetObj.imageViews[1][0].DSC_ID,
             imageSetObj.imageViews[1][1].DSC_ID,
             imageSetObj.imageViews[1][2].DSC_ID,
-            //imageSetObj.imageViews[1][3].DSC_ID
+            //imageSetObj.imageViews[1][3].DSC_ID,
+            //imageSetObj.imageViews[1][4].DSC_ID
         ],
         linearSampler: deviceObj.createSampler({
             pipelineLayout: descriptorsObj.handle[0],
             samplerInfo: {
                 magFilter: V.VK_FILTER_LINEAR,
                 minFilter: V.VK_FILTER_LINEAR,
+                addressModeU: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                addressModeV: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                addressModeW: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            }
+        }).DSC_ID,
+        nearestSampler: deviceObj.createSampler({
+            pipelineLayout: descriptorsObj.handle[0],
+            samplerInfo: {
+                magFilter: V.VK_FILTER_NEAREST,
+                minFilter: V.VK_FILTER_NEAREST,
                 addressModeU: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
                 addressModeV: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
                 addressModeW: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
@@ -441,7 +455,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         const dY = (mY - lastY) / windowSize[1] / DPI[1] * 2.0;
 
         //
-        const viewSpeed = 0.00001;
+        const viewSpeed = 0.01;
         let localEye = $M.vec4.transformMat4($M.vec4.create(), $M.vec4.fromValues(...eye, 1.0), $M.mat4.copy($M.mat4.create(), modelView)).subarray(0, 3);
         let moveVec = $M.vec3.create(0,0,0);
 

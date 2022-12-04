@@ -16,6 +16,7 @@ struct RayTracedData {
     vec3 bary;
     vec3 tangent;
     float hitT;
+    uvec2 transformAddress;
 };
 
 // A vot HER! More FPS drop...
@@ -92,6 +93,7 @@ void rasterize(in uvec2 coord) {
         rayData.normal = readTexData(materialData.normal, texcoord.xy);;
         rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
         rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
+        //rayData.PBR.g = 0.0hf;
     } else {
         rayData.bary = vec3(0.f);
     }
@@ -186,11 +188,13 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
         rayData.biNormal = normalize(cross(rayData.tangent.xyz, rayData.surfaceNormal));
 
         //
+        rayData.transformAddress = unpack32(uint64_t(nodeData));
         rayData.emissive = readTexData(materialData.emissive, texcoord.xy);
         rayData.diffuse = readTexData(materialData.diffuse, texcoord.xy);
         rayData.normal = readTexData(materialData.normal, texcoord.xy);;
         rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
         rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
+        //rayData.PBR.g = 0.0hf;
     }
 
     //
@@ -238,6 +242,7 @@ bool shadowTrace(in vec3 origin, in vec3 far, in vec3 dir) {
 struct GIData {
     vec4 color;
     vec4 meta;
+    //uvec4 indices;
 };
 
 //
@@ -247,7 +252,7 @@ GIData globalIllumination() {
     //
     const vec4 lightPos = vec4(0, 100, 10, 1);
     vec3 lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
-    vec3 lightCol = 8.f.xxx;
+    vec3 lightCol = 4.f.xxx;
     float diff = sqrt(max(dot(rayData.surfaceNormal, lightDir), 0.0));
 
     //
@@ -269,13 +274,14 @@ GIData globalIllumination() {
     float F = frameCount % 256;
 
     //
+    uvec4 indices = uvec4(rayData.transformAddress, 0u, 0u);
     float roughness = 1.f;
     float nearT = 0.f;
     bool hasHit = false;
     for (int I=0;I<2;I++) {
         if ((hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {
             // shading
-                if (reflCoef * (1.f - float(rayData.PBR.g)) > 0.9) { nearT += rayData.hitT; };
+                if (reflCoef * (1.f - float(rayData.PBR.g)) > 0.9) { nearT += rayData.hitT; indices = uvec4(rayData.transformAddress, 0u, 0u); };
                 lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
                 reflCol = 1.f.xxx;
 

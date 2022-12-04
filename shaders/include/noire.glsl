@@ -5,6 +5,7 @@ layout (set = 0, binding = 0) uniform  texture2DArray FBOF[];
 layout (set = 0, binding = 0) uniform utexture2DArray FBOU[];
 layout (set = 0, binding = 0, rgba16f ) uniform  image2DArray SETF[];
 layout (set = 0, binding = 0, rgba32ui) uniform uimage2DArray SETU[];
+layout (set = 0, binding = 0, r32f) uniform image2DArray SETA[];
 
 layout (set = 0, binding = 0, rgba8 ) uniform  image2D SWAP[];
 
@@ -22,8 +23,8 @@ layout (set = 2, binding = 0, scalar) uniform MData {
     uint16_t width, height;
     uint16_t windowWidth, windowHeight;
     uint16_t framebuffers[6];
-    uint16_t loadSets[4];
-    uint16_t storeSets[4];
+    uint16_t loadSets[6];
+    uint16_t storeSets[6];
     uint32_t frameCount;
     uint16_t linearSampler;
     uint16_t nearestSampler;
@@ -200,6 +201,8 @@ vec4 tex2DBNearest( in uint F, in vec2 texCoord_f, in int layer ) {
     //return d;
 //}
 
+#define sizeof(Type) (uint64_t(Type(uint64_t(0))+1))
+
 // framebuffers
 #define _POSITION 2
 #define _NORMAL 3
@@ -209,6 +212,29 @@ vec4 tex2DBNearest( in uint F, in vec2 texCoord_f, in int layer ) {
 #define _DIFFUSE 0
 #define _METAPBR 1
 #define _AVERAGE 2
+#define _REFLECT 3
+#define _RINDICE 4
+
+//
+vec4 imageLoadAtomic(in int IMG_STORE, in ivec2 coord, in int layer) {
+    //return imageLoad(SETF[loadSets[IMG_STORE]], ivec3(coord, layer));
+    return vec4(
+        texelFetch(FBOF[loadSets[IMG_STORE]], ivec3((coord.x<<2)|0x0, coord.y, layer), 0).r,
+        texelFetch(FBOF[loadSets[IMG_STORE]], ivec3((coord.x<<2)|0x1, coord.y, layer), 0).r,
+        texelFetch(FBOF[loadSets[IMG_STORE]], ivec3((coord.x<<2)|0x2, coord.y, layer), 0).r,
+        texelFetch(FBOF[loadSets[IMG_STORE]], ivec3((coord.x<<2)|0x3, coord.y, layer), 0).r
+    );
+}
+
+//
+vec4 imageAccumAtomic(in int IMG_STORE, in ivec2 coord, in vec4 RGBA, in int layer) {
+    return vec4(
+        imageAtomicAdd(SETA[storeSets[IMG_STORE]], ivec3((coord.x<<2)|0x0, coord.y, layer), RGBA.x).r,
+        imageAtomicAdd(SETA[storeSets[IMG_STORE]], ivec3((coord.x<<2)|0x1, coord.y, layer), RGBA.y).r,
+        imageAtomicAdd(SETA[storeSets[IMG_STORE]], ivec3((coord.x<<2)|0x2, coord.y, layer), RGBA.z).r,
+        imageAtomicAdd(SETA[storeSets[IMG_STORE]], ivec3((coord.x<<2)|0x3, coord.y, layer), RGBA.w).r
+    );
+}
 
 //
 vec4 imageLoad(in int IMG_STORE, in ivec2 coord, in int layer) {
@@ -216,9 +242,15 @@ vec4 imageLoad(in int IMG_STORE, in ivec2 coord, in int layer) {
     return texelFetch(FBOF[loadSets[IMG_STORE]], ivec3(coord, layer), 0);
 }
 
+uvec4 imageLoadU(in int IMG_STORE, in ivec2 coord, in int layer) {
+    //return imageLoad(SETF[loadSets[IMG_STORE]], ivec3(coord, layer));
+    return texelFetch(FBOU[loadSets[IMG_STORE]], ivec3(coord, layer), 0);
+}
+
 //
 vec4 textureLod(in int TEX_STORE, in vec2 coord, in int layer) {
-    return textureLod(sampler2DArray(FBOF[framebuffers[TEX_STORE]], samplers[linearSampler]), vec3(coord, float(layer) /*/ textureSize(FBOF[framebuffers[TEX_STORE]], 0).z*/), 0.0);
+    //return textureLod(sampler2DArray(FBOF[framebuffers[TEX_STORE]], samplers[linearSampler]), vec3(coord, float(layer) /*/ textureSize(FBOF[framebuffers[TEX_STORE]], 0).z*/), 0.0);
+    return textureLod(sampler2DArray(FBOF[framebuffers[TEX_STORE]], samplers[nearestSampler]), vec3(coord, float(layer) /*/ textureSize(FBOF[framebuffers[TEX_STORE]], 0).z*/), 0.0);
 }
 
 //
@@ -229,6 +261,10 @@ vec4 texelFetch(in int TEX_STORE, in ivec2 coord, in int layer) {
 //
 void imageStore(in int IMG_STORE, in ivec2 coord, in vec4 RGBA, in int layer) {
     imageStore(SETF[storeSets[IMG_STORE]], ivec3(coord, layer), RGBA);
+}
+
+void imageStoreU(in int IMG_STORE, in ivec2 coord, in uvec4 RGBA, in int layer) {
+    imageStore(SETU[storeSets[IMG_STORE]], ivec3(coord, layer), RGBA);
 }
 
 void imageStoreRGB(in int IMG_STORE, in ivec2 coord, in vec3 RGB, in int layer) {
@@ -249,7 +285,7 @@ void imageStoreA(in int IMG_STORE, in ivec2 coord, in float A, in int layer) {
 float FFX_DNSR_Reflections_GetRandom(int2 pixel_coordinate) { return gold_noise(float2(pixel_coordinate), 0.0 + float(frameCount)) * 0.5f + 0.5f; }
 
 //
-float FFX_DNSR_Shadows_GetDepthSimilaritySigma() { return 0.0001f; }
+float FFX_DNSR_Shadows_GetDepthSimilaritySigma() { return 0.01f; }
 float FFX_DNSR_Reflections_LoadDepth       (int2 pixel_coordinate)  { return divW(texelFetch(_POSITION, pixel_coordinate, 0)).z; }
 float FFX_DNSR_Reflections_LoadDepthHistory(int2 pixel_coordinate)  { return divW(texelFetch(_POSITION, pixel_coordinate, 1)).z; }
 float FFX_DNSR_Reflections_SampleDepthHistory(float2 uv)            { return divW(textureLod(_POSITION, uv, 1)).z; }
@@ -289,8 +325,9 @@ min16float FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { re
 min16float FFX_DNSR_Reflections_LoadRoughnessHistory(int2 pixel_coordinate) { return imageLoad(_METAPBR, pixel_coordinate, 1).r; }
 min16float FFX_DNSR_Reflections_SampleRoughnessHistory(float2 uv)           { return tex2DBiLinear(_METAPBR, uv, 1).r; }
 
-// we has only static, lol
-float2 FFX_DNSR_Reflections_LoadMotionVector(int2 pixel_coordinate) { return float2(0.f, 0.f); }
+// as from previous frame to current, from previous pixel coordinate
+// if your pixel coordinate is current, needs to transform as previous
+float2 FFX_DNSR_Reflections_LoadMotionVector(int2 pixel_coordinate) { return imageLoad(_METAPBR, pixel_coordinate, 0).yz; }
 
 // 
 min16float FFX_DNSR_Reflections_LoadRayLength(int2 pixel_coordinate) { return imageLoad(_METAPBR, pixel_coordinate, 1).w; }
@@ -340,7 +377,9 @@ min16float3 FFX_DNSR_Reflections_WorldSpaceToScreenSpacePrevious(in min16float3 
 }
 
 //
-bool FFX_DNSR_Reflections_IsMirrorReflection(float roughness) { return /*roughness >= 0.0001f && roughness  < 0.01f*/false; };
-bool FFX_DNSR_Reflections_IsGlossyReflection(float roughness) { return roughness >= 0.0001f /*&& roughness >= 0.01f*/; };
+bool FFX_DNSR_Reflections_IsMirrorReflection(float roughness) { return false; };
+bool FFX_DNSR_Reflections_IsGlossyReflection(float roughness) { return roughness >= 0.0001f; };
+//bool FFX_DNSR_Reflections_IsMirrorReflection(float roughness) { return roughness >= 0.0001f && roughness  < 0.01f; };
+//bool FFX_DNSR_Reflections_IsGlossyReflection(float roughness) { return roughness >= 0.0001f && roughness >= 0.01f; };
 #endif
 //any(greaterThan(texelFetch(FBOF[framebuffers[1]], ivec3(dispatchThreadId, 0), 0).xyz, 0.0001f.xxx))

@@ -13,6 +13,7 @@
 #extension GL_EXT_fragment_shader_barycentric : enable
 #extension GL_EXT_demote_to_helper_invocation : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
+#extension GL_EXT_shader_atomic_float : enable
 
 //
 #include "include/hlsl_map.glsl"

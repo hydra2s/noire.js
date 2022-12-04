@@ -7,6 +7,16 @@ vec4 divW(in vec4 v) {
 }
 
 //
+vec4 divWn(in vec4 v) {
+  return vec4(v.xyz/v.w, v.w);
+}
+
+//
+vec4 divM(in vec4 v) {
+  return vec4(v.xyz*v.w, v.w);
+}
+
+//
 const float PI = 3.1415926535897932384626422832795028841971;
 const float TWO_PI = 6.2831853071795864769252867665590057683943;
 const float SQRT_OF_ONE_THIRD = 0.5773502691896257645091487805019574556476;

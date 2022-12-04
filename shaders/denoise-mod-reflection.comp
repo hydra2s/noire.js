@@ -1,0 +1,121 @@
+#version 460 core
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_ray_query : enable
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int32 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_buffer_reference : enable
+#extension GL_EXT_buffer_reference2 : enable
+#extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_EXT_shared_memory_block : enable
+#extension GL_EXT_shader_atomic_float : enable
+
+//
+#define _ENABLE_FXD
+
+//
+//#define A_GLSL
+#define A_GPU
+//#define A_HLSL_6_2
+#define A_HALF
+#define A_LONG
+
+// broken AU1_AW4
+//#define A_WAVE
+//#define A_NO_16_BIT_CAST
+
+//
+#include "include/hlsl_map.glsl"
+#include "include/math.glsl"
+#include "include/noire.glsl"
+
+// подключаем премяшика
+//#include "include/ffx_a.h"
+//#include "include/ffx_denoiser_reflections_reproject.h"
+#include "include/nr_mod_mirror_reflection_reproject.glsl"
+
+// 
+ivec2 forStoreToCurrent;
+
+struct rproj {
+    float nsimilarity;
+    float dsimilarity;
+    vec2 motion;
+    vec4 from;
+    vec4 to;
+};
+
+rproj reflectionReproj(in uvec2 coord) 
+{
+    //
+    vec4 prevPos = divW(texelFetch(FBOF[framebuffers[2]], ivec3(coord, 0), 1));
+    vec4 prevCamera = divW(prevPos * inverse(perspective));
+    vec4 prevOrigin = (prevCamera * modelViewInverse[1]);
+    vec3 prevDir = normalize((modelView[1] * vec4(normalize(prevCamera.xyz), 0.f)).xyz);
+    vec3 prevHitpos = prevOrigin.xyz + prevDir * imageLoad(_METAPBR, ivec2(coord), 1).w;
+    vec3 prevNormal = FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(ivec2(coord));
+    vec4 prevPView = divW((vec4(prevHitpos, 1.f) * modelView[0]) * perspective);
+
+    // TODO: motion vectors support, or previous transform
+    //uint64_t nodeData = pack64(imageLoadU(_RINDICE, ivec2(coord), 0).xy);
+
+    vec4 origin = prevOrigin * modelView[0];
+    vec3 hitPos = (vec4(prevHitpos, 1.f) * modelView[0]).xyz;
+    vec4 hview = divW((vec4(hitPos, 1.f) * modelView[0]) * perspective);
+    vec3 dir    = normalize((modelViewInverse[0] * vec4(prevDir, 0.0f)).xyz);
+    vec3 normal = normalize((modelViewInverse[0] * vec4(prevNormal, 0.f)).xyz);
+
+    //
+    vec3 point = find_reflection_incident_point((vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz, hitPos, origin.xyz, normal.xyz);
+    vec4 pview = divW((vec4(point, 1.f) * modelView[0]) * perspective);
+    vec3 pnormal = FFX_DNSR_Reflections_LoadWorldSpaceNormal(ivec2(ndc(pview.xyz).xy*vec2(width,height)));
+
+    // may have threading conflict
+    forStoreToCurrent = ivec2(pview.xy * vec2(width, height));
+
+    //vec3 prevNormal = FFX_DNSR_Reflections_LoadWorldSpaceNormal(ivec2(coord));
+
+
+    //find_reflection_incident_point(
+        //vec4(0.f.xxx, 1.f) * constants.lookAtInverse[0],
+        //dstHitPos, dstPos.xyz, normalize(dstNormal.xyz));
+
+    rproj ot;
+    ot.nsimilarity = dot(pnormal, normal);
+    ot.dsimilarity = abs(pview.z - hview.z);
+    ot.motion = ndc(pview.xyz).xy - ndc(prevPView.xyz).xy;
+    ot.from = prevPView;
+    ot.to = pview;
+    return ot;
+};
+
+//
+void accumulate(in rproj prj) {
+    ivec2 _to = ivec2(ndc(prj.to.xyz).xy*vec2(width,height));
+    ivec2 _from = ivec2(ndc(prj.from.xyz).xy*vec2(width,height));
+
+    vec4 meta = imageLoad(_METAPBR, _to, 0);
+    //if (meta.r < 0.01f) {
+        imageAccumAtomic(_REFLECT, _to, imageLoad(_DIFFUSE, _from, 1), 0);
+    //}
+}
+
+//
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+void main() {
+    //
+    ivec2 dispatchThreadId = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 groupThreadId = ivec2(gl_LocalInvocationID.xy);
+    uvec2 targetSize = uvec2(width, height);
+
+    //
+    //accumulate(reflectionReproj(gl_GlobalInvocationID.xy));
+
+    //vec4 currentMeta = imageLoad(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 0);
+    //imageStore(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(currentMeta.x, motionVector, currentMeta.w), 0);
+}

@@ -13,6 +13,7 @@
 #extension GL_EXT_buffer_reference2 : enable
 #extension GL_EXT_samplerless_texture_functions : enable
 #extension GL_EXT_shared_memory_block : enable
+#extension GL_EXT_shader_atomic_float : enable
 
 //
 #include "include/math.glsl"
@@ -28,7 +29,8 @@ layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 void main() {
     // TODO: linear interpolation support (virtual sampler)
     vec2 center = (vec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y) + 0.5f) / vec2(windowWidth, windowHeight);
-    vec3 fcolor = (imageLoad(SETF[loadSets[0]], ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 0))).xyz;//divW(tex2DBiLinear(0, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y))).xyz;//smartDeNoise(3, center, 7.f, 1.f, 3.f).xyz;//tex2DBiLinear(3, center).xyz;
+    vec3 fcolor = imageLoad(_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 0).xyz;//divW(tex2DBiLinear(0, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y))).xyz;//smartDeNoise(3, center, 7.f, 1.f, 3.f).xyz;//tex2DBiLinear(3, center).xyz;
+    //vec4 rcolor = imageLoadAtomic(_REFLECT, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 0);
     //fcolor = fcolor * 0.5f + 0.5f;
     //fcolor = texelFetch(FBOF[framebuffers[2]], ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 0), 0).xyz;
 

@@ -13,6 +13,7 @@
 #extension GL_EXT_buffer_reference2 : enable
 #extension GL_EXT_samplerless_texture_functions : enable
 #extension GL_EXT_shared_memory_block : enable
+#extension GL_EXT_shader_atomic_float : enable
 
 //
 #include "include/hlsl_map.glsl"

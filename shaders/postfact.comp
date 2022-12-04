@@ -45,6 +45,7 @@ void main() {
     // fix broken skybox?
     if (!any(greaterThan(rayData.bary, 0.0001f.xxx))) {
         const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(rayData.dir));
-        imageStore(SETF[storeSets[0]], ivec3(gl_GlobalInvocationID.xy, 0), vec4(env.xyz, 1.f));
+        imageStore(_DIFFUSE, ivec2(gl_GlobalInvocationID.xy), vec4(env.xyz, 1.f), 0);
+        imageStore(_METAPBR, ivec2(gl_GlobalInvocationID.xy), vec4(0.f.xxx, 0.f), 0);
     }
 }

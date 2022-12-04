@@ -92,3 +92,27 @@ vec3 dcts(in vec2 hr) {
   const float up=-cos(hr.y), over=sqrt(fma(up,-up,1.f)); 
   return vec3(cos(hr.x)*over ,up , sin(hr.x)*over); 
 };
+
+// m0 - view point of current frame
+// t0 - reflection point of current frame
+// p0 - plane point of current frame
+// n0 - plane normal of current frame
+// v0 - incident point of current frame
+// thanks by criver#8473
+
+// NEEDS MOD FOR FDNSR
+vec3 proj_point_in_plane(in vec3 p, in vec3 v0, in vec3 n, inout float d) {
+ d = dot(n, p - v0);
+ return p - (n * d);
+};
+
+// NEEDS MOD FOR FDNSR
+vec3 find_reflection_incident_point(in vec3 m0, in vec3 t0, in vec3 p0, in vec3 n0) {
+  float h1=0, h2=0;
+  vec3 c = proj_point_in_plane(m0, p0, n0, h1);
+  vec3 d = proj_point_in_plane(t0, p0, n0, h2);
+
+  //
+  h1 = abs(h1), h2 = abs(h2);
+  return mix(c,d,h1/(h1+h2));
+};

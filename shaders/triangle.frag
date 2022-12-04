@@ -55,5 +55,5 @@ void main() {
 	fBary = vec4(gl_BaryCoordEXT, gl_FragCoord.z);
 	fIndices = V[0].vIndices;
 	fNormal = vec4(normalize(normal), 1.f);
-	fPBR = vec4(max(/*PBR.rgb*/1.f.xxx, 0.0001f), 1.f);
+	fPBR = vec4(max(PBR.rgb, 0.0001f), 1.f);
 }

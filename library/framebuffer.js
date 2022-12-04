@@ -98,7 +98,7 @@ class ImageSetObj extends B.BasicObj {
 
         //
         this.imageViews.push(this.images.map((IMG, I)=>(IMG.createImageView({
-            type: "storage",
+            type: "sampled",
             pipelineLayout: descriptorsObj.handle[0],
             subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: this.layerCount[I] }
         }))));

@@ -15,6 +15,7 @@ struct RayTracedData {
     vec3 dir;
     vec3 bary;
     vec3 tangent;
+    float hitT;
 };
 
 // A vot HER! More FPS drop...
@@ -34,6 +35,7 @@ void rasterize(in uvec2 coord) {
     rayData.diffuse = f16vec4(0.f.xxx, 1.f);
     rayData.surfaceNormal = normalize((modelView[0] * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
     rayData.bary = vec3(0.f.xxx);
+    rayData.hitT = 0.f;
 
     //
     vec4 _camera = divW(vec4((vec2(coord)/vec2(width, height)*2.f-1.f)*(1.f, 1.f), 1.f, 1.f) * inverse(perspective));
@@ -106,6 +108,7 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
     rayData.surfaceNormal = normalize((modelView[0] * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
     rayData.dir = dir;
     rayData.bary = vec3(0.f.xxx);
+    rayData.hitT = 0.f;
 
     //
     rayQueryEXT rayQuery;
@@ -161,6 +164,7 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
         //rayData.dir = normalize(rayData.origin.xyz - _origin.xyz);
         rayData.origin = _origin;
         rayData.bary = bary;
+        rayData.hitT = rayQueryGetIntersectionTEXT(rayQuery, true);
 
         //
         rayData.texcoord = texcoord.xy;
@@ -233,6 +237,7 @@ bool shadowTrace(in vec3 origin, in vec3 far, in vec3 dir) {
 //
 struct GIData {
     vec4 color;
+    vec4 meta;
 };
 
 //
@@ -262,13 +267,15 @@ GIData globalIllumination() {
     //
     vec2 C = vec2(gl_GlobalInvocationID.xy);
     float F = frameCount % 256;
-//lcts
-    //
 
+    //
+    float roughness = 1.f;
+    float nearT = 0.f;
     bool hasHit = false;
     for (int I=0;I<2;I++) {
         if ((hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {
             // shading
+                if (reflCoef * (1.f - float(rayData.PBR.g)) > 0.9) { nearT += rayData.hitT; };
                 lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
                 reflCol = 1.f.xxx;
 
@@ -278,8 +285,11 @@ GIData globalIllumination() {
                 TBN[1] = normalize(cross(TBN[2], TBN[0]));
 
                 // if reflection
-                if (unorm(gold_noise(C, 1.0+F)) <= (reflCoef = pow(1.f - max(dot(TBN[2], -reflDir.xyz), 0.f), 2.f) * 0.9f + 0.1)) {
-                    reflDir = normalize(reflect(rayData.dir, TBN[2]));
+                if (unorm(gold_noise(C, 1.0+F)) <= (reflCoef = mix(pow(1.f - max(dot(TBN[2], -reflDir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b)))) {
+                    reflDir = normalize(mix(normalize(reflect(rayData.dir, TBN[2])), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
+                    if (I == 0) roughness = max(float(rayData.PBR.g), 0.0002f);
+                    //reflCol *= min(max(mix(1.hf.xxx, rayData.diffuse.xyz, rayData.PBR.b), 0.hf), 1.hf);
+                    
                 } else 
 
                 // if diffuse
@@ -293,6 +303,7 @@ GIData globalIllumination() {
                     //
                     reflDir = normalize(cosineWeightedPoint(TBN, C, F));
                     lightDir = coneSample(LC * inversesqrt(dt), cosL, C, F);
+                    if (I == 0) roughness = 1.f;
 
                     // 
                     shadowed = shadowTrace(rayData.origin.xyz + TBN[2] * epsilon, SO, lightDir);
@@ -305,12 +316,12 @@ GIData globalIllumination() {
 
                 // if reflection
                 energy *= vec4(max(min(reflCol, 1.f.xxx), 0.f.xxx), 1.f);
-            
             // next step
             if (dot(energy.xyz, 1.f.xxx) > 0.001f && I < 1) {
                 rayTrace(rayData.origin.xyz + rayData.surfaceNormal * epsilon, rayData.origin.xyz + rayData.surfaceNormal * epsilon + reflDir * 10000.f, reflDir);
             }
         } else {
+            //nearT = 10000.f;
             fcolor += vec4(energy.xyz * texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(rayData.dir)).xyz, 0.f);
             break;
         }
@@ -319,5 +330,6 @@ GIData globalIllumination() {
     //
     GIData data;
     data.color = vec4(fcolor.xyz/fcolor.w, 1.f);
+    data.meta = vec4(roughness, 0.f.xx, nearT);
     return data;
 }

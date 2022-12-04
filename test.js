@@ -53,25 +53,6 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     const descriptorsObj = deviceObj.createDescriptors({ memoryAllocator: memoryAllocatorObj.handle[0] });
 
     //
-    //const bufferObj = memoryAllocatorObj.allocateMemory({  }, deviceObj.createBuffer({ size: 256*4 }));
-    //const hostBufferObj = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: 256*4 }));
-
-    //
-    /*const fenceC = deviceObj.submitOnce({
-        queueFamilyIndex: 0,
-        queueIndex: 0,
-        cmdBufFn: (cmdBuf)=>{
-            const pushData = new BigUint64Array([bufferObj.getDeviceAddress()]);
-            descriptorsObj.cmdUpdateUniform(cmdBuf, new Uint32Array([128]), 0n);
-            pipelineObj.cmdDispatch(cmdBuf, 1, 1, 1, pushData);
-            bufferObj.cmdCopyToBuffer(cmdBuf, hostBufferObj.handle[0], [{srcOffset: 0, dstOffset: 0, size: 256*4}]);
-        }
-    });
-
-    //
-    await B.awaitFenceAsync(deviceObj.handle[0], fenceC[0]);*/
-
-    //
     const textureLoader = new K.TextureLoaderObj(deviceObj.handle, {
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
@@ -80,14 +61,6 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
     });
-
-    //
-    //console.log(await gltfLoaderA.load("Cube.gltf"));
-    //console.log();
-
-    //
-    //const readData = new Uint32Array(hostBufferObj.map());
-    //console.log(readData);
 
     // // // // // // //
     // THE CONTINUE!  //
@@ -115,25 +88,25 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
                     clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
                 }
             },
-            {   // positions
+            {   // STUB0
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
                 dynamicState: {
-                    clearValue: new Float32Array([0.0, 0.0, 1.0, 1.0]).as("u32[4]")
+                    clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
                 }
             },
-            {   // normals
+            {   // STUB1
                 blend: {},
-                format: V.VK_FORMAT_R16G16B16A16_SFLOAT,
+                format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
                 dynamicState: {
-                    clearValue: new Float32Array([0.0, 0.0, 0.0, 1.0]).as("u32[4]")
+                    clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
                 }
             },
-            {   // PBR
+            {   // STUB2
                 blend: {},
-                format: V.VK_FORMAT_R16G16B16A16_SFLOAT,
+                format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
                 dynamicState: {
-                    clearValue: new Float32Array([0.0, 0.0, 0.0, 1.0]).as("u32[4]")
+                    clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
                 }
             }
         ],
@@ -165,22 +138,36 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //
     const imageSetObj = deviceObj.createImageSet({
         extent: [
+            // average
+            {width: frameSize[0]>>3, height: frameSize[1]>>3, depth: 1},
+
+            // diffuse
             {width: frameSize[0], height: frameSize[1], depth: 1},
+
+            // meta_pbr_unorm
             {width: frameSize[0], height: frameSize[1], depth: 1},
-            {width: frameSize[0]>>3, height: frameSize[1]>>3, depth: 1}
-            //{width: frameSize[0], height: frameSize[1], depth: 1},
+
+            // reflection
+            {width: frameSize[0], height: frameSize[1], depth: 1},
+
+            // position
+            {width: frameSize[0], height: frameSize[1], depth: 1},
         ],
+
+        //
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
 
         // for original, previous, reprojected
-        layerCount: [3, 2, 2, 2],
+        layerCount: [2, 3, 2, 2, 2],
 
-        // colors, reflections, 
+        //
         formats: [
             V.VK_FORMAT_R16G16B16A16_SFLOAT, 
             V.VK_FORMAT_R16G16B16A16_SFLOAT, 
-            V.VK_FORMAT_R16G16B16A16_SFLOAT
+            V.VK_FORMAT_R8G8B8A8_UNORM, 
+            V.VK_FORMAT_R16G16B16A16_SFLOAT,
+            V.VK_FORMAT_R32G32B32A32_SFLOAT
         ]
     });
 
@@ -232,8 +219,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     //
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
-    const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
+    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
@@ -244,13 +231,6 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         pipelineLayout: descriptorsObj.handle[0],
         code: await fs.promises.readFile("shaders/postfact.comp.spv")
     });
-
-    // Not Suitable
-    /*const denoiserObj = deviceObj.createComputePipeline({
-        framebufferLayout: framebufferLayoutObj.handle[0],
-        pipelineLayout: descriptorsObj.handle[0],
-        code: await fs.promises.readFile("shaders/denoise-phase-2.comp.spv")
-    });*/
 
     //
     const bgImageView = await textureLoader.load("./background.hdr");
@@ -299,15 +279,15 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             imageSetObj.imageViews[0][0].DSC_ID,
             imageSetObj.imageViews[0][1].DSC_ID,
             imageSetObj.imageViews[0][2].DSC_ID,
-            //imageSetObj.imageViews[0][3].DSC_ID,
-            //imageSetObj.imageViews[0][4].DSC_ID
+            imageSetObj.imageViews[0][3].DSC_ID,
+            imageSetObj.imageViews[0][4].DSC_ID
         ],
         storeSets: [
             imageSetObj.imageViews[1][0].DSC_ID,
             imageSetObj.imageViews[1][1].DSC_ID,
             imageSetObj.imageViews[1][2].DSC_ID,
-            //imageSetObj.imageViews[1][3].DSC_ID,
-            //imageSetObj.imageViews[1][4].DSC_ID
+            imageSetObj.imageViews[1][3].DSC_ID,
+            imageSetObj.imageViews[1][4].DSC_ID
         ],
         linearSampler: deviceObj.createSampler({
             pipelineLayout: descriptorsObj.handle[0],
@@ -455,7 +435,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         const dY = (mY - lastY) / windowSize[1] / DPI[1] * 2.0;
 
         //
-        const viewSpeed = 0.01;
+        const viewSpeed = 0.00001;
         let localEye = $M.vec4.transformMat4($M.vec4.create(), $M.vec4.fromValues(...eye, 1.0), $M.mat4.copy($M.mat4.create(), modelView)).subarray(0, 3);
         let moveVec = $M.vec3.create(0,0,0);
 

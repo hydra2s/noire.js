@@ -61,19 +61,22 @@ class TextureLoaderObj extends B.BasicObj {
                     const image = this;
 
                     // covnert into fp16 + RGB from XYZ
-                    const fp16data = new Float16Array(image.width*image.height*4);
+                    const fp16data = new Uint16Array(image.width*image.height*4);
+                    const fp32data = new Float32Array(4);
                     for (let I=0;I<image.width*image.height;I++) {
-                        const pixel3f = XYZtoRGB(image.data.subarray(I*3, I*3+3));
-                        fp16data.set([pixel3f[0], pixel3f[1], pixel3f[2], 1.0], I*4);
+                        fp32data.set([...XYZtoRGB(image.data.subarray(I*3, I*3+3)), 1.0]);
+                        V.convertF32toF16x4(fp16data.subarray(I*4, I*4+4), fp32data);
+                        //fp16data.set([pixel3f[0], pixel3f[1], pixel3f[2], 1.0], I*4);
                     }
+
+                    console.log(fp16data);
 
                     //
                     texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R16G16B16A16_SFLOAT, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
-                    
+
                     //
-                    texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 64 }));
-                    texBuf.map().set(fp16data.buffer);
-                    texBuf.unmap();
+                    texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 8 }));
+                    V.memcpy(texBuf.map(), fp16data.buffer, fp16data.byteLength);
 
                     r(1);
                 }));

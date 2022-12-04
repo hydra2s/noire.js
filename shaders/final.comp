@@ -34,6 +34,8 @@ void main() {
     //fcolor = fcolor * 0.5f + 0.5f;
     //fcolor = texelFetch(FBOF[framebuffers[2]], ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 0), 0).xyz;
 
+    //const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), center);
+
     //
-    imageStore(SWAP[imageIndex], ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(pow(fcolor, 1.f.xxx/2.2f), 1.f));
+    imageStore(SWAP[imageIndex], ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(pow(fcolor.xyz, 1.f.xxx/2.2f), 1.f));
 }

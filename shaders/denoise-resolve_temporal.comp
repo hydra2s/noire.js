@@ -41,16 +41,16 @@
 //
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 void main() {
-    ivec2 dispatchThreadId_ = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 groupThreadId_ = ivec2(gl_LocalInvocationID.xy);
+    ivec2 dispatchThreadId = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 groupThreadId = ivec2(gl_LocalInvocationID.xy);
 
     uvec2 targetSize = uvec2(width, height);
     vec2 invTargetSize = vec2(1.0) / vec2(targetSize);
 
     float historyClipWeight = 32.0;
 
-    ivec2 groupThreadId = ivec2(FFX_DNSR_Reflections_RemapLane8x8(gl_LocalInvocationIndex));
-    ivec2 dispatchThreadId = (dispatchThreadId_ / 8) * 8 + groupThreadId;
+    //ivec2 groupThreadId = ivec2(FFX_DNSR_Reflections_RemapLane8x8(gl_LocalInvocationIndex));
+    //ivec2 dispatchThreadId = (dispatchThreadId_ / 8) * 8 + groupThreadId;
 
     //if (any(greaterThan(texelFetch(FBOF[framebuffers[1]], ivec3(dispatchThreadId, 0), 0).xyz, 0.0001f.xxx))) {
         FFX_DNSR_Reflections_ResolveTemporal(dispatchThreadId, groupThreadId, targetSize, invTargetSize, historyClipWeight);

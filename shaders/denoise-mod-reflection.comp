@@ -53,7 +53,8 @@ struct rproj {
 rproj reflectionReproj(in uvec2 coord) 
 {
     //
-    vec4 prevPos = divW(texelFetch(FBOF[framebuffers[2]], ivec3(coord, 0), 1));
+    /*
+    vec4 prevPos = imageLoad(_POSITION);
     vec4 prevCamera = divW(prevPos * inverse(perspective));
     vec4 prevOrigin = (prevCamera * modelViewInverse[1]);
     vec3 prevDir = normalize((modelView[1] * vec4(normalize(prevCamera.xyz), 0.f)).xyz);
@@ -91,6 +92,9 @@ rproj reflectionReproj(in uvec2 coord)
     ot.motion = ndc(pview.xyz).xy - ndc(prevPView.xyz).xy;
     ot.from = prevPView;
     ot.to = pview;
+    return ot;*/
+
+    rproj ot;
     return ot;
 };
 

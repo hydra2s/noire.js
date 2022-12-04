@@ -201,6 +201,7 @@ vec4 tex2DBNearest( in uint F, in vec2 texCoord_f, in int layer ) {
     //return d;
 //}
 
+//
 #define sizeof(Type) (uint64_t(Type(uint64_t(0))+1))
 
 // framebuffers
@@ -209,11 +210,10 @@ vec4 tex2DBNearest( in uint F, in vec2 texCoord_f, in int layer ) {
 #define _PBR 4
 
 // image sets
-#define _DIFFUSE 0
-#define _METAPBR 1
-#define _AVERAGE 2
+#define _AVERAGE 0
+#define _DIFFUSE 1
+#define _METAPBR 2
 #define _REFLECT 3
-#define _RINDICE 4
 
 //
 vec4 imageLoadAtomic(in int IMG_STORE, in ivec2 coord, in int layer) {
@@ -301,13 +301,12 @@ min16float3 FFX_DNSR_Reflections_LoadRadianceReprojected(int2 pixel_coordinate) 
 min16float3 FFX_DNSR_Reflections_SampleRadianceHistory  (float2 uv)             { return tex2DBiLinear(_DIFFUSE, uv, 1).xyz;;  }
 
 //
-void  FFX_DNSR_Reflections_StoreRadianceReprojected   (int2 pixel_coordinate, min16float3 value)                            { imageStoreRGB(_DIFFUSE, pixel_coordinate, value, 2); }
-void  FFX_DNSR_Reflections_StoreTemporalAccumulation  (int2 pixel_coordinate, min16float3 new_signal, min16float new_variance) { imageStore(_DIFFUSE, pixel_coordinate, vec4(new_signal, new_variance), 0); }
-void  FFX_DNSR_Reflections_StorePrefilteredReflections(int2 pixel_coordinate, min16float3   radiance, min16float     variance) { imageStore(_DIFFUSE, pixel_coordinate, vec4(radiance  ,     variance), 0); };
+void FFX_DNSR_Reflections_StoreRadianceReprojected   (int2 pixel_coordinate, min16float3 value)                            { imageStoreRGB(_DIFFUSE, pixel_coordinate, value, 2); }
+void FFX_DNSR_Reflections_StoreTemporalAccumulation  (int2 pixel_coordinate, min16float3 new_signal, min16float new_variance) { imageStore(_DIFFUSE, pixel_coordinate, vec4(new_signal, new_variance), 0); }
+void FFX_DNSR_Reflections_StorePrefilteredReflections(int2 pixel_coordinate, min16float3   radiance, min16float     variance) { imageStore(_DIFFUSE, pixel_coordinate, vec4(radiance  ,     variance), 0); };
 
 //
 min16float3 FFX_DNSR_Reflections_SampleAverageRadiance        (float2 uv) { return (tex2DBiLinear(_AVERAGE, uv, 0)).xyz; }
-min16float3 FFX_DNSR_Reflections_SamplePreviousAverageRadiance(float2 uv) { return (tex2DBiLinear(_AVERAGE, uv, 1)).xyz; }
 void  FFX_DNSR_Reflections_StoreAverageRadiance         (int2 pixel_coordinate, min16float3 value) { imageStoreRGB(_AVERAGE, pixel_coordinate, value, 0); };
 
 //

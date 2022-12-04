@@ -50,5 +50,7 @@ void main() {
     ivec2 groupThreadId = ivec2(FFX_DNSR_Reflections_RemapLane8x8(gl_LocalInvocationIndex));
     ivec2 dispatchThreadId = (dispatchThreadId_ / 8) * 8 + groupThreadId;
 
-    FFX_DNSR_Reflections_Reproject(dispatchThreadId, groupThreadId, targetSize, temporalStability, maxNumSamples);
+    //if (any(greaterThan(texelFetch(FBOF[framebuffers[1]], ivec3(dispatchThreadId, 0), 0).xyz, 0.0001f.xxx))) {
+        FFX_DNSR_Reflections_Reproject(dispatchThreadId, groupThreadId, targetSize, temporalStability, maxNumSamples);
+    //}
 }

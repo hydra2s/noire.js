@@ -26,7 +26,10 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     loadSets: "u16[4]",
     storeSets: "u16[4]",
     frameCount: "u32",
-    linearSampler: "u32"
+    linearSampler: "u16",
+    nearestSampler: "u16",
+    backgroundImageView: "u16",
+    _: "u16"
 }));
 
 //
@@ -69,6 +72,10 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     await B.awaitFenceAsync(deviceObj.handle[0], fenceC[0]);*/
 
     //
+    const textureLoader = new K.TextureLoaderObj(deviceObj.handle, {
+        pipelineLayout: descriptorsObj.handle[0],
+        memoryAllocator: memoryAllocatorObj.handle[0],
+    });
     const gltfLoaderA = new K.GltfLoaderObj(deviceObj.handle, {
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
@@ -223,8 +230,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     //
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
-    const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
+    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
@@ -243,6 +250,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         code: await fs.promises.readFile("shaders/denoise-phase-2.comp.spv")
     });*/
 
+    //
+    const bgImageView = await textureLoader.load("./background.hdr");
 
     //
     let mouseMoving = false;
@@ -305,7 +314,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
                 addressModeV: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
                 addressModeW: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,
             }
-        }).DSC_ID
+        }).DSC_ID,
+        backgroundImageView: bgImageView
     });
 
     //
@@ -379,6 +389,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         //
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
+        postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstage(cmdBuf);
 
         //
@@ -521,8 +532,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             queueIndex: 0,
             cmdBufFn: (cmdBuf)=>{
                 descriptorsObj.cmdUpdateUniform(cmdBuf, updateMatrices());
-            }//,
-            //manualFence: true
+            },
+            manualFence: true
         });
 
         // 

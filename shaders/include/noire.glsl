@@ -25,7 +25,10 @@ layout (set = 2, binding = 0, scalar) uniform MData {
     uint16_t loadSets[4];
     uint16_t storeSets[4];
     uint32_t frameCount;
-    uint32_t linearSampler;
+    uint16_t linearSampler;
+    uint16_t nearestSampler;
+    uint16_t backgroundImageView;
+    uint16_t _;
 };
 
 layout (push_constant) uniform PConst {
@@ -236,7 +239,7 @@ void imageStoreA(in int IMG_STORE, in ivec2 coord, in float A, in int layer) {
 float FFX_DNSR_Reflections_GetRandom(int2 pixel_coordinate) { return gold_noise(float2(pixel_coordinate), 0.0 + float(frameCount)) * 0.5f + 0.5f; }
 
 //
-float FFX_DNSR_Shadows_GetDepthSimilaritySigma() { return 1.f; }
+float FFX_DNSR_Shadows_GetDepthSimilaritySigma() { return 0.0001f; }
 float FFX_DNSR_Reflections_LoadDepth       (int2 pixel_coordinate)  { return divW(texelFetch(_POSITION, pixel_coordinate, 0)).z; }
 float FFX_DNSR_Reflections_LoadDepthHistory(int2 pixel_coordinate)  { return divW(texelFetch(_POSITION, pixel_coordinate, 1)).z; }
 float FFX_DNSR_Reflections_SampleDepthHistory(float2 uv)            { return divW(textureLod(_POSITION, uv, 1)).z; }
@@ -269,9 +272,9 @@ min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(int2 pixel_coordina
 min16float3 FFX_DNSR_Reflections_SampleWorldSpaceNormalHistory(float2 uv)           { return normalize((modelView[1] * vec4(textureLod(_NORMAL, uv, 1).rgb, 0)).xyz); }
 
 // 
-min16float FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return /*texelFetch(_PBR, pixel_coordinate, 0).r*/ 1.f; }
-min16float FFX_DNSR_Reflections_LoadRoughnessHistory(int2 pixel_coordinate) { return /*texelFetch(_PBR, pixel_coordinate, 1).r*/ 1.f; }
-min16float FFX_DNSR_Reflections_SampleRoughnessHistory(float2 uv)           { return /*textureLod(_PBR, uv, 1).r*/ 1.f; }
+min16float FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return texelFetch(_PBR, pixel_coordinate, 0).r; }
+min16float FFX_DNSR_Reflections_LoadRoughnessHistory(int2 pixel_coordinate) { return texelFetch(_PBR, pixel_coordinate, 1).r; }
+min16float FFX_DNSR_Reflections_SampleRoughnessHistory(float2 uv)           { return textureLod(_PBR, uv, 1).r; }
 
 // we has only static, lol
 float2 FFX_DNSR_Reflections_LoadMotionVector(int2 pixel_coordinate) { return float2(0.f, 0.f); }
@@ -324,6 +327,7 @@ min16float3 FFX_DNSR_Reflections_WorldSpaceToScreenSpacePrevious(in min16float3 
 }
 
 //
-bool FFX_DNSR_Reflections_IsMirrorReflection(float roughness) { return /*roughness < 0.001f*/ false; };
-bool FFX_DNSR_Reflections_IsGlossyReflection(float roughness) { /*roughness >= 0.001f;*/ return true; };
+bool FFX_DNSR_Reflections_IsMirrorReflection(float roughness) { return /*roughness < 0.01f && roughness >= 0.0001f*/false; };
+bool FFX_DNSR_Reflections_IsGlossyReflection(float roughness) { return roughness >= 0.0001f; };
 #endif
+//any(greaterThan(texelFetch(FBOF[framebuffers[1]], ivec3(dispatchThreadId, 0), 0).xyz, 0.0001f.xxx))

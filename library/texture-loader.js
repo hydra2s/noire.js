@@ -23,9 +23,9 @@ const gmi = gm.subClass({imageMagick: true});
 const XYZtoRGB = ([X, Y, Z]) => {
     //X, Y and Z input refer to a D65/2° standard illuminant.
     //sR, sG and sB (standard RGB) output range = 0 ÷ 255
-    let var_R = var_X *  3.2406 + var_Y * -1.5372 + var_Z * -0.4986
-    let var_G = var_X * -0.9689 + var_Y *  1.8758 + var_Z *  0.0415
-    let var_B = var_X *  0.0557 + var_Y * -0.2040 + var_Z *  1.0570
+    let var_R = X *  3.2406 + Y * -1.5372 + Z * -0.4986
+    let var_G = X * -0.9689 + Y *  1.8758 + Z *  0.0415
+    let var_B = X *  0.0557 + Y * -0.2040 + Z *  1.0570
     return [var_R, var_G, var_B].map(n => n > 0.0031308 ? 1.055 * Math.pow(n, (1 / 2.4)) - 0.055 : 12.92 * n)
 }
 
@@ -56,14 +56,14 @@ class TextureLoaderObj extends B.BasicObj {
         const self = this;
         switch(ext) {
             case ".hdr":
-            status = new Promise(async (r,rj)=>{
-                this.hdrloader.on('load', async function() {
+            status = await new Promise(async (r,rj)=>{
+                fs.createReadStream(relative + file).pipe(this.hdrloader.on('load', async function() {
                     const image = this;
 
                     // covnert into fp16 + RGB from XYZ
                     const fp16data = new Float16Array(image.width*image.height*4);
                     for (let I=0;I<image.width*image.height;I++) {
-                        const pixel3f = XYZtoRGB(image.subarray(I*3, I*3+3));
+                        const pixel3f = XYZtoRGB(image.data.subarray(I*3, I*3+3));
                         fp16data.set([pixel3f[0], pixel3f[1], pixel3f[2], 1.0], I*4);
                     }
 
@@ -71,15 +71,13 @@ class TextureLoaderObj extends B.BasicObj {
                     texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R16G16B16A16_SFLOAT, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
                     
                     //
-                    texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 2 }));
+                    texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 64 }));
                     texBuf.map().set(fp16data.buffer);
                     texBuf.unmap();
 
                     r(1);
-                });
+                }));
             });
-            fs.createReadStream(relative + file).pipe(this.hdrloader);
-            status = await status;
             break;
 
             case ".bmp":

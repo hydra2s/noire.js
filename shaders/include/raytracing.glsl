@@ -8,7 +8,6 @@ struct RayTracedData {
     uint64_t materialAddress;
     vec2 texcoord;
     vec4 origin;
-    vec4 originalOrigin;
     //mat3x4 objectToWorld;
     //mat3x4 worldToObject;
     vec3 surfaceNormal;
@@ -29,17 +28,22 @@ RayTracedData rayData;
 void rasterize(in uvec2 coord) {
     const vec3 bary = texelFetch(FBOF[framebuffers[1]], ivec3(coord, 0), 0).xyz;
     const uvec4 sys = texelFetch(FBOU[framebuffers[0]], ivec3(coord, 0), 0);
-    const vec4 pos  = vec4(divW(texelFetch(FBOF[framebuffers[2]], ivec3(coord, 0), 0)).xyz, 1.f);
 
     //
     rayData.normal = f16vec4(0.f, 0.f, 0.5f, 0.f);
     rayData.diffuse = f16vec4(0.f.xxx, 1.f);
     rayData.surfaceNormal = normalize((modelView[0] * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
-    rayData.originalOrigin = pos;
+    rayData.bary = vec3(0.f.xxx);
+
+    //
+    vec4 _camera = divW(vec4((vec2(coord)/vec2(width, height)*2.f-1.f)*(1.f, 1.f), 1.f, 1.f) * inverse(perspective));
+    vec4 _origin = (_camera * modelViewInverse[0]);
+    rayData.dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
+    rayData.origin = _origin;
     rayData.bary = bary;
 
     //
-    if (any(greaterThan(bary, 0.f.xxx))) {
+    if (any(greaterThan(bary, 0.0001f.xxx))) {
         nrNode nodeData = nrNode(nodeBuffer) + sys.x;
         nrMesh meshData = nrMesh(nodeData.meshBuffer);
         nrGeometry geometryData = nrGeometry(meshData.address) + sys.y;
@@ -54,10 +58,14 @@ void rasterize(in uvec2 coord) {
         //rayData.worldToObject = transpose(rayQueryGetIntersectionWorldToObjectEXT(rayQuery, true));
         //rayData.origin = vec4(vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f) * rayData.objectToWorld, rayQueryGetIntersectionTEXT(rayQuery, true));
 
-        vec4 _camera = divW(pos * perspectiveInverse);
+        //
+        vec4 pos = divW(texelFetch(FBOF[framebuffers[2]], ivec3(coord, 0), 0));
+        vec4 _camera = divW(pos * inverse(perspective));
         vec4 _origin = divW(_camera * modelViewInverse[0]);
-        rayData.dir = normalize((modelView[0] * normalize(_camera)).xyz);
+        rayData.dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
         rayData.origin = _origin;
+
+        //
         rayData.texcoord = texcoord.xy;
         rayData.materialAddress = geometryData.materialAddress;
         rayData.indices = sys;
@@ -82,6 +90,8 @@ void rasterize(in uvec2 coord) {
         rayData.normal = readTexData(materialData.normal, texcoord.xy);;
         rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
         rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
+    } else {
+        rayData.bary = vec3(0.f);
     }
 
     //
@@ -95,6 +105,7 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
     rayData.origin = vec4(far, 1.f);
     rayData.surfaceNormal = normalize((modelView[0] * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
     rayData.dir = dir;
+    rayData.bary = vec3(0.f.xxx);
 
     //
     rayQueryEXT rayQuery;
@@ -149,6 +160,7 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
         vec4 _origin = vec4(vertex.xyz, 1.f) * nodeData.transform; //vec4(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true) * vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f), rayQueryGetIntersectionTEXT(rayQuery, true));
         //rayData.dir = normalize(rayData.origin.xyz - _origin.xyz);
         rayData.origin = _origin;
+        rayData.bary = bary;
 
         //
         rayData.texcoord = texcoord.xy;
@@ -234,7 +246,7 @@ GIData globalIllumination() {
     float diff = sqrt(max(dot(rayData.surfaceNormal, lightDir), 0.0));
 
     //
-    const float epsilon = 0.001f * pow(rayData.originalOrigin.z, 256.f);
+    const float epsilon = 0.001f * pow(texelFetch(FBOF[framebuffers[1]], ivec3(gl_GlobalInvocationID.xy, 0), 0).z, 256.f);
     const vec3 diffuseCol = rayData.diffuse.xyz * (diff + 0.2f) * 1.f;
 
     //
@@ -244,17 +256,19 @@ GIData globalIllumination() {
     //
     bool shadowed = true;
     float reflCoef = 1.f;
-    vec3 reflDir = rayData.dir;
+    vec3 reflDir = normalize(rayData.dir);
     vec3 reflCol = 1.f.xxx;
 
     //
     vec2 C = vec2(gl_GlobalInvocationID.xy);
     float F = frameCount % 256;
-
+//lcts
     //
+
+    bool hasHit = false;
     for (int I=0;I<2;I++) {
-        if ( dot(energy.xyz, 1.f.xxx) > 0.001f && any(greaterThan(rayData.bary, 0.f.xxx)) ) {
-            {   // shading
+        if ((hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {
+            // shading
                 lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
                 reflCol = 1.f.xxx;
 
@@ -277,7 +291,7 @@ GIData globalIllumination() {
                     const float weight = 2.f * (1.f - cosL);
 
                     //
-                     reflDir = normalize(cosineWeightedPoint(TBN, C, F));
+                    reflDir = normalize(cosineWeightedPoint(TBN, C, F));
                     lightDir = coneSample(LC * inversesqrt(dt), cosL, C, F);
 
                     // 
@@ -285,25 +299,25 @@ GIData globalIllumination() {
                     const vec3 directLight = (sqrt(max(dot(TBN[2], lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f) * rayData.diffuse.xyz;
 
                     //
-                     fcolor += vec4(lightCol * energy.xyz * directLight, 0.f);
+                    fcolor += vec4(lightCol * energy.xyz * directLight, 0.f);
                     reflCol *= min(max(rayData.diffuse.xyz, 0.hf.xxx), 1.hf);
                 }
 
                 // if reflection
                 energy *= vec4(max(min(reflCol, 1.f.xxx), 0.f.xxx), 1.f);
-            }
-
+            
             // next step
             if (dot(energy.xyz, 1.f.xxx) > 0.001f && I < 1) {
                 rayTrace(rayData.origin.xyz + rayData.surfaceNormal * epsilon, rayData.origin.xyz + rayData.surfaceNormal * epsilon + reflDir * 10000.f, reflDir);
             }
         } else {
+            fcolor += vec4(energy.xyz * texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(rayData.dir)).xyz, 0.f);
             break;
         }
     }
 
     //
     GIData data;
-    data.color = vec4(clamp(fcolor.xyz/fcolor.w, 0.001f, 1.f), /*fcolor.w*/1.f);
+    data.color = vec4(fcolor.xyz/fcolor.w, 1.f);
     return data;
 }

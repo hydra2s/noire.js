@@ -81,3 +81,14 @@ vec3 coneSample(in vec3 N, in float cosTmax, in vec2 r, in float F) {
     return normalize(T * (cos(r.x) * s) + B * (sin(r.x) * s) + N * r.y);
 };
 
+//
+vec2 lcts(in vec3 direct) { 
+  return vec2(fma(atan(direct.z,direct.x),INV_TWO_PI,0.5f), acos(direct.y)*INV_PI); 
+};
+
+//
+vec3 dcts(in vec2 hr) { 
+  hr = fma(hr,vec2(TWO_PI,PI), vec2(-PI,0.f));
+  const float up=-cos(hr.y), over=sqrt(fma(up,-up,1.f)); 
+  return vec3(cos(hr.x)*over ,up , sin(hr.x)*over); 
+};

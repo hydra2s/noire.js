@@ -32,7 +32,7 @@ void main() {
     GIData GI = globalIllumination(/*, data.origin.xyz + worldNormal * epsilon, data.origin.xyz + worldNormal * epsilon + reflDir * 10000.f, reflDir*/);
 
     //
-    vec3 fcolor = pow(GI.color.xyz, 1.f.xxx/2.2f);
+    vec3 fcolor = GI.color.xyz;
     ivec3 coord = ivec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, 0);
 
     //

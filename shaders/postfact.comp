@@ -26,27 +26,5 @@ layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 
 //
 void main() {
-    const vec3 bary = texelFetch(FBOF[framebuffers[1]], ivec3(gl_GlobalInvocationID.xy, 0), 0).xyz;
-    const uvec4 sys = texelFetch(FBOU[framebuffers[0]], ivec3(gl_GlobalInvocationID.xy, 0), 0);
 
-    //
-    rayData.normal = f16vec4(0.f, 0.f, 0.5f, 0.f);
-    rayData.diffuse = f16vec4(0.f.xxx, 1.f);
-    rayData.surfaceNormal = normalize((modelView[0] * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
-    rayData.bary = vec3(0.f.xxx);
-
-    //
-    vec4 _camera = divW(vec4((vec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)/vec2(width, height)*2.f-1.f)*vec2(1.f, -1.f), 1.f, 1.f) * inverse(perspective));
-    vec4 _origin = (_camera * modelViewInverse[0]);
-    rayData.dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
-    rayData.dir.y *= -1.f;
-    rayData.origin = _origin;
-    rayData.bary = bary;
-
-    // fix broken skybox?
-    if (!any(greaterThan(rayData.bary, 0.0001f.xxx))) {
-        const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(rayData.dir));
-        imageStore(_DIFFUSE, ivec2(gl_GlobalInvocationID.xy), vec4(env.xyz, 1.f), 0);
-        imageStore(_METAPBR, ivec2(gl_GlobalInvocationID.xy), vec4(0.f.xxx, 0.f), 0);
-    }
 }

@@ -149,16 +149,18 @@ class ImageSetObj extends B.BasicObj {
         this.swapId = 0;
     }
 
+    cmdSwapstageId(cmdBuf, I = 0) {
+        this.images[I].cmdCopyToImage(cmdBuf, this.images[I].handle[0], [{
+            extent: this.extent[I],
+            srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I], layerCount: this.layerCount[I] },
+            dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0                 , layerCount: this.layerCount[I] }
+        }]);
+    }
+
     cmdSwapstage(cmdBuf) {
         const cInfo = this.cInfo;
         this.swapId = (this.swapId+1)%2;
-        this.images.map((IMG, I)=>{
-            IMG.cmdCopyToImage(cmdBuf, IMG.handle[0], [{
-                extent: this.extent[I],
-                srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I], layerCount: this.layerCount[I] },
-                dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0                 , layerCount: this.layerCount[I] }
-            }]);
-        });
+        this.images.map((IMG, I)=> {if (!this.cInfo.manualSwap[I]) { this.cmdSwapstageId(cmdBuf, I) }});
     }
 
     cmdBackstage(cmdBuf) {
@@ -169,11 +171,6 @@ class ImageSetObj extends B.BasicObj {
                     extent: this.extent[I],
                     srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0, layerCount: 1 },
                     dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 1, layerCount: 1 }
-                }]);
-                IMG.cmdCopyToImage(cmdBuf, IMG.handle[0], [{
-                    extent: this.extent[I],
-                    srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I], layerCount: 1 },
-                    dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I]+1, layerCount: 1 }
                 }]);
             }
         });

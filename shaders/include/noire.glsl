@@ -205,15 +205,18 @@ vec4 tex2DBNearest( in uint F, in vec2 texCoord_f, in int layer ) {
 #define sizeof(Type) (uint64_t(Type(uint64_t(0))+1))
 
 // framebuffers
+#define _INDICES 0
+#define _BARY 1
 #define _POSITION 2
-#define _NORMAL 3
-#define _PBR 4
+#define _TEXCOORD 3
 
 // image sets
 #define _AVERAGE 0
-#define _DIFFUSE 1
+#define _FATOMIC 1
 #define _METAPBR 2
-#define _REFLECT 3
+#define _DIFFUSE 3
+#define _TBNDATA 4
+#define _REFLECT 5
 
 //
 vec4 imageLoadAtomic(in int IMG_STORE, in ivec2 coord, in int layer) {
@@ -315,9 +318,9 @@ void FFX_DNSR_Reflections_StoreVariance(int2 pixel_coordinate, min16float  value
 min16float FFX_DNSR_Reflections_SampleVarianceHistory(float2 uv)           { return tex2DBiLinear(_DIFFUSE, uv, 1).w; }
 
 //
-min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormal(int2 pixel_coordinate)        { return normalize((modelView[0] * vec4(texelFetch(_NORMAL, pixel_coordinate, 0).rgb, 0)).xyz); }
-min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(int2 pixel_coordinate) { return normalize((modelView[1] * vec4(texelFetch(_NORMAL, pixel_coordinate, 1).rgb, 0)).xyz); }
-min16float3 FFX_DNSR_Reflections_SampleWorldSpaceNormalHistory(float2 uv)           { return normalize((modelView[1] * vec4(textureLod(_NORMAL, uv, 1).rgb, 0)).xyz); }
+min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormal(int2 pixel_coordinate)        { return normalize((modelView[0] * vec4(imageLoad(_TBNDATA, pixel_coordinate, 0).rgb, 0)).xyz); }
+min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(int2 pixel_coordinate) { return normalize((modelView[1] * vec4(imageLoad(_TBNDATA, pixel_coordinate, 1).rgb, 0)).xyz); }
+min16float3 FFX_DNSR_Reflections_SampleWorldSpaceNormalHistory(float2 uv)           { return normalize((modelView[1] * vec4(tex2DBiLinear(_TBNDATA, uv, 1).rgb, 0)).xyz); }
 
 // 
 min16float FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return imageLoad(_METAPBR, pixel_coordinate, 0).r; }

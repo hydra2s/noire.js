@@ -21,11 +21,10 @@
 #include "include/noire.glsl"
 
 //
-layout (location = 0) out uvec4 fIndices;
-layout (location = 1) out vec4 fBary;
-layout (location = 2) out vec4 fPos;
-layout (location = 3) out vec4 fNormal;
-layout (location = 4) out vec4 fPBR;
+layout (location = _INDICES) out uvec4 fIndices;
+layout (location = _BARY) out vec4 fBary;
+layout (location = _POSITION) out vec4 fPos;
+layout (location = _TEXCOORD) out vec4 fTex;
 
 //
 layout (location = 0) pervertexEXT in Inputs {
@@ -51,10 +50,9 @@ void main() {
 	if (transparency <= 0.f) { discard; };
 
 	//
+	fTex = texcoord;
 	fPos = vec4(gl_FragCoord.xy/vec2(width, height)*2.f-1.f, gl_FragCoord.z, 1.f);
 	fPos.y *= -1.f;
 	fBary = vec4(gl_BaryCoordEXT, gl_FragCoord.z);
 	fIndices = V[0].vIndices;
-	fNormal = vec4(normalize(normal), 1.f);
-	fPBR = vec4(max(PBR.rgb, 0.0001f), 1.f);
 }

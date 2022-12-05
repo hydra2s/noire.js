@@ -88,23 +88,16 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
                     clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
                 }
             },
-            {   // STUB0
+            {   // position of depth-data
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
                 dynamicState: {
                     clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
                 }
             },
-            {   // STUB1
+            {   // texcoords
                 blend: {},
-                format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
-                dynamicState: {
-                    clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
-                }
-            },
-            {   // STUB2
-                blend: {},
-                format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
+                format: V.VK_FORMAT_R16G16B16A16_SFLOAT, // V.VK_FORMAT_R16G16B16A16_UNORM
                 dynamicState: {
                     clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
                 }
@@ -141,16 +134,19 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             // average
             {width: frameSize[0]>>3, height: frameSize[1]>>3, depth: 1},
 
-            // diffuse
-            {width: frameSize[0], height: frameSize[1], depth: 1},
+            // float atomic-data (reserved)
+            {width: frameSize[0]<<2, height: frameSize[1], depth: 1},
 
             // meta_pbr_unorm
             {width: frameSize[0], height: frameSize[1], depth: 1},
 
-            // reflection
+            // diffuse
             {width: frameSize[0], height: frameSize[1], depth: 1},
 
-            // position
+            // TBN, normal mapped
+            {width: frameSize[0], height: frameSize[1], depth: 1},
+
+            // reflection
             {width: frameSize[0], height: frameSize[1], depth: 1},
         ],
 
@@ -158,16 +154,18 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
 
-        // for original, previous, reprojected
-        layerCount: [2, 3, 2, 2, 2],
+        // 
+        layerCount: [1, 1, 2, 3, 5, 1],
+        manualSwap: [false, false, false, false, false, true],
 
         //
         formats: [
             V.VK_FORMAT_R16G16B16A16_SFLOAT, 
-            V.VK_FORMAT_R16G16B16A16_SFLOAT, 
+            V.VK_FORMAT_R32_SFLOAT,
             V.VK_FORMAT_R8G8B8A8_UNORM, 
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
-            V.VK_FORMAT_R32G32B32A32_SFLOAT
+            V.VK_FORMAT_R16G16B16A16_SFLOAT,
+            V.VK_FORMAT_R16G16B16A16_SFLOAT
         ]
     });
 
@@ -232,6 +230,11 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         code: await fs.promises.readFile("shaders/postfact.comp.spv")
     });
 
+    const precacheObj = deviceObj.createComputePipeline({
+        pipelineLayout: descriptorsObj.handle[0],
+        code: await fs.promises.readFile("shaders/precache.comp.spv")
+    });
+
     //
     const bgImageView = await textureLoader.load("./background.hdr");
 
@@ -272,8 +275,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             framebufferObj.colorImageViews[0].DSC_ID, 
             framebufferObj.colorImageViews[1].DSC_ID, 
             framebufferObj.colorImageViews[2].DSC_ID, 
-            framebufferObj.colorImageViews[3].DSC_ID, 
-            framebufferObj.colorImageViews[4].DSC_ID
+            framebufferObj.colorImageViews[3].DSC_ID
         ],
         loadSets: [
             imageSetObj.imageViews[0][0].DSC_ID,
@@ -382,12 +384,15 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         framebufferObj.cmdToGeneral(cmdBuf);
 
         //
+        precacheObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
+        imageSetObj.cmdSwapstage(cmdBuf);
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
+        imageSetObj.cmdSwapstage(cmdBuf);
         postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstage(cmdBuf);
 
         //
-        denoiseDiffuse(cmdBuf);
+        //denoiseDiffuse(cmdBuf);
 
         //
         pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));

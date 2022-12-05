@@ -194,6 +194,7 @@ bool shadowTrace(in vec3 origin, in vec3 far, in vec3 dir) {
 struct GIData {
     f16vec4 color;
     float nearT;
+    float roughness;
 };
 
 //
@@ -223,7 +224,7 @@ GIData globalIllumination() {
 
     //
     uvec4 indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u);
-    float roughness = 1.f;
+    float roughness = rayData.PBR.g;
     float nearT = 0.f;
     bool hasHit = false;
 
@@ -240,7 +241,7 @@ GIData globalIllumination() {
                     f16mat3x3 TBN = f16mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
 
                     // if reflection
-                    if (unorm(gold_noise(C, 1.0+F)) <= (reflCoef = mix(pow(1.f - max(dot(vec3(TBN[2]), -reflDir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b)))) {
+                    if (random_seeded(C, 1.0+F) <= (reflCoef = mix(pow(1.f - max(dot(vec3(TBN[2]), -reflDir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b)))) {
                         reflDir = normalize(mix(normalize(reflect(rayData.dir, vec3(TBN[2]))), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
                         if (I == 0) roughness = max(float(rayData.PBR.g), 0.0002f);
                         //reflCol *= min(max(mix(1.hf.xxx, rayData.diffuse.xyz, rayData.PBR.b), 0.hf), 1.hf);
@@ -248,7 +249,7 @@ GIData globalIllumination() {
                     } else 
 
                     // if diffuse
-                    if (unorm(gold_noise(C, 2.0+F)) < 1.f) {
+                    if (random_seeded(C, 2.0+F) < 1.f) {
                         const vec3 SO = lightPos.xyz + (vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz;
                         const vec3 LC = SO - rayData.origin.xyz;
                         const float dt = dot(LC, LC);
@@ -289,5 +290,6 @@ GIData globalIllumination() {
     GIData data;
     data.color = f16vec4(fcolor.xyz/fcolor.w, 1.f);
     data.nearT = nearT;
+    data.roughness = roughness;
     return data;
 }

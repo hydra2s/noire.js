@@ -30,9 +30,56 @@ const float INV_SQRT_OF_2PI = 0.39894228040143267793994605993439;
 //
 int counter = 0;
 
+
+
+// A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
+uint hash( uint x ) {
+    x += ( x << 10u );
+    x ^= ( x >>  6u );
+    x += ( x <<  3u );
+    x ^= ( x >> 11u );
+    x += ( x << 15u );
+    return x;
+}
+
+
+
+// Compound versions of the hashing algorithm I whipped together.
+uint hash( uvec2 v ) { return hash( v.x ^ hash(v.y)                         ); }
+uint hash( uvec3 v ) { return hash( v.x ^ hash(v.y) ^ hash(v.z)             ); }
+uint hash( uvec4 v ) { return hash( v.x ^ hash(v.y) ^ hash(v.z) ^ hash(v.w) ); }
+
+
+
+// Construct a float with half-open range [0:1] using low 23 bits.
+// All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
+float floatConstruct( uint m ) {
+    const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
+    const uint ieeeOne      = 0x3F800000u; // 1.0 in IEEE binary32
+
+    m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+    m |= ieeeOne;                          // Add fractional part to 1.0
+
+    float  f = uintBitsToFloat( m );       // Range [1:2]
+    return fract(f - 1.0);                 // Range [0:1]
+}
+
+
+
+// Pseudo-random value in half-open range [0:1].
+float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
+float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
+float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
+float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
+
 //
 float gold_noise(in vec2 xy, in float seed){
     return fract(tan(distance(xy*PHI, xy)*(seed + float(counter++)))*xy.x)*2.f-1.f;
+}
+
+//
+float random_seeded(in vec2 xy, in float seed) {
+    return random(vec4(xy, seed, float(counter++)));
 }
 
 //
@@ -40,9 +87,14 @@ float unorm(in float snorm) {
     return snorm * 0.5f + 0.5f;
 }
 
+//
+float snorm(in float snorm) {
+    return snorm * 2.f - 1.f;
+}
+
 // 
 vec3 cosineWeightedPoint(in vec2 uv, in float F) {
-    uv = vec2(unorm(gold_noise(uv, F+1.f)), unorm(gold_noise(uv, F+2.f)));
+    uv = vec2(random_seeded(uv, F+1.f), random_seeded(uv, F+2.f));
     const float radial = sqrt(uv.x);
     const float theta = TWO_PI * uv.y;
     const float x = radial * cos(theta);
@@ -57,8 +109,8 @@ vec3 cosineWeightedPoint(in mat3x3 tbn, in vec2 uv, in float F) {
 
 // TODO: replace by real tangent
 /*vec3 cosineWeightedDirection(in vec2 xy, float seed, vec3 normal) {
-   float u = unorm(gold_noise(xy, seed + 1.f));
-   float v = unorm(gold_noise(xy, seed + 2.f));
+   float u = random_seeded(xy, seed + 1.f);
+   float v = random_seeded(xy, seed + 2.f);
    float r = sqrt(u);
    float angle = 6.283185307179586 * v;
     // compute basis from normal
@@ -83,7 +135,7 @@ void genTB(in vec3 N, out vec3 T, out vec3 B) {
 
 // TODO: replace by real tangent
 vec3 coneSample(in vec3 N, in float cosTmax, in vec2 r, in float F) {
-    r = vec2(unorm(gold_noise(r, F+1.f)), unorm(gold_noise(r, F+2.f)));
+    r = vec2(random_seeded(r, F+1.f), random_seeded(r, F+2.f));
     vec3 T, B; genTB(N, T, B);
     r.x *= 2.0 * PI;
     r.y = 1.0 - r.y * (1.0 - cosTmax);

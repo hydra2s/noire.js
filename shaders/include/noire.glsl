@@ -285,7 +285,7 @@ void imageSetStoreRF(in int IMG_STORE, in ivec2 coord, in float R, in int layer)
 
 
 //
-float FFX_DNSR_Reflections_GetRandom(int2 pixel_coordinate) { return gold_noise(float2(pixel_coordinate), 0.0 + float(frameCount)) * 0.5f + 0.5f; }
+float FFX_DNSR_Reflections_GetRandom(int2 pixel_coordinate) { return random_seeded(float2(pixel_coordinate), 0.0 + float(frameCount)) * 0.5f + 0.5f; }
 
 //
 float FFX_DNSR_Shadows_GetDepthSimilaritySigma() { return 0.01f; }

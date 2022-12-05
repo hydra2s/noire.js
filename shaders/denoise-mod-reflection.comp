@@ -53,8 +53,7 @@ struct rproj {
 rproj reflectionReproj(in uvec2 coord) 
 {
     //
-    /*
-    vec4 prevPos = imageLoad(_POSITION);
+    vec4 prevPos = divW(texelFetch(FBOF[framebuffers[_POSITION]], ivec3(coord, 1), 0));
     vec4 prevCamera = divW(prevPos * inverse(perspective));
     vec4 prevOrigin = (prevCamera * modelViewInverse[1]);
     vec3 prevDir = normalize((modelView[1] * vec4(normalize(prevCamera.xyz), 0.f)).xyz);
@@ -92,11 +91,8 @@ rproj reflectionReproj(in uvec2 coord)
     ot.motion = ndc(pview.xyz).xy - ndc(prevPView.xyz).xy;
     ot.from = prevPView;
     ot.to = pview;
-    return ot;*/
-
-    rproj ot;
     return ot;
-};
+}
 
 //
 void accumulate(in rproj prj) {
@@ -105,7 +101,7 @@ void accumulate(in rproj prj) {
 
     vec4 meta = imageLoad(_METAPBR, _to, 0);
     //if (meta.r < 0.01f) {
-        imageAccumAtomic(_REFLECT, _to, imageLoad(_DIFFUSE, _from, 1), 0);
+        imageAccumAtomic(_FATOMIC, _to, imageLoad(_DIFFUSE, _from, 1), 0);
     //}
 }
 
@@ -120,6 +116,6 @@ void main() {
     //
     //accumulate(reflectionReproj(gl_GlobalInvocationID.xy));
 
-    //vec4 currentMeta = imageLoad(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 0);
+    vec4 currentMeta = imageLoad(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 0);
     //imageStore(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(currentMeta.x, motionVector, currentMeta.w), 0);
 }

@@ -14,6 +14,7 @@
 #extension GL_EXT_demote_to_helper_invocation : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
 #extension GL_EXT_shader_atomic_float : enable
+//#extension ARB_shading_language_packing : enable
 
 //
 #include "include/hlsl_map.glsl"
@@ -22,6 +23,7 @@
 
 //
 layout (location = _INDICES) out uvec4 fIndices;
+layout (location = _DERRIVE) out uvec4 fDerrive;
 layout (location = _BARY) out vec4 fBary;
 layout (location = _POSITION) out vec4 fPos;
 layout (location = _TEXCOORD) out vec4 fTex;
@@ -50,6 +52,15 @@ void main() {
 	if (transparency <= 0.f) { discard; };
 
 	//
+	const f16mat4x2 derrivative = f16mat4x2(
+		f16vec2(dFdx(gl_BaryCoordEXT.x), dFdy(gl_BaryCoordEXT.x)),
+		f16vec2(dFdx(gl_BaryCoordEXT.y), dFdy(gl_BaryCoordEXT.y)),
+		f16vec2(dFdx(gl_BaryCoordEXT.z), dFdy(gl_BaryCoordEXT.z)),
+		f16vec2(dFdx(gl_FragCoord.z), dFdy(gl_FragCoord.z))
+	);
+
+	//
+	fDerrive = uvec4(packFloat2x16(derrivative[0]), packFloat2x16(derrivative[1]), packFloat2x16(derrivative[2]), packFloat2x16(derrivative[3]));
 	fTex = texcoord;
 	fPos = vec4(gl_FragCoord.xy/vec2(width, height)*2.f-1.f, gl_FragCoord.z, 1.f);
 	fPos.y *= -1.f;

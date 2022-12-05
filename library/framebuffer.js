@@ -149,12 +149,21 @@ class ImageSetObj extends B.BasicObj {
         this.swapId = 0;
     }
 
-    cmdSwapstageId(cmdBuf, I = 0) {
-        this.images[I].cmdCopyToImage(cmdBuf, this.images[I].handle[0], [{
-            extent: this.extent[I],
-            srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I], layerCount: this.layerCount[I] },
-            dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0                 , layerCount: this.layerCount[I] }
-        }]);
+    cmdSwapstageId(cmdBuf, Idx = 0) {
+        if (Array.isArray(Idx)) {
+            Idx.map((I)=>this.images[I].cmdCopyToImage(cmdBuf, this.images[I].handle[0], [{
+                extent: this.extent[I],
+                srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I], layerCount: this.layerCount[I] },
+                dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0                 , layerCount: this.layerCount[I] }
+            }]));
+        } else {
+            this.images[Idx].cmdCopyToImage(cmdBuf, this.images[Idx].handle[0], [{
+                extent: this.extent[Idx],
+                srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[Idx], layerCount: this.layerCount[Idx] },
+                dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0                   , layerCount: this.layerCount[Idx] }
+            }]);
+        }
+        
     }
 
     cmdSwapstage(cmdBuf) {
@@ -169,8 +178,8 @@ class ImageSetObj extends B.BasicObj {
             if (this.layerCount[I] > 1) {
                 IMG.cmdCopyToImage(cmdBuf, IMG.handle[0], [{
                     extent: this.extent[I],
-                    srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0, layerCount: 1 },
-                    dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 1, layerCount: 1 }
+                    srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I] + 0, layerCount: 1 },
+                    dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I] + 1, layerCount: 1 }
                 }]);
             }
         });

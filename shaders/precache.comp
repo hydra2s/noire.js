@@ -26,8 +26,8 @@ layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 //
 void main() {
     const uvec2 coord = gl_GlobalInvocationID.xy;
-    const vec3 bary = texelFetch(FBOF[framebuffers[1]], ivec3(coord, 0), 0).xyz;
-    const uvec4 sys = texelFetch(FBOU[framebuffers[0]], ivec3(coord, 0), 0);
+    const vec3 bary = texelFetch(FBOF[framebuffers[_BARY]], ivec3(coord, 0), 0).xyz;
+    const uvec4 sys = texelFetch(FBOU[framebuffers[_INDICES]], ivec3(coord, 0), 0);
 
     //
     f16vec4 normal = f16vec4(0.f, 0.f, 0.5f, 0.f);
@@ -52,7 +52,7 @@ void main() {
         nrMaterial materialData = nrMaterial(geometryData.materialAddress);
 
         //
-        vec4 pos = divW(texelFetch(FBOF[framebuffers[2]], ivec3(coord, 0), 0));
+        vec4 pos = divW(texelFetch(FBOF[framebuffers[_POSITION]], ivec3(coord, 0), 0));
         _camera = divW(pos * inverse(perspective));
         _origin = divW(_camera * modelViewInverse[0]);
         dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
@@ -92,7 +92,10 @@ void main() {
         imageStore(_TBNDATA, ivec2(coord), f16vec4(TAN.xyz, 0.0), 2);
         imageStore(_TBNDATA, ivec2(coord), f16vec4(BIN.xyz, 0.0), 3);
         imageStore(_TBNDATA, ivec2(coord), f16vec4(NOR.xyz, 0.0), 4);
-        imageStore(_METAPBR, ivec2(gl_GlobalInvocationID.xy), PBR, 0);
+
+        //
+        const vec4 currentMeta = imageLoad(_METAPBR, ivec2(gl_GlobalInvocationID.xy), 0);
+        imageStore(_METAPBR, ivec2(gl_GlobalInvocationID.xy), vec4(currentMeta.r, PBR.gb, currentMeta.w), 0);
     } else {
         //
         vec4 _camera = divW(vec4((vec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)/vec2(width, height)*2.f-1.f)*vec2(1.f, -1.f), 1.f, 1.f) * inverse(perspective));

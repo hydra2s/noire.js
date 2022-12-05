@@ -165,50 +165,26 @@ uint readIndexData(in nrBinding binding, in uint index) {
     return index;
 };
 
-/*vec4 tex2DBiLinear( in uint F, in vec2 texCoord_f, in int layer )
-{
-    const vec2 imageSize = vec2(imageSize(SETF[loadSets[F]]).xy);
-    const ivec3 texCoord_i = ivec3(texCoord_f * imageSize.xy - 0.5f, layer);
-    const vec4 p0q0 = imageLoad(SETF[loadSets[F]], texCoord_i);
-    const vec4 p1q0 = imageLoad(SETF[loadSets[F]], texCoord_i + ivec3(1, 0, 0));
-    const vec4 p0q1 = imageLoad(SETF[loadSets[F]], texCoord_i + ivec3(0, 1, 0));
-    const vec4 p1q1 = imageLoad(SETF[loadSets[F]], texCoord_i + ivec3(1, 1, 0));
-    const float a = fract( texCoord_f.x * imageSize.x - 0.5f ); // Get Interpolation factor for X direction.
-    const vec4 pInterp_q0 = mix( p0q0, p1q0, a ); // Interpolates top row in X direction.
-    const vec4 pInterp_q1 = mix( p0q1, p1q1, a ); // Interpolates bottom row in X direction.
-    const float b = fract( texCoord_f.y * imageSize.y - 0.5f );// Get Interpolation factor for Y direction.
-    return mix( pInterp_q0, pInterp_q1, b ); // Interpolate in Y direction.
-};*/
-
 //
 vec4 tex2DBiLinear(in int IMG_STORE, in vec2 coord, in int layer) {
-    //return imageLoad(SETF[loadSets[IMG_STORE]], ivec3(coord, layer));
     return textureLod(sampler2DArray(FBOF[loadSets[IMG_STORE]], samplers[linearSampler]), vec3(coord, float(layer) /*/ textureSize(FBOF[framebuffers[TEX_STORE]], 0).z*/), 0.0);
 }
 
+//
 vec4 tex2DBNearest( in uint F, in vec2 texCoord_f, in int layer ) {
     const ivec3 texCoord_i = ivec3(texCoord_f * imageSize(SETF[loadSets[F]]).xy, layer);
     return imageLoad(SETF[loadSets[F]], texCoord_i);
 }
-
-//float linearize_depth(float d, float zNear,float zFar)
-//{
-    //return zNear * zFar / (zFar + d * (zNear - zFar));
-    //return 1.0f / (d * zFar - zNear);
-
-    //float z_n = 2.0 * d - 1.0;
-    //return 2.0 * zNear * zFar / (zFar + zNear - z_n * (zFar - zNear));
-    //return d;
-//}
 
 //
 #define sizeof(Type) (uint64_t(Type(uint64_t(0))+1))
 
 // framebuffers
 #define _INDICES 0
-#define _BARY 1
-#define _POSITION 2
-#define _TEXCOORD 3
+#define _DERRIVE 1
+#define _BARY 2
+#define _POSITION 3
+#define _TEXCOORD 4
 
 // image sets
 #define _AVERAGE 0
@@ -280,6 +256,11 @@ void imageStoreA(in int IMG_STORE, in ivec2 coord, in float A, in int layer) {
     imageStore(SETF[storeSets[IMG_STORE]], ivec3(coord, layer), C);
 }
 
+void imageStoreR(in int IMG_STORE, in ivec2 coord, in float R, in int layer) {
+    const vec4 C = vec4(R, imageLoad(SETF[storeSets[IMG_STORE]], ivec3(coord, layer)).gba);
+    imageStore(SETF[storeSets[IMG_STORE]], ivec3(coord, layer), C);
+}
+
 //
 #ifdef _ENABLE_FXD
 
@@ -304,18 +285,18 @@ min16float3 FFX_DNSR_Reflections_LoadRadianceReprojected(int2 pixel_coordinate) 
 min16float3 FFX_DNSR_Reflections_SampleRadianceHistory  (float2 uv)             { return tex2DBiLinear(_DIFFUSE, uv, 1).xyz;;  }
 
 //
-void FFX_DNSR_Reflections_StoreRadianceReprojected   (int2 pixel_coordinate, min16float3 value)                            { imageStoreRGB(_DIFFUSE, pixel_coordinate, value, 2); }
-void FFX_DNSR_Reflections_StoreTemporalAccumulation  (int2 pixel_coordinate, min16float3 new_signal, min16float new_variance) { imageStore(_DIFFUSE, pixel_coordinate, vec4(new_signal, new_variance), 0); }
-void FFX_DNSR_Reflections_StorePrefilteredReflections(int2 pixel_coordinate, min16float3   radiance, min16float     variance) { imageStore(_DIFFUSE, pixel_coordinate, vec4(radiance  ,     variance), 0); };
+void FFX_DNSR_Reflections_StoreRadianceReprojected   (int2 pixel_coordinate, min16float3 value)                               { imageStoreRGB(_DIFFUSE, pixel_coordinate, value, 2); };
+void FFX_DNSR_Reflections_StoreTemporalAccumulation  (int2 pixel_coordinate, min16float3 new_signal, min16float new_variance) { imageStore   (_DIFFUSE, pixel_coordinate, vec4(new_signal, new_variance), 0); };
+void FFX_DNSR_Reflections_StorePrefilteredReflections(int2 pixel_coordinate, min16float3   radiance, min16float     variance) { imageStore   (_DIFFUSE, pixel_coordinate, vec4(  radiance,     variance), 0); };
 
 //
-min16float3 FFX_DNSR_Reflections_SampleAverageRadiance        (float2 uv) { return (tex2DBiLinear(_AVERAGE, uv, 0)).xyz; }
-void  FFX_DNSR_Reflections_StoreAverageRadiance         (int2 pixel_coordinate, min16float3 value) { imageStoreRGB(_AVERAGE, pixel_coordinate, value, 0); };
+min16float3 FFX_DNSR_Reflections_SampleAverageRadiance(float2 uv) { return (tex2DBiLinear(_AVERAGE, uv, 0)).xyz; }
+void  FFX_DNSR_Reflections_StoreAverageRadiance(int2 pixel_coordinate, min16float3 value) { imageStoreRGB(_AVERAGE, pixel_coordinate, value, 0); };
 
 //
-min16float FFX_DNSR_Reflections_LoadVariance (int2 pixel_coordinate) {       return imageLoad    (_DIFFUSE, pixel_coordinate, 0).w; }
+min16float FFX_DNSR_Reflections_LoadVariance (int2 pixel_coordinate) {       return imageLoad    (_DIFFUSE, pixel_coordinate, 0).a; }
 void FFX_DNSR_Reflections_StoreVariance(int2 pixel_coordinate, min16float  value) { imageStoreA  (_DIFFUSE, pixel_coordinate, value, 0); }
-min16float FFX_DNSR_Reflections_SampleVarianceHistory(float2 uv)           { return tex2DBiLinear(_DIFFUSE, uv, 1).w; }
+min16float FFX_DNSR_Reflections_SampleVarianceHistory(float2 uv)           { return tex2DBiLinear(_DIFFUSE, uv, 1).a; }
 
 //
 min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormal(int2 pixel_coordinate)        { return normalize((modelView[0] * vec4(imageLoad(_TBNDATA, pixel_coordinate, 0).rgb, 0)).xyz); }
@@ -323,21 +304,21 @@ min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(int2 pixel_coordina
 min16float3 FFX_DNSR_Reflections_SampleWorldSpaceNormalHistory(float2 uv)           { return normalize((modelView[1] * vec4(tex2DBiLinear(_TBNDATA, uv, 1).rgb, 0)).xyz); }
 
 // 
-min16float FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return imageLoad(_METAPBR, pixel_coordinate, 0).r; }
-min16float FFX_DNSR_Reflections_LoadRoughnessHistory(int2 pixel_coordinate) { return imageLoad(_METAPBR, pixel_coordinate, 1).r; }
-min16float FFX_DNSR_Reflections_SampleRoughnessHistory(float2 uv)           { return tex2DBiLinear(_METAPBR, uv, 1).r; }
+min16float FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return imageLoad(_METAPBR, pixel_coordinate, 0).g; }
+min16float FFX_DNSR_Reflections_LoadRoughnessHistory(int2 pixel_coordinate) { return imageLoad(_METAPBR, pixel_coordinate, 1).g; }
+min16float FFX_DNSR_Reflections_SampleRoughnessHistory(float2 uv)           { return tex2DBiLinear(_METAPBR, uv, 1).g; }
+
+//
+min16float FFX_DNSR_Reflections_LoadRayLength (int2 pixel_coordinate)               { return imageLoad    (_METAPBR, pixel_coordinate, 0).w; }
+
+//
+min16float FFX_DNSR_Reflections_LoadNumSamples(int2 pixel_coordinate)               { return imageLoad    (_METAPBR, pixel_coordinate, 0).r; }
+min16float FFX_DNSR_Reflections_SampleNumSamplesHistory(float2 uv)                  { return tex2DBiLinear(_METAPBR, uv, 1).r; }
+void FFX_DNSR_Reflections_StoreNumSamples(int2 pixel_coordinate, min16float  value) {        imageStoreR  (_METAPBR, pixel_coordinate, value, 0); }
 
 // as from previous frame to current, from previous pixel coordinate
 // if your pixel coordinate is current, needs to transform as previous
-float2 FFX_DNSR_Reflections_LoadMotionVector(int2 pixel_coordinate) { return imageLoad(_METAPBR, pixel_coordinate, 0).yz; }
-
-// 
-min16float FFX_DNSR_Reflections_LoadRayLength(int2 pixel_coordinate) { return imageLoad(_METAPBR, pixel_coordinate, 1).w; }
-
-//
-min16float FFX_DNSR_Reflections_SampleNumSamplesHistory(float2 uv)                  { return tex2DBiLinear(_DIFFUSE, uv, 2).w; }
-min16float FFX_DNSR_Reflections_LoadNumSamples (int2 pixel_coordinate)              { return imageLoad    (_DIFFUSE, pixel_coordinate, 2).w; }
-void FFX_DNSR_Reflections_StoreNumSamples(int2 pixel_coordinate, min16float  value) {        imageStoreA  (_DIFFUSE, pixel_coordinate, value, 2); }
+float2 FFX_DNSR_Reflections_LoadMotionVector(int2 pixel_coordinate) { return vec2(0.f.xx); }
 
 //
 void FFX_DNSR_Reflections_LoadNeighborhood(int2 pixel_coordinate, out min16float3 radiance, out min16float variance, out min16float3 normal, out float depth, int2 screen_size) {
@@ -381,7 +362,5 @@ min16float3 FFX_DNSR_Reflections_WorldSpaceToScreenSpacePrevious(in min16float3 
 //
 bool FFX_DNSR_Reflections_IsMirrorReflection(float roughness) { return false; };
 bool FFX_DNSR_Reflections_IsGlossyReflection(float roughness) { return roughness >= 0.0001f; };
-//bool FFX_DNSR_Reflections_IsMirrorReflection(float roughness) { return roughness >= 0.0001f && roughness  < 0.01f; };
-//bool FFX_DNSR_Reflections_IsGlossyReflection(float roughness) { return roughness >= 0.0001f && roughness >= 0.01f; };
 #endif
-//any(greaterThan(texelFetch(FBOF[framebuffers[1]], ivec3(dispatchThreadId, 0), 0).xyz, 0.0001f.xxx))
+

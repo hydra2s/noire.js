@@ -81,6 +81,13 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
                     clearValue: new Uint32Array([0, 0, 0, 0])
                 }
             },
+            {   // derrivatives slot
+                blend: {},
+                format: V.VK_FORMAT_R32G32B32A32_UINT,
+                dynamicState: {
+                    clearValue: new Uint32Array([0, 0, 0, 0])
+                }
+            },
             {   // barycentrics
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
@@ -162,7 +169,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         formats: [
             V.VK_FORMAT_R16G16B16A16_SFLOAT, 
             V.VK_FORMAT_R32_SFLOAT,
-            V.VK_FORMAT_R8G8B8A8_UNORM, 
+            V.VK_FORMAT_R16G16B16A16_SFLOAT, // TODO: open `VK_FORMAT_R8G8B8A8_UNORM` slot!
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
             V.VK_FORMAT_R16G16B16A16_SFLOAT
@@ -275,7 +282,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             framebufferObj.colorImageViews[0].DSC_ID, 
             framebufferObj.colorImageViews[1].DSC_ID, 
             framebufferObj.colorImageViews[2].DSC_ID, 
-            framebufferObj.colorImageViews[3].DSC_ID
+            framebufferObj.colorImageViews[3].DSC_ID,
+            framebufferObj.colorImageViews[4].DSC_ID
         ],
         loadSets: [
             imageSetObj.imageViews[0][0].DSC_ID,
@@ -335,11 +343,11 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //
     const denoiseDiffuse = (cmdBuf)=>{
         dReproject.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/8), Math.ceil( frameSize[1]/8), 1);
-        imageSetObj.cmdSwapstage(cmdBuf);
+        imageSetObj.cmdSwapstageId(cmdBuf, [0, 2, 3]);
         dPrefilter.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/8), Math.ceil( frameSize[1]/8), 1);
-        imageSetObj.cmdSwapstage(cmdBuf);
+        imageSetObj.cmdSwapstageId(cmdBuf, [3]);
         dResolveTemporal.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/8), Math.ceil( frameSize[1]/8), 1);
-        imageSetObj.cmdSwapstage(cmdBuf);
+        imageSetObj.cmdSwapstageId(cmdBuf, [3]);
     };
 
     // 
@@ -385,14 +393,13 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         //
         precacheObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstage(cmdBuf);
+        imageSetObj.cmdSwapstageId(cmdBuf, [2, 3, 4]);
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstage(cmdBuf);
-        postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstage(cmdBuf);
+        imageSetObj.cmdSwapstageId(cmdBuf, [2, 3]);
+        //postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
 
         //
-        //denoiseDiffuse(cmdBuf);
+        denoiseDiffuse(cmdBuf);
 
         //
         pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));

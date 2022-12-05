@@ -192,9 +192,8 @@ bool shadowTrace(in vec3 origin, in vec3 far, in vec3 dir) {
 
 //
 struct GIData {
-    vec4 color;
-    vec4 meta;
-    //uvec4 indices;
+    f16vec4 color;
+    float nearT;
 };
 
 //
@@ -205,7 +204,7 @@ GIData globalIllumination() {
     float diff = sqrt(max(dot(vec3(rayData.normal.xyz), lightDir), 0.0));
 
     //
-    const float epsilon = 0.001f * pow(texelFetch(FBOF[framebuffers[1]], ivec3(gl_GlobalInvocationID.xy, 0), 0).z, 256.f);
+    const float epsilon = 0.001f * pow(texelFetch(FBOF[framebuffers[_POSITION]], ivec3(gl_GlobalInvocationID.xy, 0), 0).z, 256.f);
     const vec3 diffuseCol = rayData.diffuse.xyz * (diff + 0.2f) * 1.f;
 
     //
@@ -288,7 +287,7 @@ GIData globalIllumination() {
 
     //
     GIData data;
-    data.color = vec4(fcolor.xyz/fcolor.w, 1.f);
-    data.meta = vec4(roughness, 0.f.xx, nearT);
+    data.color = f16vec4(fcolor.xyz/fcolor.w, 1.f);
+    data.nearT = nearT;
     return data;
 }

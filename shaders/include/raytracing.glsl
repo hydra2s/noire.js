@@ -194,8 +194,6 @@ bool shadowTrace(in vec3 origin, in vec3 far, in vec3 dir) {
 struct GIData {
     f16vec4 color;
     float nearT;
-    float roughness;
-    float reflCoef;
     uint type;
 };
 
@@ -227,7 +225,6 @@ GIData globalIllumination() {
     //
     uvec4 indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u);
     float roughness = rayData.PBR.g;
-    float reflCoefF = reflCoef;
     float nearT = 0.f;
     bool hasHit = false;
 
@@ -241,30 +238,33 @@ GIData globalIllumination() {
                 // shading
                     f16mat3x3 TBN = f16mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
 
-                    // TODO: merge to pre-cache!!
+                    // TODO: load from pre-cache, store in rayData
                     reflCoef = mix(pow(1.f - max(dot(vec3(TBN[2]), -reflDir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b));
                     reflCoef *= (1.f - float(rayData.PBR.g));
 
                     //
                     if (reflCoef > 0.9) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
                     lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
-                    reflCol = 1.f.xxx;
-
-                    // if reflection
-                    // TODO: merge to pre-cache!!
-                    if (I == 0) { reflCoefF = reflCoef; }; 
 
                     //
-                    if (random_seeded(C, 1.0+F) <= reflCoef) {
+                    reflCol = 1.f.xxx;
+
+                    // TODO: push first rays depence on pixel and frametime
+                    int rtype = 0;
+                    if (random_seeded(C, 1.0+F) <= reflCoef) { rtype = 1; };
+
+                    // if reflection
+                    if (rtype == 1) {
                         reflDir = normalize(mix(normalize(reflect(rayData.dir, vec3(TBN[2]))), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
-                        
-                        // TODO: compute roughness for every type in pre-cache!!
-                        if (I == 0) roughness = max(float(rayData.PBR.g), 0.0002f), type = 1;
-                        //reflCol *= min(max(mix(1.hf.xxx, rayData.diffuse.xyz, rayData.PBR.b), 0.hf), 1.hf);
+                        reflCol *= min(mix(1.hf.xxx, max(rayData.diffuse.xyz, 0.hf.xxx), rayData.PBR.b), 1.hf);
+
+                        // 
+                        if (I == 0) { type = 1; }
                     } else 
 
                     // if diffuse
-                    if (random_seeded(C, 2.0+F) < 1.f) {
+                    /*if (rtype == 0)*/
+                    {
                         const vec3 SO = lightPos.xyz + (vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz;
                         const vec3 LC = SO - rayData.origin.xyz;
                         const float dt = dot(LC, LC);
@@ -275,8 +275,8 @@ GIData globalIllumination() {
                         reflDir = normalize(cosineWeightedPoint(TBN, C, F));
                         lightDir = coneSample(LC * inversesqrt(dt), cosL, C, F);
 
-                        // TODO: compute roughness for every type in pre-cache!!
-                        if (I == 0) { roughness = 1.f; type = 0; }
+                        // 
+                        if (I == 0) { type = 0; }
 
                         // 
                         shadowed = shadowTrace(rayData.origin.xyz + TBN[2] * epsilon, SO, lightDir);
@@ -307,8 +307,6 @@ GIData globalIllumination() {
     GIData data;
     data.color = f16vec4(fcolor.xyz/fcolor.w, 1.f);
     data.nearT = nearT;
-    data.roughness = roughness;
-    data.reflCoef = reflCoefF;
     data.type = type;
     return data;
 }

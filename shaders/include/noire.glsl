@@ -324,9 +324,9 @@ min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(int2 pixel_coordina
 min16float3 FFX_DNSR_Reflections_SampleWorldSpaceNormalHistory(float2 uv)           { return normalize((modelView[1] * vec4(imageSetLoadPrevLinF(_DOTHERS, uv, 0).rgb, 2)).xyz); }
 
 // 
-min16float FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return imageSetLoadF   (_DREPROJ, pixel_coordinate, 0).g; }
-min16float FFX_DNSR_Reflections_LoadRoughnessHistory(int2 pixel_coordinate) { return imageSetLoadPrevF(_DREPROJ, pixel_coordinate, 0).g; }
-min16float FFX_DNSR_Reflections_SampleRoughnessHistory(float2 uv)           { return imageSetLoadPrevLinF(_DREPROJ, uv, 0).g; }
+min16float FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return imageSetLoadF   (_METAPBR, pixel_coordinate, 0).g; }
+min16float FFX_DNSR_Reflections_LoadRoughnessHistory(int2 pixel_coordinate) { return imageSetLoadPrevF(_METAPBR, pixel_coordinate, 0).g; }
+min16float FFX_DNSR_Reflections_SampleRoughnessHistory(float2 uv)           { return imageSetLoadPrevLinF(_METAPBR, uv, 0).g; }
 
 //
 min16float FFX_DNSR_Reflections_LoadRayLength (int2 pixel_coordinate)               { return imageSetLoadF   (_DREPROJ, pixel_coordinate, 0).w; }

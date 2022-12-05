@@ -16,9 +16,6 @@
 #extension GL_EXT_shader_atomic_float : enable
 
 //
-#define _ENABLE_FXD
-
-//
 //#define A_GLSL
 #define A_GPU
 //#define A_HLSL_6_2
@@ -33,10 +30,11 @@
 #include "include/hlsl_map.glsl"
 #include "include/math.glsl"
 #include "include/noire.glsl"
+#include "include/ffx.glsl"
 
 //
 //#include "include/ffx_a.h"
-#include "include/ffx_denoiser_reflections_prefilter.h"
+#include "ffx/ffx_denoiser_reflections_prefilter.h"
 
 //
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;

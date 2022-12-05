@@ -31,8 +31,8 @@ void main() {
     GIData GI = globalIllumination();
 
     //GI.meta
-    vec4 currentMeta = imageLoad(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 0);
-    imageStore (_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(GI.color.xyz, 1.f), 0);
-    imageStore (_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(currentMeta.xyz, GI.nearT), 0);
+    vec4 currentMeta = imageSetLoadF(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 0);
+    imageSetStoreF(_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(GI.color.xyz, 1.f), 0);
+    imageSetStoreF(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(currentMeta.xyz, GI.nearT), 0);
     //imageStoreU(_RINDICE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), GI.indices, 0);
 }

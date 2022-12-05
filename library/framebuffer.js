@@ -90,7 +90,7 @@ class ImageSetObj extends B.BasicObj {
         //
         this.layerCount = cInfo.layerCount.map((L)=>(L||1));
         this.images = this.cInfo.formats.map((F, I)=>(memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createImage({
-            format: F, usage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT, extent: this.extent[I], arrayLayers: this.layerCount[I] * 2
+            format: F, usage: V.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | V.VK_IMAGE_USAGE_SAMPLED_BIT | V.VK_IMAGE_USAGE_STORAGE_BIT, extent: this.extent[I], arrayLayers: this.layerCount[I] * 3
         }))));
 
         //
@@ -100,14 +100,21 @@ class ImageSetObj extends B.BasicObj {
         this.imageViews.push(this.images.map((IMG, I)=>(IMG.createImageView({
             type: "sampled",
             pipelineLayout: descriptorsObj.handle[0],
-            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: 0, layerCount: this.layerCount[I] }
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: this.layerCount[I]*0, layerCount: this.layerCount[I] }
+        }))));
+
+        //
+        this.imageViews.push(this.images.map((IMG, I)=>(IMG.createImageView({
+            type: "sampled",
+            pipelineLayout: descriptorsObj.handle[0],
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: this.layerCount[I]*1, layerCount: this.layerCount[I] }
         }))));
 
         //
         this.imageViews.push(this.images.map((IMG, I)=>(IMG.createImageView({
             type: "storage",
             pipelineLayout: descriptorsObj.handle[0],
-            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: this.layerCount[I], layerCount: this.layerCount[I] }
+            subresourceRange: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: 1, baseArrayLayer: this.layerCount[I]*2, layerCount: this.layerCount[I] }
         }))));
 
         //
@@ -153,14 +160,14 @@ class ImageSetObj extends B.BasicObj {
         if (Array.isArray(Idx)) {
             Idx.map((I)=>this.images[I].cmdCopyToImage(cmdBuf, this.images[I].handle[0], [{
                 extent: this.extent[I],
-                srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I], layerCount: this.layerCount[I] },
-                dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0                 , layerCount: this.layerCount[I] }
+                srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I]*2, layerCount: this.layerCount[I] },
+                dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I]*0, layerCount: this.layerCount[I] }
             }]));
         } else {
             this.images[Idx].cmdCopyToImage(cmdBuf, this.images[Idx].handle[0], [{
                 extent: this.extent[Idx],
-                srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[Idx], layerCount: this.layerCount[Idx] },
-                dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: 0                   , layerCount: this.layerCount[Idx] }
+                srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[Idx]*2, layerCount: this.layerCount[Idx] },
+                dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[Idx]*0, layerCount: this.layerCount[Idx] }
             }]);
         }
         
@@ -175,19 +182,22 @@ class ImageSetObj extends B.BasicObj {
     cmdBackstage(cmdBuf) {
         const cInfo = this.cInfo;
         this.images.map((IMG, I)=>{
-            if (this.layerCount[I] > 1) {
-                IMG.cmdCopyToImage(cmdBuf, IMG.handle[0], [{
-                    extent: this.extent[I],
-                    srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I] + 0, layerCount: 1 },
-                    dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I] + 1, layerCount: 1 }
-                }]);
-            }
+            /*IMG.cmdCopyToImage(cmdBuf, IMG.handle[0], [{
+                extent: this.extent[I],
+                srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I]*2, layerCount: this.layerCount[I] },
+                dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I]*0, layerCount: this.layerCount[I] }
+            }]);*/
+            IMG.cmdCopyToImage(cmdBuf, IMG.handle[0], [{
+                extent: this.extent[I],
+                srcSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I]*0, layerCount: this.layerCount[I] },
+                dstSubresource: { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, mipLevel: 0, baseArrayLayer: this.layerCount[I]*1, layerCount: this.layerCount[I] }
+            }]);
         });
     }
 
     // TODO: single barrier
     cmdFromUndefined(cmdBuf) {
-        for (let L=0;L<2;L++) {
+        for (let L=0;L<3;L++) {
             const imageBarriers = new V.VkImageMemoryBarrier2(this.images.map((IMG, I)=>({...this.fromUndefinedTemplate, image: IMG.handle[0], subresourceRange: this.imageViews[L][I].imageViewInfo.subresourceRange})));
             V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: imageBarriers.length, pImageMemoryBarriers: imageBarriers }));
         }
@@ -195,7 +205,7 @@ class ImageSetObj extends B.BasicObj {
 
     // TODO: single barrier
     cmdToGeneral(cmdBuf) {
-        for (let L=0;L<2;L++) {
+        for (let L=0;L<3;L++) {
             const imageBarriers = new V.VkImageMemoryBarrier2(this.images.map((IMG, I)=>({...this.toGeneralTemplate, image: IMG.handle[0], subresourceRange: this.imageViews[L][I].imageViewInfo.subresourceRange})));
             V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: imageBarriers.length, pImageMemoryBarriers: imageBarriers }));
         }
@@ -203,7 +213,7 @@ class ImageSetObj extends B.BasicObj {
 
     // TODO: single barrier
     cmdToAttachment(cmdBuf) {
-        for (let L=0;L<2;L++) {
+        for (let L=0;L<3;L++) {
             const imageBarriers = new V.VkImageMemoryBarrier2(this.images.map((IMG, I)=>({...this.toAttachmentTemplate, image: IMG.handle[0], subresourceRange: this.imageViews[L][I].imageViewInfo.subresourceRange})));
             V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: imageBarriers.length, pImageMemoryBarriers: imageBarriers }));
         }

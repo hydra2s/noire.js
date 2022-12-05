@@ -24,6 +24,7 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     windowWidth: "u16", windowHeight: "u16",
     framebuffers: "u16[6]",
     loadSets: "u16[6]",
+    prevSets: "u16[6]",
     storeSets: "u16[6]",
     frameCount: "u32",
     linearSampler: "u16",
@@ -153,7 +154,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             // TBN, normal mapped
             {width: frameSize[0], height: frameSize[1], depth: 1},
 
-            // reflection
+            // others
             {width: frameSize[0], height: frameSize[1], depth: 1},
         ],
 
@@ -161,8 +162,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
 
-        // 
-        layerCount: [1, 1, 2, 3, 5, 1],
+        // TODO: optional previous layer support
+        layerCount: [1, 1, 1, 2, 4, 2],
         manualSwap: [false, false, false, false, false, true],
 
         //
@@ -290,14 +291,24 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             imageSetObj.imageViews[0][1].DSC_ID,
             imageSetObj.imageViews[0][2].DSC_ID,
             imageSetObj.imageViews[0][3].DSC_ID,
-            imageSetObj.imageViews[0][4].DSC_ID
+            imageSetObj.imageViews[0][4].DSC_ID,
+            imageSetObj.imageViews[1][5].DSC_ID
         ],
-        storeSets: [
+        prevSets: [
             imageSetObj.imageViews[1][0].DSC_ID,
             imageSetObj.imageViews[1][1].DSC_ID,
             imageSetObj.imageViews[1][2].DSC_ID,
             imageSetObj.imageViews[1][3].DSC_ID,
-            imageSetObj.imageViews[1][4].DSC_ID
+            imageSetObj.imageViews[1][4].DSC_ID,
+            imageSetObj.imageViews[1][5].DSC_ID
+        ],
+        storeSets: [
+            imageSetObj.imageViews[2][0].DSC_ID,
+            imageSetObj.imageViews[2][1].DSC_ID,
+            imageSetObj.imageViews[2][2].DSC_ID,
+            imageSetObj.imageViews[2][3].DSC_ID,
+            imageSetObj.imageViews[2][4].DSC_ID,
+            imageSetObj.imageViews[2][5].DSC_ID
         ],
         linearSampler: deviceObj.createSampler({
             pipelineLayout: descriptorsObj.handle[0],
@@ -399,7 +410,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         //postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
 
         //
-        denoiseDiffuse(cmdBuf);
+        //denoiseDiffuse(cmdBuf);
 
         //
         pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));

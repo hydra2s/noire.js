@@ -87,15 +87,15 @@ void main() {
         vec3 texNormal = mat3(TAN.xyz, BIN.xyz, NOR.xyz) * (normal.xyz * 2.0 - 1.0);
 
         //
-        imageStore(_DIFFUSE, ivec2(coord), diffuse, 0);
-        imageStore(_TBNDATA, ivec2(coord), f16vec4(texNormal.xyz, 0.0), 0);
-        imageStore(_TBNDATA, ivec2(coord), f16vec4(TAN.xyz, 0.0), 2);
-        imageStore(_TBNDATA, ivec2(coord), f16vec4(BIN.xyz, 0.0), 3);
-        imageStore(_TBNDATA, ivec2(coord), f16vec4(NOR.xyz, 0.0), 4);
+        imageSetStoreF(_DIFFUSE, ivec2(coord), diffuse, 0);
+        imageSetStoreF(_TBNDATA, ivec2(coord), f16vec4(texNormal.xyz, 0.0), 0);
+        imageSetStoreF(_TBNDATA, ivec2(coord), f16vec4(TAN.xyz, 0.0), 1);
+        imageSetStoreF(_TBNDATA, ivec2(coord), f16vec4(BIN.xyz, 0.0), 2);
+        imageSetStoreF(_TBNDATA, ivec2(coord), f16vec4(NOR.xyz, 0.0), 3);
 
         //
-        const vec4 currentMeta = imageLoad(_METAPBR, ivec2(gl_GlobalInvocationID.xy), 0);
-        imageStore(_METAPBR, ivec2(gl_GlobalInvocationID.xy), vec4(currentMeta.r, PBR.gb, currentMeta.w), 0);
+        const vec4 currentMeta = imageSetLoadF(_METAPBR, ivec2(gl_GlobalInvocationID.xy), 0);
+        imageSetStoreF(_METAPBR, ivec2(gl_GlobalInvocationID.xy), vec4(currentMeta.r, PBR.gb, currentMeta.w), 0);
     } else {
         //
         vec4 _camera = divW(vec4((vec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)/vec2(width, height)*2.f-1.f)*vec2(1.f, -1.f), 1.f, 1.f) * inverse(perspective));
@@ -106,11 +106,11 @@ void main() {
 
         //
         const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(dir));
-        imageStore(_DIFFUSE, ivec2(coord), vec4(env), 0);
-        imageStore(_TBNDATA, ivec2(coord), vec4(NOR.xyz, 0.0), 0);
-        imageStore(_TBNDATA, ivec2(coord), vec4(0.0.xxx, 0.0), 2);
-        imageStore(_TBNDATA, ivec2(coord), vec4(0.0.xxx, 0.0), 3);
-        imageStore(_TBNDATA, ivec2(coord), vec4(NOR.xyz, 0.0), 4);
-        imageStore(_METAPBR, ivec2(gl_GlobalInvocationID.xy), vec4(0.f.xxx, 0.f), 0);
+        imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(env), 0);
+        imageSetStoreF(_TBNDATA, ivec2(coord), vec4(NOR.xyz, 0.0), 0);
+        imageSetStoreF(_TBNDATA, ivec2(coord), vec4(0.0.xxx, 0.0), 1);
+        imageSetStoreF(_TBNDATA, ivec2(coord), vec4(0.0.xxx, 0.0), 2);
+        imageSetStoreF(_TBNDATA, ivec2(coord), vec4(NOR.xyz, 0.0), 3);
+        imageSetStoreF(_METAPBR, ivec2(gl_GlobalInvocationID.xy), vec4(0.f.xxx, 0.f), 0);
     }
 }

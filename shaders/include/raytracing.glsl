@@ -23,18 +23,18 @@ void swap(inout float a, inout float b) { const float a_ = a; a = b; b = a_; };
 
 //
 void rasterize(in uvec2 coord) {
-    const vec3 bary = texelFetch(FBOF[framebuffers[_BARY]], ivec3(coord, 0), 0).xyz;
-    const uvec4 sys = texelFetch(FBOU[framebuffers[_INDICES]], ivec3(coord, 0), 0);
+    const vec3 bary = framebufferLoadF(_BARY, ivec2(coord), 0).xyz;
+    const uvec4 sys = framebufferLoadU(_INDICES, ivec2(coord), 0);
 
     //
     rayData.texcoord = texelFetch(FBOF[framebuffers[_TEXCOORD]], ivec3(coord, 0), 0).xy;
     rayData.hitT = 0.f;
-    rayData.normal = f16vec4(imageLoad(_TBNDATA, ivec2(coord), 0));
+    rayData.normal = f16vec4(imageSetLoadF(_TBNDATA, ivec2(coord), 0));
     rayData.bary = bary;
     rayData.TBN = f16mat3x3(
-        imageLoad(_TBNDATA, ivec2(coord), 2),
-        imageLoad(_TBNDATA, ivec2(coord), 3),
-        imageLoad(_TBNDATA, ivec2(coord), 4)
+        imageSetLoadF(_TBNDATA, ivec2(coord), 1),
+        imageSetLoadF(_TBNDATA, ivec2(coord), 2),
+        imageSetLoadF(_TBNDATA, ivec2(coord), 3)
     );
 
     //
@@ -53,8 +53,8 @@ void rasterize(in uvec2 coord) {
 
     //
     rayData.materialAddress = geometryData.materialAddress;
-    rayData.diffuse = f16vec4(imageLoad(_DIFFUSE, ivec2(coord), 0));
-    rayData.PBR     = f16vec4(imageLoad(_METAPBR, ivec2(coord), 0));
+    rayData.diffuse = f16vec4(imageSetLoadF(_DIFFUSE, ivec2(coord), 0));
+    rayData.PBR     = f16vec4(imageSetLoadF(_METAPBR, ivec2(coord), 0));
 }
 
 //

@@ -53,11 +53,11 @@ struct rproj {
 rproj reflectionReproj(in uvec2 coord) 
 {
     //
-    vec4 prevPos = divW(texelFetch(FBOF[framebuffers[_POSITION]], ivec3(coord, 1), 0));
+    vec4 prevPos = divW(framebufferLoadLinF(_POSITION, ivec2(coord), 2));
     vec4 prevCamera = divW(prevPos * inverse(perspective));
     vec4 prevOrigin = (prevCamera * modelViewInverse[1]);
     vec3 prevDir = normalize((modelView[1] * vec4(normalize(prevCamera.xyz), 0.f)).xyz);
-    vec3 prevHitpos = prevOrigin.xyz + prevDir * imageLoad(_METAPBR, ivec2(coord), 1).w;
+    vec3 prevHitpos = prevOrigin.xyz + prevDir * imageSetLoadPrevF(_METAPBR, ivec2(coord), 0).w;
     vec3 prevNormal = FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(ivec2(coord));
     vec4 prevPView = divW((vec4(prevHitpos, 1.f) * modelView[0]) * perspective);
 
@@ -99,9 +99,9 @@ void accumulate(in rproj prj) {
     ivec2 _to = ivec2(ndc(prj.to.xyz).xy*vec2(width,height));
     ivec2 _from = ivec2(ndc(prj.from.xyz).xy*vec2(width,height));
 
-    vec4 meta = imageLoad(_METAPBR, _to, 0);
+    vec4 meta = imageSetLoadF(_METAPBR, _to, 0);
     //if (meta.r < 0.01f) {
-        imageAccumAtomic(_FATOMIC, _to, imageLoad(_DIFFUSE, _from, 1), 0);
+        imageSetAtomicAccumF(_FATOMIC, _to, imageSetAtomicLoadF(_DIFFUSE, _from, 0, 1), 0);
     //}
 }
 
@@ -116,6 +116,6 @@ void main() {
     //
     //accumulate(reflectionReproj(gl_GlobalInvocationID.xy));
 
-    vec4 currentMeta = imageLoad(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 0);
+    vec4 currentMeta = imageSetLoadF(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 0);
     //imageStore(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(currentMeta.x, motionVector, currentMeta.w), 0);
 }

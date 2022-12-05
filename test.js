@@ -410,7 +410,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         //postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
 
         //
-        //denoiseDiffuse(cmdBuf);
+        denoiseDiffuse(cmdBuf);
 
         //
         pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));

@@ -205,7 +205,7 @@ vec4 imageSetAtomicAccumF(in int IMG_STORE, in ivec2 coord, in vec4 RGBA, in int
 
 //
 vec4 imageSetLoadPrevLinF(in int IMG_STORE, in vec2 coord, in int layer) {
-    return textureLod(sampler2DArray(FBOF[imageSets[0][IMG_STORE]], samplers[linearSampler]), vec3(coord, float(layer) /*/ textureSize(FBOF[framebuffers[TEX_STORE]], 0).z*/), 0.0);
+    return textureLod(sampler2DArray(FBOF[imageSets[1][IMG_STORE]], samplers[linearSampler]), vec3(coord, float(layer) /*/ textureSize(FBOF[framebuffers[TEX_STORE]], 0).z*/), 0.0);
 }
 
 //

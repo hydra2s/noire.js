@@ -95,7 +95,7 @@ void main() {
 
         //
         const vec4 currentMeta = imageSetLoadF(_METAPBR, ivec2(gl_GlobalInvocationID.xy), 0);
-        imageSetStoreF(_METAPBR, ivec2(gl_GlobalInvocationID.xy), vec4(currentMeta.r, PBR.gb, currentMeta.w), 0);
+        imageSetStoreF(_METAPBR, ivec2(gl_GlobalInvocationID.xy), vec4(currentMeta.r, max(PBR.gb, 0.0002hf.xx), currentMeta.w), 0);
     } else {
         //
         vec4 _camera = divW(vec4((vec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)/vec2(width, height)*2.f-1.f)*vec2(1.f, -1.f), 1.f, 1.f) * inverse(perspective));

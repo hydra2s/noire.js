@@ -75,7 +75,7 @@ void main() {
         //
         vec3 BIN = normalize(cross(TAN.xyz, NOR));
 
-        //
+        // TODO: Better PBR data!
         f16vec4 emissive = f16vec4(readTexData(materialData.emissive, texcoord.xy));
         f16vec4 diffuse = f16vec4(readTexData(materialData.diffuse, texcoord.xy));
         f16vec4 normal = f16vec4(readTexData(materialData.normal, texcoord.xy));
@@ -87,18 +87,21 @@ void main() {
         vec3 texNormal = mat3(TAN.xyz, BIN.xyz, NOR.xyz) * (normal.xyz * 2.0 - 1.0);
 
         //
-        imageSetStoreF(_DIFFUSE, ivec2(coord), diffuse, 0);
-        imageSetStoreF(_TBNDATA, ivec2(coord), f16vec4(texNormal.xyz, 0.0), 0);
-        imageSetStoreF(_TBNDATA, ivec2(coord), f16vec4(TAN.xyz, 0.0), 1);
-        imageSetStoreF(_TBNDATA, ivec2(coord), f16vec4(BIN.xyz, 0.0), 2);
-        imageSetStoreF(_TBNDATA, ivec2(coord), f16vec4(NOR.xyz, 0.0), 3);
+        imageSetStoreF(_DOTHERS, ivec2(coord), f16vec4(texNormal.xyz, 0.0), 2);
+        imageSetStoreF(_DOTHERS, ivec2(coord), f16vec4(TAN.xyz, 0.0), 3);
+        imageSetStoreF(_DOTHERS, ivec2(coord), f16vec4(BIN.xyz, 0.0), 4);
+        imageSetStoreF(_DOTHERS, ivec2(coord), f16vec4(NOR.xyz, 0.0), 5);
+        imageSetStoreF(_DOTHERS, ivec2(coord), diffuse, 1);
+        imageSetStoreF(_METAPBR, ivec2(coord), vec4(0, max(PBR.gb, 0.0002hf.xx), 0), 2);
 
-        //
-        const vec4 currentMeta = imageSetLoadF(_METAPBR, ivec2(gl_GlobalInvocationID.xy), 0);
-        imageSetStoreF(_METAPBR, ivec2(gl_GlobalInvocationID.xy), vec4(currentMeta.r, max(PBR.gb, 0.0002hf.xx), currentMeta.w), 0);
+        // clear, needs reproject from previous!
+        for (int i=0;i<2;i++) {
+            imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
+            imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), i);
+        }
     } else {
         //
-        vec4 _camera = divW(vec4((vec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)/vec2(width, height)*2.f-1.f)*vec2(1.f, -1.f), 1.f, 1.f) * inverse(perspective));
+        vec4 _camera = divW(vec4((vec2(coord)/vec2(width, height)*2.f-1.f)*vec2(1.f, -1.f), 1.f, 1.f) * inverse(perspective));
         vec4 _origin = (_camera * modelViewInverse[0]);
         dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
         dir.y *= -1.f;
@@ -106,11 +109,21 @@ void main() {
 
         //
         const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(dir));
-        imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(env), 0);
-        imageSetStoreF(_TBNDATA, ivec2(coord), vec4(NOR.xyz, 0.0), 0);
-        imageSetStoreF(_TBNDATA, ivec2(coord), vec4(0.0.xxx, 0.0), 1);
-        imageSetStoreF(_TBNDATA, ivec2(coord), vec4(0.0.xxx, 0.0), 2);
-        imageSetStoreF(_TBNDATA, ivec2(coord), vec4(NOR.xyz, 0.0), 3);
-        imageSetStoreF(_METAPBR, ivec2(gl_GlobalInvocationID.xy), vec4(0.f.xxx, 0.f), 0);
+
+        //
+        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(env), 1);
+        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(NOR.xyz, 0.0), 2);
+        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(0.0.xxx, 0.0), 3);
+        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(0.0.xxx, 0.0), 4);
+        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(NOR.xyz, 0.0), 5);
+        imageSetStoreF(_METAPBR, ivec2(coord), vec4(0.f.xxx, 0.f), 2);
+
+        // make a background, needs reproject from previous
+        for (int i=0;i<2;i++) {
+            imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
+            imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(env), i);
+        }
     }
+    
+    
 }

@@ -176,11 +176,12 @@ uint readIndexData(in nrBinding binding, in uint index) {
 
 // image sets
 #define _AVERAGE 0
-#define _FATOMIC 1
+#define _DREPROJ 1
 #define _METAPBR 2
 #define _DIFFUSE 3
-#define _TBNDATA 4
-#define _REFLECT 5
+//#define _TBNDATA 4
+#define _DOTHERS 4
+#define _FATOMIC 5
 
 //
 vec4 imageSetAtomicLoadF(in int IMG_STORE, in ivec2 coord, in int layer, in int state) {
@@ -300,11 +301,11 @@ float FFX_DNSR_Reflections_GetLinearDepth(float2 uv, float history) {
 //
 min16float3 FFX_DNSR_Reflections_LoadRadiance           (int2 pixel_coordinate) { return imageSetLoadF(_DIFFUSE, pixel_coordinate, 0).xyz; }
 min16float3 FFX_DNSR_Reflections_LoadRadianceHistory    (int2 pixel_coordinate) { return imageSetLoadPrevF(_DIFFUSE, pixel_coordinate, 0).xyz; }
-min16float3 FFX_DNSR_Reflections_LoadRadianceReprojected(int2 pixel_coordinate) { return imageSetLoadF(_DIFFUSE, pixel_coordinate, 1).xyz; }
+min16float3 FFX_DNSR_Reflections_LoadRadianceReprojected(int2 pixel_coordinate) { return imageSetLoadF(_DOTHERS, pixel_coordinate, 0).xyz; }
 min16float3 FFX_DNSR_Reflections_SampleRadianceHistory  (float2 uv)             { return imageSetLoadPrevLinF(_DIFFUSE, uv, 0).xyz;  }
 
 //
-void FFX_DNSR_Reflections_StoreRadianceReprojected   (int2 pixel_coordinate, min16float3 value)                               { imageSetStoreRGBF(_DIFFUSE, pixel_coordinate, value, 1); };
+void FFX_DNSR_Reflections_StoreRadianceReprojected   (int2 pixel_coordinate, min16float3 value)                               { imageSetStoreRGBF(_DOTHERS, pixel_coordinate, value, 0); };
 void FFX_DNSR_Reflections_StoreTemporalAccumulation  (int2 pixel_coordinate, min16float3 new_signal, min16float new_variance) { imageSetStoreF  (_DIFFUSE, pixel_coordinate, vec4(new_signal, new_variance), 0); };
 void FFX_DNSR_Reflections_StorePrefilteredReflections(int2 pixel_coordinate, min16float3   radiance, min16float     variance) { imageSetStoreF  (_DIFFUSE, pixel_coordinate, vec4(  radiance,     variance), 0); };
 
@@ -318,22 +319,22 @@ void FFX_DNSR_Reflections_StoreVariance(int2 pixel_coordinate, min16float  value
 min16float FFX_DNSR_Reflections_SampleVarianceHistory(float2 uv)           { return imageSetLoadPrevLinF(_DIFFUSE, uv, 0).a; }
 
 //
-min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormal(int2 pixel_coordinate)        { return normalize((modelView[0] * vec4(imageSetLoadF       (_TBNDATA, pixel_coordinate, 0).rgb, 0)).xyz); }
-min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(int2 pixel_coordinate) { return normalize((modelView[1] * vec4(imageSetLoadPrevF   (_TBNDATA, pixel_coordinate, 0).rgb, 0)).xyz); }
-min16float3 FFX_DNSR_Reflections_SampleWorldSpaceNormalHistory(float2 uv)           { return normalize((modelView[1] * vec4(imageSetLoadPrevLinF(_TBNDATA, uv, 0).rgb, 0)).xyz); }
+min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormal(int2 pixel_coordinate)        { return normalize((modelView[0] * vec4(imageSetLoadF       (_DOTHERS, pixel_coordinate, 0).rgb, 2)).xyz); }
+min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(int2 pixel_coordinate) { return normalize((modelView[1] * vec4(imageSetLoadPrevF   (_DOTHERS, pixel_coordinate, 0).rgb, 2)).xyz); }
+min16float3 FFX_DNSR_Reflections_SampleWorldSpaceNormalHistory(float2 uv)           { return normalize((modelView[1] * vec4(imageSetLoadPrevLinF(_DOTHERS, uv, 0).rgb, 2)).xyz); }
 
 // 
-min16float FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return imageSetLoadF   (_METAPBR, pixel_coordinate, 0).g; }
-min16float FFX_DNSR_Reflections_LoadRoughnessHistory(int2 pixel_coordinate) { return imageSetLoadPrevF(_METAPBR, pixel_coordinate, 0).g; }
-min16float FFX_DNSR_Reflections_SampleRoughnessHistory(float2 uv)           { return imageSetLoadPrevLinF(_METAPBR, uv, 0).g; }
+min16float FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return imageSetLoadF   (_DREPROJ, pixel_coordinate, 0).g; }
+min16float FFX_DNSR_Reflections_LoadRoughnessHistory(int2 pixel_coordinate) { return imageSetLoadPrevF(_DREPROJ, pixel_coordinate, 0).g; }
+min16float FFX_DNSR_Reflections_SampleRoughnessHistory(float2 uv)           { return imageSetLoadPrevLinF(_DREPROJ, uv, 0).g; }
 
 //
-min16float FFX_DNSR_Reflections_LoadRayLength (int2 pixel_coordinate)               { return imageSetLoadF   (_METAPBR, pixel_coordinate, 0).w; }
+min16float FFX_DNSR_Reflections_LoadRayLength (int2 pixel_coordinate)               { return imageSetLoadF   (_DREPROJ, pixel_coordinate, 0).w; }
 
 //
-min16float FFX_DNSR_Reflections_LoadNumSamples(int2 pixel_coordinate)               { return imageSetLoadF       (_METAPBR, pixel_coordinate, 0).r; }
-min16float FFX_DNSR_Reflections_SampleNumSamplesHistory(float2 uv)                  { return imageSetLoadPrevLinF(_METAPBR, uv, 0).r; }
-void FFX_DNSR_Reflections_StoreNumSamples(int2 pixel_coordinate, min16float  value) {        imageSetStoreRF     (_METAPBR, pixel_coordinate, value, 0); }
+min16float FFX_DNSR_Reflections_LoadNumSamples(int2 pixel_coordinate)               { return imageSetLoadF       (_DREPROJ, pixel_coordinate, 0).r; }
+min16float FFX_DNSR_Reflections_SampleNumSamplesHistory(float2 uv)                  { return imageSetLoadPrevLinF(_DREPROJ, uv, 0).r; }
+void FFX_DNSR_Reflections_StoreNumSamples(int2 pixel_coordinate, min16float  value) {        imageSetStoreRF     (_DREPROJ, pixel_coordinate, value, 0); }
 
 // as from previous frame to current, from previous pixel coordinate
 // if your pixel coordinate is current, needs to transform as previous

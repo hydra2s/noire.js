@@ -29,12 +29,12 @@ void rasterize(in uvec2 coord) {
     //
     rayData.texcoord = texelFetch(FBOF[framebuffers[_TEXCOORD]], ivec3(coord, 0), 0).xy;
     rayData.hitT = 0.f;
-    rayData.normal = f16vec4(imageSetLoadF(_TBNDATA, ivec2(coord), 0));
+    rayData.normal = f16vec4(imageSetLoadF(_DOTHERS, ivec2(coord), 2));
     rayData.bary = bary;
     rayData.TBN = f16mat3x3(
-        imageSetLoadF(_TBNDATA, ivec2(coord), 1),
-        imageSetLoadF(_TBNDATA, ivec2(coord), 2),
-        imageSetLoadF(_TBNDATA, ivec2(coord), 3)
+        imageSetLoadF(_DOTHERS, ivec2(coord), 3),
+        imageSetLoadF(_DOTHERS, ivec2(coord), 4),
+        imageSetLoadF(_DOTHERS, ivec2(coord), 5)
     );
 
     //
@@ -53,8 +53,8 @@ void rasterize(in uvec2 coord) {
 
     //
     rayData.materialAddress = geometryData.materialAddress;
-    rayData.diffuse = f16vec4(imageSetLoadF(_DIFFUSE, ivec2(coord), 0));
-    rayData.PBR     = f16vec4(imageSetLoadF(_METAPBR, ivec2(coord), 0));
+    rayData.diffuse = f16vec4(imageSetLoadF(_DOTHERS, ivec2(coord), 1));
+    rayData.PBR     = f16vec4(imageSetLoadF(_METAPBR, ivec2(coord), 2));
 }
 
 //
@@ -195,6 +195,8 @@ struct GIData {
     f16vec4 color;
     float nearT;
     float roughness;
+    float reflCoef;
+    uint type;
 };
 
 //
@@ -225,27 +227,40 @@ GIData globalIllumination() {
     //
     uvec4 indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u);
     float roughness = rayData.PBR.g;
+    float reflCoefF = reflCoef;
     float nearT = 0.f;
     bool hasHit = false;
+
+    //
+    uint type = 0;
 
     //
     if (hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) {
         for (int I=0;I<2;I++) {
             if ((hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {
                 // shading
-                    if (reflCoef * (1.f - float(rayData.PBR.g)) > 0.9) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
+                    f16mat3x3 TBN = f16mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
+
+                    // TODO: merge to pre-cache!!
+                    reflCoef = mix(pow(1.f - max(dot(vec3(TBN[2]), -reflDir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b));
+                    reflCoef *= (1.f - float(rayData.PBR.g));
+
+                    //
+                    if (reflCoef > 0.9) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
                     lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
                     reflCol = 1.f.xxx;
 
-                    //
-                    f16mat3x3 TBN = f16mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
-
                     // if reflection
-                    if (random_seeded(C, 1.0+F) <= (reflCoef = mix(pow(1.f - max(dot(vec3(TBN[2]), -reflDir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b)))) {
+                    // TODO: merge to pre-cache!!
+                    if (I == 0) { reflCoefF = reflCoef; }; 
+
+                    //
+                    if (random_seeded(C, 1.0+F) <= reflCoef) {
                         reflDir = normalize(mix(normalize(reflect(rayData.dir, vec3(TBN[2]))), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
-                        if (I == 0) roughness = max(float(rayData.PBR.g), 0.0002f);
-                        //reflCol *= min(max(mix(1.hf.xxx, rayData.diffuse.xyz, rayData.PBR.b), 0.hf), 1.hf);
                         
+                        // TODO: compute roughness for every type in pre-cache!!
+                        if (I == 0) roughness = max(float(rayData.PBR.g), 0.0002f), type = 1;
+                        //reflCol *= min(max(mix(1.hf.xxx, rayData.diffuse.xyz, rayData.PBR.b), 0.hf), 1.hf);
                     } else 
 
                     // if diffuse
@@ -259,7 +274,9 @@ GIData globalIllumination() {
                         //
                         reflDir = normalize(cosineWeightedPoint(TBN, C, F));
                         lightDir = coneSample(LC * inversesqrt(dt), cosL, C, F);
-                        if (I == 0) roughness = 1.f;
+
+                        // TODO: compute roughness for every type in pre-cache!!
+                        if (I == 0) { roughness = 1.f; type = 0; }
 
                         // 
                         shadowed = shadowTrace(rayData.origin.xyz + TBN[2] * epsilon, SO, lightDir);
@@ -291,5 +308,7 @@ GIData globalIllumination() {
     data.color = f16vec4(fcolor.xyz/fcolor.w, 1.f);
     data.nearT = nearT;
     data.roughness = roughness;
+    data.reflCoef = reflCoefF;
+    data.type = type;
     return data;
 }

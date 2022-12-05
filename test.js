@@ -142,8 +142,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             // average
             {width: frameSize[0]>>3, height: frameSize[1]>>3, depth: 1},
 
-            // float atomic-data (reserved)
-            {width: frameSize[0]<<2, height: frameSize[1], depth: 1},
+            // reprojection_data
+            {width: frameSize[0], height: frameSize[1], depth: 1},
 
             // meta_pbr_unorm
             {width: frameSize[0], height: frameSize[1], depth: 1},
@@ -151,11 +151,11 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             // diffuse
             {width: frameSize[0], height: frameSize[1], depth: 1},
 
-            // TBN, normal mapped
+            // TBN, normal mapped, others
             {width: frameSize[0], height: frameSize[1], depth: 1},
 
-            // others
-            {width: frameSize[0], height: frameSize[1], depth: 1},
+            // float atomic-data (reserved)
+            {width: frameSize[0]<<2, height: frameSize[1], depth: 1},
         ],
 
         //
@@ -163,17 +163,17 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         memoryAllocator: memoryAllocatorObj.handle[0],
 
         // TODO: optional previous layer support
-        layerCount: [1, 1, 1, 2, 4, 2],
-        manualSwap: [false, false, false, false, false, true],
+        layerCount: [1, 2, 4, 2, 6, 1],
+        manualSwap: [true, true, true, true, true, true, true],
 
         //
         formats: [
-            V.VK_FORMAT_R16G16B16A16_SFLOAT, 
-            V.VK_FORMAT_R32_SFLOAT,
-            V.VK_FORMAT_R16G16B16A16_SFLOAT, // TODO: open `VK_FORMAT_R8G8B8A8_UNORM` slot!
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
-            V.VK_FORMAT_R16G16B16A16_SFLOAT
+            V.VK_FORMAT_R8G8B8A8_UNORM,
+            V.VK_FORMAT_R16G16B16A16_SFLOAT,
+            V.VK_FORMAT_R16G16B16A16_SFLOAT,
+            V.VK_FORMAT_R32_SFLOAT
         ]
     });
 
@@ -354,7 +354,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //
     const denoiseDiffuse = (cmdBuf)=>{
         dReproject.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/8), Math.ceil( frameSize[1]/8), 1);
-        imageSetObj.cmdSwapstageId(cmdBuf, [0, 2, 3]);
+        imageSetObj.cmdSwapstageId(cmdBuf, [0, 2, 5]);
         dPrefilter.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/8), Math.ceil( frameSize[1]/8), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [3]);
         dResolveTemporal.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/8), Math.ceil( frameSize[1]/8), 1);

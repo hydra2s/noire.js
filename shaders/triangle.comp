@@ -31,8 +31,12 @@ void main() {
     GIData GI = globalIllumination();
 
     //GI.meta
-    vec4 currentMeta = imageSetLoadF(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 0);
-    imageSetStoreF(_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(GI.color.xyz, 1.f), 0);
-    imageSetStoreF(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(currentMeta.x, GI.roughness, currentMeta.z, GI.nearT), 0);
-    //imageStoreU(_RINDICE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), GI.indices, 0);
+    vec4 currentMeta = imageSetLoadF(_DREPROJ, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), int(GI.type));
+
+    // for reflections needs reproject data
+    imageSetStoreF(_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(GI.color.xyz, 1.f), int(GI.type));
+    imageSetStoreF(_DREPROJ, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(currentMeta.x, GI.roughness, GI.reflCoef, GI.nearT), int(GI.type));
+
+    // TODO: reproject other data
+    //
 }

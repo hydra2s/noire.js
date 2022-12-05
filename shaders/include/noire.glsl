@@ -195,6 +195,15 @@ vec4 imageSetAtomicLoadF(in int IMG_STORE, in ivec2 coord, in int layer, in int 
 }
 
 //
+void imageSetAtomicStoreF(in int IMG_STORE, in ivec2 coord, in vec4 RGBA, in int layer) {
+    //return imageLoad(SETF[imageSets[0][IMG_STORE]], ivec3(coord, layer));
+    imageStore(SETA[imageSets[2][IMG_STORE]], ivec3((coord.x<<2)|0x0, coord.y, layer), vec4(RGBA.x));
+    imageStore(SETA[imageSets[2][IMG_STORE]], ivec3((coord.x<<2)|0x1, coord.y, layer), vec4(RGBA.y));
+    imageStore(SETA[imageSets[2][IMG_STORE]], ivec3((coord.x<<2)|0x2, coord.y, layer), vec4(RGBA.z));
+    imageStore(SETA[imageSets[2][IMG_STORE]], ivec3((coord.x<<2)|0x3, coord.y, layer), vec4(RGBA.w));
+}
+
+//
 vec4 imageSetAtomicAccumF(in int IMG_STORE, in ivec2 coord, in vec4 RGBA, in int layer) {
     return vec4(
         imageAtomicAdd(SETA[imageSets[2][IMG_STORE]], ivec3((coord.x<<2)|0x0, coord.y, layer), RGBA.x).r,

@@ -100,7 +100,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
                 blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
                 dynamicState: {
-                    clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
+                    clearValue: new Float32Array([0.0, 0.0, 1.0, 1.0]).as("u32[4]")
                 }
             },
             {   // texcoords
@@ -163,7 +163,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         memoryAllocator: memoryAllocatorObj.handle[0],
 
         // TODO: optional previous layer support
-        layerCount: [1, 2, 4, 2, 6, 1],
+        layerCount: [1, 4, 4, 2, 6, 3],
         manualSwap: [true, true, true, true, true, true, true],
 
         //
@@ -404,13 +404,17 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         //
         precacheObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstageId(cmdBuf, [2, 3, 4]);
+        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3, 4]);
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstageId(cmdBuf, [2, 3]);
-        //postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
+        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3]);
+        
 
         // FidelityFX is bad for such purpose...
         //denoiseDiffuse(cmdBuf);
+        dMotion.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
+        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 5]);
+        postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
+        imageSetObj.cmdSwapstageId(cmdBuf, [1, 3]);
 
         //
         pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));

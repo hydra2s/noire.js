@@ -26,8 +26,8 @@ layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 //
 void main() {
     const uvec2 coord = gl_GlobalInvocationID.xy;
-    const vec3 bary = texelFetch(FBOF[framebuffers[_BARY]], ivec3(coord, 0), 0).xyz;
-    const uvec4 sys = texelFetch(FBOU[framebuffers[_INDICES]], ivec3(coord, 0), 0);
+    const vec3 bary = framebufferLoadF(_BARY, ivec2(coord), 0).xyz;
+    const uvec4 sys = framebufferLoadU(_INDICES, ivec2(coord), 0);
 
     //
     f16vec4 normal = f16vec4(0.f, 0.f, 0.5f, 0.f);
@@ -52,7 +52,7 @@ void main() {
         nrMaterial materialData = nrMaterial(geometryData.materialAddress);
 
         //
-        vec4 pos = divW(texelFetch(FBOF[framebuffers[_POSITION]], ivec3(coord, 0), 0));
+        vec4 pos = divW(framebufferLoadF(_POSITION, ivec2(coord), 0));
         _camera = divW(pos * inverse(perspective));
         _origin = divW(_camera * modelViewInverse[0]);
         dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
@@ -107,6 +107,7 @@ void main() {
 
         // clear, needs reproject from previous!
         for (int i=0;i<2;i++) {
+            imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i+2);
             imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
             imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), i);
         }
@@ -130,13 +131,19 @@ void main() {
         imageSetStoreF(_METAPBR, ivec2(coord), vec4(0.f.xxx, 0.f), 0);
         imageSetStoreF(_METAPBR, ivec2(coord), vec4(0.f.xxx, 0.f), 2);
 
+        //
+        imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(env), 0);
+        imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 1);
+
         // make a background, needs reproject from previous
         for (int i=0;i<2;i++) {
-            imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(env), i);
+            imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), 2+i);
             imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
             imageSetStoreF(_METAPBR, ivec2(coord), vec4(0.f.xxxx), 1);
         }
     }
-    
-    
+
+    //
+    imageSetAtomicStoreF(_FATOMIC, ivec2(coord), vec4(0.f.xxxx), 0);
+    imageSetAtomicStoreF(_FATOMIC, ivec2(coord), vec4(0.f.xxxx), 1);
 }

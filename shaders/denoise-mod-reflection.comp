@@ -32,63 +32,61 @@
 #include "include/noire.glsl"
 #include "include/ffx.glsl"
 
-// подключаем премяшика
-//#include "include/ffx_a.h"
-//#include "include/ffx_denoiser_reflections_reproject.h"
-#include "include/nr_mod_mirror_reflection_reproject.glsl"
-
-// 
-ivec2 forStoreToCurrent;
-
+//
 struct rproj {
     float nsimilarity;
     float dsimilarity;
+    ivec2 forStoreToCurrent;
     vec2 motion;
     vec4 from;
     vec4 to;
+    float T;
+    bool isValid;
 };
 
+// подключаем премяшика
 rproj reflectionReproj(in uvec2 coord) 
 {
-    //
-    vec4 prevPos = divW(framebufferLoadLinF(_POSITION, ivec2(coord), 2));
-    vec4 prevCamera = divW(prevPos * inverse(perspective));
-    vec4 prevOrigin = (prevCamera * modelViewInverse[1]);
-    vec3 prevDir = normalize((modelView[1] * vec4(normalize(prevCamera.xyz), 0.f)).xyz);
-    vec3 prevHitpos = prevOrigin.xyz + prevDir * imageSetLoadPrevF(_METAPBR, ivec2(coord), 0).w;
-    vec3 prevNormal = FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(ivec2(coord));
-    vec4 prevPView = divW((vec4(prevHitpos, 1.f) * modelView[0]) * perspective);
+    // TODO: reproject by model previous transform
+    float dirT = imageSetLoadPrevF(_DREPROJ, ivec2(coord), 1).w;
+    rproj ot; ot.isValid = false; ot.T = 10000.f;
+    if (dirT > 0.001f) 
+    {
+        vec3 prevNormal = normalize(/*modelView[1] **/ vec4(imageSetLoadPrevF(_DOTHERS, ivec2(coord), 2).rgb, 0.f)).xyz;
+        vec4 prevPView  = divW(framebufferLoadF(_POSITION, ivec2(coord), 1));
+        vec4 prevCamera = divW(prevPView * inverse(perspective));
+        vec4 prevOrigin = (prevCamera * modelViewInverse[1]);
+        vec3 prevDir    = normalize((modelView[1] * vec4(normalize(prevCamera.xyz), 0.f)).xyz);
+        vec3 prevHitpos = prevOrigin.xyz + normalize(reflect(prevDir, prevNormal)) * dirT;
 
-    // TODO: motion vectors support, or previous transform
-    //uint64_t nodeData = pack64(imageLoadU(_RINDICE, ivec2(coord), 0).xy);
+        // TODO: reproject by model transform
+        vec4 origin = prevOrigin;
+        vec3 hitPos = prevHitpos;
+        vec3 dir    = prevDir; // world space dir
+        vec3 normal = prevNormal;
 
-    vec4 origin = prevOrigin * modelView[0];
-    vec3 hitPos = (vec4(prevHitpos, 1.f) * modelView[0]).xyz;
-    vec4 hview = divW((vec4(hitPos, 1.f) * modelView[0]) * perspective);
-    vec3 dir    = normalize((modelViewInverse[0] * vec4(prevDir, 0.0f)).xyz);
-    vec3 normal = normalize((modelViewInverse[0] * vec4(prevNormal, 0.f)).xyz);
+        //
+        vec3 camOrigin = (origin * modelView[0]).xyz;
+        vec3 camHitPos = (vec4(prevHitpos, 1.f) * modelView[0]).xyz;
+        vec3 camDir    = normalize((modelViewInverse[0] * vec4(prevDir, 0.0f)).xyz);
+        vec3 camNormal = normalize((modelViewInverse[0] * vec4(prevNormal, 0.f)).xyz);
+        vec4 hview     = divW(vec4(camHitPos, 1.f) * perspective);
 
-    //
-    vec3 point = find_reflection_incident_point((vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz, hitPos, origin.xyz, normal.xyz);
-    vec4 pview = divW((vec4(point, 1.f) * modelView[0]) * perspective);
-    vec3 pnormal = FFX_DNSR_Reflections_LoadWorldSpaceNormal(ivec2(ndc(pview.xyz).xy*vec2(width,height)));
+        //
+        vec3 point = find_reflection_incident_point((vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz, hitPos, origin.xyz, normal.xyz);
+        vec4 pview = divW((vec4(point, 1.f) * modelView[0]) * perspective);
+        vec3 pnormal = normalize((/*modelView[0] **/ vec4(imageSetLoadF(_DOTHERS, ivec2(ndc(pview.xyz).xy*vec2(width,height)), 2).rgb, 0.f)).xyz).xyz;
 
-    // may have threading conflict
-    forStoreToCurrent = ivec2(pview.xy * vec2(width, height));
-
-    //vec3 prevNormal = FFX_DNSR_Reflections_LoadWorldSpaceNormal(ivec2(coord));
-
-
-    //find_reflection_incident_point(
-        //vec4(0.f.xxx, 1.f) * constants.lookAtInverse[0],
-        //dstHitPos, dstPos.xyz, normalize(dstNormal.xyz));
-
-    rproj ot;
-    ot.nsimilarity = dot(pnormal, normal);
-    ot.dsimilarity = abs(pview.z - hview.z);
-    ot.motion = ndc(pview.xyz).xy - ndc(prevPView.xyz).xy;
-    ot.from = prevPView;
-    ot.to = pview;
+        // may have threading conflict
+        ot.forStoreToCurrent = ivec2(pview.xy * vec2(width, height));
+        ot.nsimilarity = dot(pnormal, normal);
+        //ot.dsimilarity = abs(pview.z - hview.z);
+        ot.motion = ndc(pview.xyz).xy - ndc(prevPView.xyz).xy;
+        ot.from = prevPView;
+        ot.to = pview;
+        ot.isValid = true;
+        ot.T = distance(hitPos.xyz, point.xyz);
+    }
     return ot;
 }
 
@@ -97,14 +95,17 @@ void accumulate(in rproj prj) {
     ivec2 _to = ivec2(ndc(prj.to.xyz).xy*vec2(width,height));
     ivec2 _from = ivec2(ndc(prj.from.xyz).xy*vec2(width,height));
 
-    vec4 meta = imageSetLoadF(_METAPBR, _to, 0);
-    //if (meta.r < 0.01f) {
-        imageSetAtomicAccumF(_FATOMIC, _to, imageSetAtomicLoadF(_DIFFUSE, _from, 0, 1), 0);
-    //}
+    //
+    if (prj.isValid && imageSetLoadF(_METAPBR, _to, 1).r > 0.001f && prj.nsimilarity >= 0.9f) {
+        imageSetAtomicAccumF(_FATOMIC, _to, imageSetLoadPrevF(_DIFFUSE, _from, 1), 1);
+
+        //
+        //imageSetStoreF(_DREPROJ, _to, vec4(0.0, 0.0, 0.0, prj.T), 2+1);
+    }
 }
 
 //
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 void main() {
     //
     ivec2 dispatchThreadId = ivec2(gl_GlobalInvocationID.xy);
@@ -113,7 +114,5 @@ void main() {
 
     //
     //accumulate(reflectionReproj(gl_GlobalInvocationID.xy));
-
-    vec4 currentMeta = imageSetLoadF(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 0);
     //imageStore(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(currentMeta.x, motionVector, currentMeta.w), 0);
 }

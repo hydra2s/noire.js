@@ -37,9 +37,9 @@ void FFX_DNSR_Reflections_StoreVariance(int2 pixel_coordinate, min16float  value
 min16float FFX_DNSR_Reflections_SampleVarianceHistory(float2 uv)           { return imageSetLoadPrevLinF(_DIFFUSE, uv, 0).a; }
 
 //
-min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormal(int2 pixel_coordinate)        { return normalize((modelView[0] * vec4(imageSetLoadF       (_DOTHERS, pixel_coordinate, 0).rgb, 2)).xyz); }
-min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(int2 pixel_coordinate) { return normalize((modelView[1] * vec4(imageSetLoadPrevF   (_DOTHERS, pixel_coordinate, 0).rgb, 2)).xyz); }
-min16float3 FFX_DNSR_Reflections_SampleWorldSpaceNormalHistory(float2 uv)           { return normalize((modelView[1] * vec4(imageSetLoadPrevLinF(_DOTHERS, uv, 0).rgb, 2)).xyz); }
+min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormal(int2 pixel_coordinate)        { return normalize((/*modelView[0] **/ vec4(imageSetLoadF       (_DOTHERS, pixel_coordinate, 2).rgb, 0.0)).xyz); }
+min16float3 FFX_DNSR_Reflections_LoadWorldSpaceNormalHistory(int2 pixel_coordinate) { return normalize((/*modelView[1] **/ vec4(imageSetLoadPrevF   (_DOTHERS, pixel_coordinate, 2).rgb, 0.0)).xyz); }
+min16float3 FFX_DNSR_Reflections_SampleWorldSpaceNormalHistory(float2 uv)           { return normalize((/*modelView[1] **/ vec4(imageSetLoadPrevLinF(_DOTHERS, uv, 2).rgb, 0.0)).xyz); }
 
 // 
 min16float FFX_DNSR_Reflections_LoadRoughness(int2 pixel_coordinate)        { return imageSetLoadF   (_METAPBR, pixel_coordinate, 0).g; }
@@ -64,22 +64,6 @@ void FFX_DNSR_Reflections_LoadNeighborhood(int2 pixel_coordinate, out min16float
     normal = FFX_DNSR_Reflections_LoadWorldSpaceNormal(pixel_coordinate);
     radiance = FFX_DNSR_Reflections_LoadRadiance(pixel_coordinate);
     variance = FFX_DNSR_Reflections_LoadVariance(pixel_coordinate);
-}
-
-//
-vec3 ndc(in vec3 v3) {
-    v3.y *= -1.f;
-    v3.xy = v3.xy * 0.5f + 0.5f;
-    //v3.z = v3.z * 0.5f + 0.5f;
-    return v3;
-}
-
-//
-vec3 undc(in vec3 v3) {
-    v3.xy = v3.xy * 2.f - 1.f;
-    v3.y *= -1.f;
-    //v3.z = v3.z * 2.f - 1.f;
-    return v3;
 }
 
 //

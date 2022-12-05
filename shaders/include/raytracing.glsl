@@ -27,7 +27,7 @@ void rasterize(in uvec2 coord) {
     const uvec4 sys = framebufferLoadU(_INDICES, ivec2(coord), 0);
 
     //
-    rayData.texcoord = texelFetch(FBOF[framebuffers[_TEXCOORD]], ivec3(coord, 0), 0).xy;
+    rayData.texcoord = framebufferLoadF(_TEXCOORD, ivec2(coord), 0).xy;
     rayData.hitT = 0.f;
     rayData.normal = f16vec4(imageSetLoadF(_DOTHERS, ivec2(coord), 2));
     rayData.bary = bary;
@@ -38,7 +38,7 @@ void rasterize(in uvec2 coord) {
     );
 
     //
-    vec4 pos = divW(texelFetch(FBOF[framebuffers[_POSITION]], ivec3(coord, 0), 0));
+    vec4 pos = divW(framebufferLoadF(_POSITION, ivec2(coord), 0));
     vec4 _camera = divW(pos * inverse(perspective));
     vec4 _origin = (_camera * modelViewInverse[0]);
 
@@ -205,7 +205,7 @@ GIData globalIllumination() {
     float diff = sqrt(max(dot(vec3(rayData.normal.xyz), lightDir), 0.0));
 
     //
-    const float epsilon = 0.001f * pow(texelFetch(FBOF[framebuffers[_POSITION]], ivec3(gl_GlobalInvocationID.xy, 0), 0).z, 256.f);
+    const float epsilon = 0.001f * pow(divW(framebufferLoadF(_POSITION, ivec2(gl_GlobalInvocationID.xy), 0)).z, 256.f);
     const vec3 diffuseCol = rayData.diffuse.xyz * (diff + 0.2f) * 1.f;
 
     //
@@ -238,13 +238,13 @@ GIData globalIllumination() {
                 // shading
                     f16mat3x3 TBN = f16mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
 
-                    // TODO: load from pre-cache, store in rayData
-                    reflCoef = mix(pow(1.f - max(dot(vec3(TBN[2]), -reflDir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b));
-                    reflCoef *= (1.f - float(rayData.PBR.g));
-
                     //
                     if (reflCoef > 0.9) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
                     lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
+
+                    // TODO: load from pre-cache, store in rayData
+                    reflCoef = mix(pow(1.f - max(dot(vec3(TBN[2]), -reflDir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b));
+                    reflCoef *= (1.f - float(rayData.PBR.g));
 
                     //
                     reflCol = 1.f.xxx;
@@ -252,14 +252,12 @@ GIData globalIllumination() {
                     // TODO: push first rays depence on pixel and frametime
                     int rtype = 0;
                     if (random_seeded(C, 1.0+F) <= reflCoef) { rtype = 1; };
+                    if (I == 0) { type = rtype; }
 
                     // if reflection
                     if (rtype == 1) {
                         reflDir = normalize(mix(normalize(reflect(rayData.dir, vec3(TBN[2]))), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
                         reflCol *= min(mix(1.hf.xxx, max(rayData.diffuse.xyz, 0.hf.xxx), rayData.PBR.b), 1.hf);
-
-                        // 
-                        if (I == 0) { type = 1; }
                     } else 
 
                     // if diffuse
@@ -274,9 +272,6 @@ GIData globalIllumination() {
                         //
                         reflDir = normalize(cosineWeightedPoint(TBN, C, F));
                         lightDir = coneSample(LC * inversesqrt(dt), cosL, C, F);
-
-                        // 
-                        if (I == 0) { type = 0; }
 
                         // 
                         shadowed = shadowTrace(rayData.origin.xyz + TBN[2] * epsilon, SO, lightDir);
@@ -294,8 +289,8 @@ GIData globalIllumination() {
                     rayTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, rayData.origin.xyz + rayData.TBN[2] * epsilon + reflDir * 10000.f, reflDir);
                 }
             } else {
-                //nearT = 10000.f;
                 fcolor += vec4(energy.xyz * texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(rayData.dir)).xyz, 0.f);
+                //if (nearT <= 0.001f) { nearT == 10000.f; };
                 break;
             }
         }

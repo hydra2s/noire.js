@@ -61,15 +61,16 @@ class TextureLoaderObj extends B.BasicObj {
                     const image = this;
 
                     // covnert into fp16 + RGB from XYZ
-                    const fp16data = new Uint16Array(image.width*image.height*4);
-                    const fp32data = new Float32Array(8);
+                    const fp16data = new Uint16Array(image.width*image.height*4); const fp16address = fp16data.address();
+                    const fp32data = new Float32Array(8);                         const fp32address = fp32data.address();
                     for (let I=0;I<image.width*image.height;I+=2) {
                         fp32data.set([
                             ...XYZtoRGB(image.data.subarray(I*3+0, I*3+3)), 1.0, 
                             ...XYZtoRGB(image.data.subarray(I*3+3, I*3+6)), 1.0
                         ]);
-                        V.convertF32toF16x8(fp16data.subarray(I*4, I*4+8), fp32data);
-                        //fp16data.set([pixel3f[0], pixel3f[1], pixel3f[2], 1.0], I*4);
+
+                        // make operation bit faster, due priority in native code
+                        V.convertF32toF16x8(fp16address + BigInt(I)*8n, fp32address);
                     }
 
                     console.log(fp16data);

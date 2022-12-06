@@ -145,10 +145,13 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
         rayData.normal = readTexData(materialData.normal, texcoord.xy);;
         rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
         rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
+        rayData.PBR.g = 0.hf;
 
         // 
         rayData.TBN = f16mat3x3(TAN.xyz, BIN.xyz, NOR.xyz);
-        rayData.normal.xyz = rayData.TBN * rayData.normal.xyz;
+        //rayData.normal.xyz = rayData.TBN * rayData.normal.xyz;
+        rayData.normal.xyz = f16vec3(NOR.xyz);
+        rayData.normal.xyz = faceforward(rayData.normal.xyz, f16vec3(rayData.dir.xyz), rayData.normal.xyz);
     }
 }
 
@@ -278,7 +281,7 @@ GIData globalIllumination() {
 
                         //
                         fcolor += vec4(lightCol * energy.xyz * directLight, 0.f);
-                        reflCol *= min(max(rayData.diffuse.xyz, 0.hf.xxx), 1.hf);
+                        reflCol *= min(max(I == 0 ? 1.hf.xxx : rayData.diffuse.xyz, 0.hf.xxx), 1.hf);
                     }
 
                     // if reflection

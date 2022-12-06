@@ -60,7 +60,7 @@ rproj reflectionReproj(in uvec2 coord, in int type)
 
         //
         vec3 prevDir    = normalize((modelView[1] * vec4(normalize(prevCamera.xyz), 0.f)).xyz);
-        vec3 prevHitpos = prevOrigin.xyz + prevDir * dirT;
+        vec3 prevHitpos = prevOrigin.xyz + normalize(reflect(prevDir, prevNormal)) * dirT;
 
         // TODO: reproject by model transform
         vec4 origin = prevOrigin;
@@ -103,7 +103,7 @@ void accumulate(in int type) {
 
     //
     const vec4 clr = imageSetLoadPrevLinF(_DIFFUSE, _from, type);
-    if (prj.isValid && imageSetLoadLinF(_METAPBR, _from, type).r > 0.001f && prj.nsimilarity > 0.9999f && clr.w > 0.1f) {
+    if (prj.isValid && imageSetLoadLinF(_METAPBR, _from, type).r > 0.001f && prj.nsimilarity > 0.9f && clr.w > 0.1f) {
         imageSetAtomicAccumF(_FATOMIC, _to, clr, type);
 
         //

@@ -83,10 +83,12 @@ void main() {
         f16vec4 normal = f16vec4(readTexData(materialData.normal, texcoord.xy));
         f16vec4 PBR = f16vec4(readTexData(materialData.PBR, texcoord.xy));
         diffuse.xyz = pow(diffuse.xyz, 2.2hf.xxx);
+        PBR.g = 0.hf;
 
         //
         vec3 viewNormal = (modelViewInverse[0] * vec4(NOR.xyz, 0.0)).xyz;
-        vec3 texNormal = mat3(TAN.xyz, BIN.xyz, NOR.xyz) * (normal.xyz * 2.0 - 1.0);
+        vec3 texNormal = NOR.xyz;//mat3(TAN.xyz, BIN.xyz, NOR.xyz) * (normal.xyz * 2.0 - 1.0);
+        texNormal.xyz = faceforward(texNormal.xyz, dir, texNormal.xyz);
 
         //
         imageSetStoreF(_PRECISE, ivec2(coord), vec4(origin, 1.f), 0);
@@ -112,8 +114,10 @@ void main() {
         for (int i=0;i<2;i++) {
             imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i+2);
             imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
-            imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), i);
         }
+
+        imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 0);
+        imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 1);
     } else {
         //
         vec4 _camera = unss(vec4((vec2(coord)/vec2(width, height)*2.f-1.f)*vec2(1.f, -1.f), 1.f, 1.f));
@@ -136,7 +140,7 @@ void main() {
         imageSetStoreF(_METAPBR, ivec2(coord), vec4(0.f.xxx, 0.f), 2);
 
         //
-        imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(env), 0);
+        imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(1.f.xxxx), 0);
         imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 1);
 
         // make a background, needs reproject from previous

@@ -111,8 +111,11 @@ class TextureLoaderObj extends B.BasicObj {
             case ".ktx":
             status = await new Promise(async(r,rj)=>{
                 const container = read(await fs.promises.readFile(relative + file));
-                texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth }, mipLevels: container.levels.length, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
-                subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: container.levels.length, baseArrayLayer: 0, layerCount: container.layerCount };
+
+                console.log(JSON.stringify(container.dataFormatDescriptorm, null, 4));
+
+                texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth||1 }, mipLevels: container.levels.length, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: container.levels.length || 1, baseArrayLayer: 0, layerCount: container.layerCount||1 };
 
                 // TODO: all mip levels support
                 texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: container.levels[0].uncompressedByteLength }));

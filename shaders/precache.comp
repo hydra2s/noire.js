@@ -131,7 +131,7 @@ void main() {
 
         //
         imageSetStoreF(_PRECISE, ivec2(coord), vec4(origin, 1.f), 0);
-        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(env), 1);
+        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(pow(env.xyz, 1.f/2.2f.xxx), 1.f), 1);
         imageSetStoreF(_DOTHERS, ivec2(coord), vec4(NOR.xyz, 0.0), 2);
         imageSetStoreF(_DOTHERS, ivec2(coord), vec4(0.0.xxx, 0.0), 3);
         imageSetStoreF(_DOTHERS, ivec2(coord), vec4(0.0.xxx, 0.0), 4);

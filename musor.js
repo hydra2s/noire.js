@@ -1,6 +1,7 @@
 import { default as V } from "./deps/vulkan.node.js/index.js"
 import fs from "fs";
 import { read, write, KTX2Container } from 'ktx-parse';
+import * as C from 'ktx-parse';
 import { default as HDR } from 'hdr';
 
 //
@@ -35,16 +36,38 @@ const XYZtoRGB = ([X, Y, Z]) => {
 
             //
             const container = new KTX2Container();
-            container.vkFormat = V.VK_FORMAT_R16G16B16A16_SFLOAT;
+            container.vkFormat = C.VK_FORMAT_R16G16B16A16_SFLOAT;//"VK_FORMAT_R16G16B16A16_SFLOAT";
             container.pixelWidth = image.width;
             container.pixelHeight = image.height;
-            container.pixelDepth = 1;
-            container.layerCount = 1;
+            container.pixelDepth = 1-1;
+            container.layerCount = 0;
             container.faceCount = 1;
+            container.typeSize = fp16data.BYTES_PER_ELEMENT;
+            container.supercompressionScheme = C.KHR_SUPERCOMPRESSION_NONE;
             container.levels = [
                 {
                     levelData: new Uint8Array(fp16data.buffer, fp16data.byteOffset, fp16data.byteLength), 
                     uncompressedByteLength: fp16data.byteLength
+                }
+            ];
+
+            const _flags = C.KHR_DF_SAMPLE_DATATYPE_FLOAT|C.KHR_DF_SAMPLE_DATATYPE_SIGNED|C.KHR_DF_SAMPLE_DATATYPE_LINEAR;
+            container.dataFormatDescriptor = [
+                {   
+                    vendorId: 0,
+                    versionNumber: 2,
+                    descriptorBlockSize: 24 + 16*4,
+                    transferFunction: C.KHR_DF_TRANSFER_LINEAR,
+                    descriptorType: C.KHR_DF_KHR_DESCRIPTORTYPE_BASICFORMAT,
+                    colorModel: C.KHR_DF_MODEL_RGBSDA,
+                    bytesPlane: [0,0,0,2],
+                    samples: [
+                        { bitOffset: 0 , bitLength: 63, channelType: C.KHR_DF_CHANNEL_RGBSDA_RED|_flags, samplePosition: [0] },
+                        { bitOffset: 16, bitLength: 63, channelType: C.KHR_DF_CHANNEL_RGBSDA_GREEN|_flags, samplePosition: [0] },
+                        { bitOffset: 32, bitLength: 63, channelType: C.KHR_DF_CHANNEL_RGBSDA_BLUE|_flags, samplePosition: [0] },
+                        { bitOffset: 48, bitLength: 63, channelType: C.KHR_DF_CHANNEL_RGBSDA_ALPHA|_flags, samplePosition: [0] }
+                    ],
+                    texelBlockDimension: []
                 }
             ];
 

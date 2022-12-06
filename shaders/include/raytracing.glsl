@@ -291,7 +291,7 @@ GIData globalIllumination() {
                     rayTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, rayData.origin.xyz + rayData.TBN[2] * epsilon + reflDir * 10000.f, reflDir);
                 }
             } else {
-                fcolor += vec4(energy.xyz * texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(rayData.dir)).xyz, 0.f);
+                fcolor += vec4(energy.xyz * pow(texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(rayData.dir)).xyz, 1.f/2.2f.xxx), 0.f);
                 if (I == 1) { nearT = 10000.0f; };
                 break;
             }

@@ -107,8 +107,8 @@ class TextureLoaderObj extends B.BasicObj {
             });
             break;
             
-            case "ktx2":
-            case "ktx":
+            case ".ktx2":
+            case ".ktx":
             status = await new Promise(async(r,rj)=>{
                 const container = read(await fs.promises.readFile(relative + file));
                 texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth }, mipLevels: container.levels.length, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));

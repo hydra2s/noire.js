@@ -248,7 +248,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     });
 
     //
-    const bgImageView = await textureLoader.load("./background.hdr");
+    const bgImageView = await textureLoader.load("./background.ktx2");
 
     //
     let mouseMoving = false;

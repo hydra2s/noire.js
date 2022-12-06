@@ -52,10 +52,10 @@ void main() {
 	vec4 wpos = vec4(vertex.xyz, 1.f) * nodeData.transform;
 	vec4 _pos = ssW(wpos * modelView[0]);
 	gl_Position = _pos;
+	gl_Position.y *= -1.f;
 	vIndices = sys;
 	vMaterialAddress = geometryData.materialAddress;
 	vTexcoord = texcoord;
 	vPosition = wpos;
 	vNormal = normal;
-	gl_Position.y *= -1.f;
 }

@@ -27,7 +27,7 @@ layout (location = _DERRIVE) out uvec4 fDerrive;
 layout (location = _BARY) out vec4 fBary;
 layout (location = _POSITION) out vec4 fPos;
 layout (location = _TEXCOORD) out vec4 fTex;
-layout (location = _WPOS) out vec4 fWpos;
+//layout (location = _WPOS) out vec4 fWpos;
 
 //
 layout (location = 0) pervertexEXT in Inputs {
@@ -68,5 +68,5 @@ void main() {
 	//fPos.y *= -1.f;
 	fBary = vec4(gl_BaryCoordEXT, gl_FragCoord.z);
 	fIndices = V[0].vIndices;
-	fWpos = vec4(wpos.xyz, 1.f);
+	//fWpos = vec4(wpos.xyz, 1.f);
 }

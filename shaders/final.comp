@@ -37,5 +37,5 @@ void main() {
     //fcolor = vec4(imageSetAtomicLoadF(_FATOMIC, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 1, 0));
 
     //
-    imageStore(SWAP[imageIndex], ivec2(gl_GlobalInvocationID.x, height - 1 - gl_GlobalInvocationID.y), vec4(pow(fcolor.xyz/max(fcolor.w, 1.f), 1.f.xxx/2.2f), 1.f));
+    imageStore(SWAP[imageIndex], ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(pow(fcolor.xyz/max(fcolor.w, 1.f), 1.f.xxx/2.2f), 1.f));
 }

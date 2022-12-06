@@ -173,7 +173,7 @@ uint readIndexData(in nrBinding binding, in uint index) {
 #define _BARY 2
 #define _POSITION 3
 #define _TEXCOORD 4
-#define _WPOS 5
+//#define _WPOS 5
 
 // image sets
 #define _AVERAGE 0
@@ -187,20 +187,20 @@ uint readIndexData(in nrBinding binding, in uint index) {
 //
 vec4 ssW(in vec4 V4) {
     vec4 S = (V4 * perspective);
-    S.y *= -1.f;
+    //S.y *= -1.f;
     return S;
 }
 
 //
 vec4 ss(in vec4 V4) {
     vec4 S = divW(V4 * perspective);
-    S.y *= -1.f;
+    //S.y *= -1.f;
     return S;
 }
 
 //
 vec4 unss(in vec4 V4) {
-    V4.y *= -1.f;
+    //V4.y *= -1.f;
     return divW(V4 * inverse(perspective));
 }
 

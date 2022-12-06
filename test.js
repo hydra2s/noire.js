@@ -109,7 +109,14 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
                 dynamicState: {
                     clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
                 }
-            }
+            },
+            {   // world space position (due broken coordinate system)
+                blend: {},
+                format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
+                dynamicState: {
+                    clearValue: new Float32Array([0.0, 0.0, 0.0, 1.0]).as("u32[4]")
+                }
+            },
         ],
         depthAttachment: {
             format: V.VK_FORMAT_D32_SFLOAT_S8_UINT,
@@ -284,7 +291,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             framebufferObj.colorImageViews[1].DSC_ID, 
             framebufferObj.colorImageViews[2].DSC_ID, 
             framebufferObj.colorImageViews[3].DSC_ID,
-            framebufferObj.colorImageViews[4].DSC_ID
+            framebufferObj.colorImageViews[4].DSC_ID,
+            framebufferObj.colorImageViews[5].DSC_ID
         ],
         loadSets: [
             imageSetObj.imageViews[0][0].DSC_ID,
@@ -404,15 +412,14 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         //
         precacheObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3, 4]);
+        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3, 4, 5]);
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3]);
-        
 
         // FidelityFX is bad for such purpose...
         //denoiseDiffuse(cmdBuf);
-        dMotion.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 5]);
+        //dMotion.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
+        //imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 5]);
         postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 3]);
 

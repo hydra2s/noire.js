@@ -27,6 +27,7 @@ layout (location = _DERRIVE) out uvec4 fDerrive;
 layout (location = _BARY) out vec4 fBary;
 layout (location = _POSITION) out vec4 fPos;
 layout (location = _TEXCOORD) out vec4 fTex;
+layout (location = _WPOS) out vec4 fWpos;
 
 //
 layout (location = 0) pervertexEXT in Inputs {
@@ -41,6 +42,7 @@ layout (location = 0) pervertexEXT in Inputs {
 void main() {
 	const vec4 texcoord = mat3x4(V[0].vTexcoord, V[1].vTexcoord, V[2].vTexcoord) * gl_BaryCoordEXT;
 	const vec3 normal = mat3x3(V[0].vNormal, V[1].vNormal, V[2].vNormal) * gl_BaryCoordEXT;
+	const vec4 wpos = mat3x4(V[0].vPosition, V[1].vPosition, V[2].vPosition) * gl_BaryCoordEXT;
 
 	//
 	nrMaterial materialData = nrMaterial(V[0].vMaterialAddress);
@@ -63,7 +65,8 @@ void main() {
 	fDerrive = uvec4(packFloat2x16(derrivative[0]), packFloat2x16(derrivative[1]), packFloat2x16(derrivative[2]), packFloat2x16(derrivative[3]));
 	fTex = texcoord;
 	fPos = vec4(gl_FragCoord.xy/vec2(width, height)*2.f-1.f, gl_FragCoord.z, 1.f);
-	fPos.y *= -1.f;
+	//fPos.y *= -1.f;
 	fBary = vec4(gl_BaryCoordEXT, gl_FragCoord.z);
 	fIndices = V[0].vIndices;
+	fWpos = vec4(wpos.xyz, 1.f);
 }

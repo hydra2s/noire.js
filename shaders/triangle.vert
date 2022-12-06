@@ -49,11 +49,13 @@ void main() {
 	//vec3 normal = (nodeData.transformInverse * (modelViewInverse * vec4(readFloatData(geometryData.normal, indices).xyz, 0.f))).xyz;
 
 	//
-	vec4 _pos = ((vec4(vertex.xyz, 1.f) * nodeData.transform) * modelView[0]) * perspective;
+	vec4 wpos = vec4(vertex.xyz, 1.f) * nodeData.transform;
+	vec4 _pos = ssW(wpos * modelView[0]);
 	gl_Position = _pos;
 	vIndices = sys;
 	vMaterialAddress = geometryData.materialAddress;
 	vTexcoord = texcoord;
-	vPosition = _pos;
+	vPosition = wpos;
 	vNormal = normal;
+	gl_Position.y *= -1.f;
 }

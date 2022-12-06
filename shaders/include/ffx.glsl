@@ -12,8 +12,7 @@ float FFX_DNSR_Reflections_LoadDepth       (int2 pixel_coordinate)  { return div
 float FFX_DNSR_Reflections_LoadDepthHistory(int2 pixel_coordinate)  { return divW(framebufferLoadF(_POSITION, pixel_coordinate, 1)).z; }
 float FFX_DNSR_Reflections_SampleDepthHistory(float2 uv)            { return divW(framebufferLoadLinF(_POSITION, uv, 1)).z; }
 float FFX_DNSR_Reflections_GetLinearDepth(float2 uv, float history) {  
-    //return length(divW(vec4(uv*2.f-1.f, history, 1.f) * perspectiveInverse).xyz);
-    return divW(vec4(uv*2.f-1.f, history, 1.f) * perspectiveInverse).z;
+    return unss(vec4(uv*2.f-1.f, history, 1.f)).z;
 }
 
 //
@@ -68,7 +67,7 @@ void FFX_DNSR_Reflections_LoadNeighborhood(int2 pixel_coordinate, out min16float
 
 //
 min16float3 FFX_DNSR_Reflections_ScreenSpaceToViewSpace(in min16float3 v3) {
-    return divW(vec4(undc(v3), 1.f) * perspectiveInverse).xyz;
+    return unss(vec4(undc(v3), 1.f)).xyz;
 }
 
 //
@@ -78,7 +77,7 @@ min16float3 FFX_DNSR_Reflections_ViewSpaceToWorldSpace(in min16float4 v3) {
 
 //
 min16float3 FFX_DNSR_Reflections_WorldSpaceToScreenSpacePrevious(in min16float3 v3) {
-    return ndc(divW((vec4(v3, 1.f)*modelView[1]) * perspective).xyz);
+    return ndc(ss((vec4(v3, 1.f)*modelView[1])).xyz);
 }
 
 //

@@ -30,7 +30,7 @@
 #include "include/hlsl_map.glsl"
 #include "include/math.glsl"
 #include "include/noire.glsl"
-#include "include/ffx.glsl"
+//#include "include/ffx.glsl"
 
 //
 struct rproj {
@@ -48,16 +48,18 @@ struct rproj {
 rproj reflectionReproj(in uvec2 coord) 
 {
     // TODO: reproject by model previous transform
-    float dirT = imageSetLoadPrevF(_DREPROJ, ivec2(coord), 1).w;
-    rproj ot; ot.isValid = false; ot.T = 10000.f;
-    if (dirT > 0.001f) 
+    float dirT = imageSetLoadPrevF(_DREPROJ, ivec2(coord.x, coord.y), 1).w;
+    rproj ot; ot.isValid = false; ot.T = 0.f;//ot.T = 10000.f;
+    //if (dirT > 0.001f) 
     {
         vec3 prevNormal = normalize(/*modelView[1] **/ vec4(imageSetLoadPrevF(_DOTHERS, ivec2(coord), 2).rgb, 0.f)).xyz;
-        vec4 prevPView  = divW(framebufferLoadF(_POSITION, ivec2(coord), 1));
-        vec4 prevCamera = divW(prevPView * inverse(perspective));
+        vec4 prevPView  = framebufferLoadF(_POSITION, ivec2(coord.x, coord.y), 1);
+        vec4 prevCamera = unss(prevPView);
         vec4 prevOrigin = (prevCamera * modelViewInverse[1]);
+
+        //
         vec3 prevDir    = normalize((modelView[1] * vec4(normalize(prevCamera.xyz), 0.f)).xyz);
-        vec3 prevHitpos = prevOrigin.xyz + normalize(reflect(prevDir, prevNormal)) * dirT;
+        vec3 prevHitpos = prevOrigin.xyz /*+ prevDir * dirT*/;
 
         // TODO: reproject by model transform
         vec4 origin = prevOrigin;
@@ -70,34 +72,37 @@ rproj reflectionReproj(in uvec2 coord)
         vec3 camHitPos = (vec4(prevHitpos, 1.f) * modelView[0]).xyz;
         vec3 camDir    = normalize((modelViewInverse[0] * vec4(prevDir, 0.0f)).xyz);
         vec3 camNormal = normalize((modelViewInverse[0] * vec4(prevNormal, 0.f)).xyz);
-        vec4 hview     = divW(vec4(camHitPos, 1.f) * perspective);
+        vec4 hview     = ss(vec4(camHitPos, 1.f));
 
         //
         vec3 point = find_reflection_incident_point((vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz, hitPos, origin.xyz, normal.xyz);
-        vec4 pview = divW((vec4(point, 1.f) * modelView[0]) * perspective);
-        vec3 pnormal = normalize((/*modelView[0] **/ vec4(imageSetLoadF(_DOTHERS, ivec2(ndc(pview.xyz).xy*vec2(width,height)), 2).rgb, 0.f)).xyz).xyz;
+        vec4 pview = ss((vec4(point, 1.f) * modelView[0]));
+
+        vec3 pnormal = normalize((/*modelView[0] **/ vec4(imageSetLoadF(_DOTHERS, ivec2(unorm(pview.xy)*vec2(width,height)), 2).rgb, 0.f)).xyz).xyz;
 
         // may have threading conflict
         ot.forStoreToCurrent = ivec2(pview.xy * vec2(width, height));
         ot.nsimilarity = dot(pnormal, normal);
         //ot.dsimilarity = abs(pview.z - hview.z);
-        ot.motion = ndc(pview.xyz).xy - ndc(prevPView.xyz).xy;
+        ot.motion = unorm(pview.xyz).xy - unorm(prevPView.xyz).xy;
         ot.from = prevPView;
         ot.to = pview;
         ot.isValid = true;
-        ot.T = distance(hitPos.xyz, point.xyz);
+        ot.T = 0.f;//distance(hitPos.xyz, point.xyz);
     }
     return ot;
 }
 
 //
 void accumulate(in rproj prj) {
-    ivec2 _to = ivec2(ndc(prj.to.xyz).xy*vec2(width,height));
-    ivec2 _from = ivec2(ndc(prj.from.xyz).xy*vec2(width,height));
+    //prj.to.y *= -1.f;
+    //prj.from.y *= -1.f;
+    ivec2 _to = ivec2(unorm(prj.to.xyz).xy*vec2(width,height));
+    ivec2 _from = ivec2(unorm(prj.from.xyz).xy*vec2(width,height));
 
     //
-    if (prj.isValid && imageSetLoadF(_METAPBR, _to, 1).r > 0.001f && prj.nsimilarity >= 0.9f) {
-        imageSetAtomicAccumF(_FATOMIC, _to, imageSetLoadPrevF(_DIFFUSE, _from, 1), 1);
+    if (/*prj.isValid && imageSetLoadF(_METAPBR, _to, 1).r > 0.001f && prj.nsimilarity >= 0.9f*/true) {
+        //imageSetAtomicAccumF(_FATOMIC, _to, imageSetLoadPrevF(_DIFFUSE, _from, 1), 1);
 
         //
         //imageSetStoreF(_DREPROJ, _to, vec4(0.0, 0.0, 0.0, prj.T), 2+1);
@@ -113,6 +118,5 @@ void main() {
     uvec2 targetSize = uvec2(width, height);
 
     //
-    //accumulate(reflectionReproj(gl_GlobalInvocationID.xy));
-    //imageStore(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(currentMeta.x, motionVector, currentMeta.w), 0);
+    accumulate(reflectionReproj(gl_GlobalInvocationID.xy));
 }

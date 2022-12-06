@@ -39,7 +39,7 @@ void rasterize(in uvec2 coord) {
 
     //
     vec4 pos = divW(framebufferLoadF(_POSITION, ivec2(coord), 0));
-    vec4 _camera = divW(pos * inverse(perspective));
+    vec4 _camera = unss(pos);
     vec4 _origin = (_camera * modelViewInverse[0]);
 
     //
@@ -71,7 +71,7 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
 
     //
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT, 0xFF, origin, 0.0001f, dir, 10000.f);
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT, 0xFF, origin, 0.0001f, normalize(dir), 10000.f);
 
     //
     while(rayQueryProceedEXT(rayQuery)) {

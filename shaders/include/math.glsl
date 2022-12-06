@@ -88,6 +88,16 @@ float unorm(in float snorm) {
 }
 
 //
+vec2 unorm(in vec2 snorm) {
+    return snorm * 0.5f + 0.5f;
+}
+
+//
+vec3 unorm(in vec3 snorm) {
+    return snorm * 0.5f + 0.5f;
+}
+
+//
 float snorm(in float snorm) {
     return snorm * 2.f - 1.f;
 }
@@ -181,16 +191,12 @@ vec3 find_reflection_incident_point(in vec3 m0, in vec3 t0, in vec3 p0, in vec3 
 
 //
 vec3 ndc(in vec3 v3) {
-    v3.y *= -1.f;
     v3.xy = v3.xy * 0.5f + 0.5f;
-    //v3.z = v3.z * 0.5f + 0.5f;
     return v3;
 }
 
 //
 vec3 undc(in vec3 v3) {
     v3.xy = v3.xy * 2.f - 1.f;
-    v3.y *= -1.f;
-    //v3.z = v3.z * 2.f - 1.f;
     return v3;
 }

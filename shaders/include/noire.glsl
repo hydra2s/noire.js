@@ -173,6 +173,7 @@ uint readIndexData(in nrBinding binding, in uint index) {
 #define _BARY 2
 #define _POSITION 3
 #define _TEXCOORD 4
+#define _WPOS 5
 
 // image sets
 #define _AVERAGE 0
@@ -184,8 +185,41 @@ uint readIndexData(in nrBinding binding, in uint index) {
 #define _FATOMIC 5
 
 //
+vec4 ssW(in vec4 V4) {
+    vec4 S = (V4 * perspective);
+    S.y *= -1.f;
+    return S;
+}
+
+//
+vec4 ss(in vec4 V4) {
+    vec4 S = divW(V4 * perspective);
+    S.y *= -1.f;
+    return S;
+}
+
+//
+vec4 unss(in vec4 V4) {
+    V4.y *= -1.f;
+    return divW(V4 * inverse(perspective));
+}
+
+//
+ivec2 invertY(ivec2 coord) {
+    return ivec2(coord.x, height - coord.y - 1);
+    //return coord;
+}
+
+//
+vec2 invertY(vec2 coord) {
+    return vec2(coord.x, 1.f - coord.y);
+    //return coord;
+}
+
+//
 vec4 imageSetAtomicLoadF(in int IMG_STORE, in ivec2 coord, in int layer, in int state) {
     //return imageLoad(SETF[imageSets[0][IMG_STORE]], ivec3(coord, layer));
+    //coord = invertY(coord);
     return vec4(
         texelFetch(FBOF[imageSets[state][IMG_STORE]], ivec3((coord.x<<2)|0x0, coord.y, layer), 0).r,
         texelFetch(FBOF[imageSets[state][IMG_STORE]], ivec3((coord.x<<2)|0x1, coord.y, layer), 0).r,
@@ -215,55 +249,55 @@ vec4 imageSetAtomicAccumF(in int IMG_STORE, in ivec2 coord, in vec4 RGBA, in int
 
 //
 vec4 imageSetLoadPrevLinF(in int IMG_STORE, in vec2 coord, in int layer) {
-    return textureLod(sampler2DArray(FBOF[imageSets[1][IMG_STORE]], samplers[linearSampler]), vec3(coord, float(layer) /*/ textureSize(FBOF[framebuffers[TEX_STORE]], 0).z*/), 0.0);
+    return textureLod(sampler2DArray(FBOF[imageSets[1][IMG_STORE]], samplers[linearSampler]), vec3((coord), float(layer) /*/ textureSize(FBOF[framebuffers[TEX_STORE]], 0).z*/), 0.0);
 }
 
 //
 vec4 imageSetLoadLinF(in int IMG_STORE, in vec2 coord, in int layer) {
-    return textureLod(sampler2DArray(FBOF[imageSets[0][IMG_STORE]], samplers[linearSampler]), vec3(coord, float(layer) /*/ textureSize(FBOF[framebuffers[TEX_STORE]], 0).z*/), 0.0);
+    return textureLod(sampler2DArray(FBOF[imageSets[0][IMG_STORE]], samplers[linearSampler]), vec3((coord), float(layer) /*/ textureSize(FBOF[framebuffers[TEX_STORE]], 0).z*/), 0.0);
 }
 
 //
 vec4 imageSetLoadNearestF( in uint F, in vec2 texCoord_f, in int layer ) {
-    const ivec3 texCoord_i = ivec3(texCoord_f * imageSize(SETF[imageSets[0][F]]).xy, layer);
+    const ivec3 texCoord_i = ivec3((texCoord_f) * imageSize(SETF[imageSets[0][F]]).xy, layer);
     return imageLoad(SETF[imageSets[0][F]], texCoord_i);
 }
 
 //
 vec4 imageSetLoadF(in int IMG_STORE, in ivec2 coord, in int layer) {
     //return imageLoad(SETF[imageSets[0][IMG_STORE]], ivec3(coord, layer));
-    return texelFetch(FBOF[imageSets[0][IMG_STORE]], ivec3(coord, layer), 0);
+    return texelFetch(FBOF[imageSets[0][IMG_STORE]], ivec3((coord), layer), 0);
 }
 
 uvec4 imageSetLoadU(in int IMG_STORE, in ivec2 coord, in int layer) {
     //return imageLoad(SETF[imageSets[0][IMG_STORE]], ivec3(coord, layer));
-    return texelFetch(FBOU[imageSets[0][IMG_STORE]], ivec3(coord, layer), 0);
+    return texelFetch(FBOU[imageSets[0][IMG_STORE]], ivec3((coord), layer), 0);
 }
 
 //
 vec4 imageSetLoadPrevF(in int IMG_STORE, in ivec2 coord, in int layer) {
     //return imageLoad(SETF[imageSets[0][IMG_STORE]], ivec3(coord, layer));
-    return texelFetch(FBOF[imageSets[1][IMG_STORE]], ivec3(coord, layer), 0);
+    return texelFetch(FBOF[imageSets[1][IMG_STORE]], ivec3((coord), layer), 0);
 }
 
 uvec4 imageSetLoadPrevU(in int IMG_STORE, in ivec2 coord, in int layer) {
     //return imageLoad(SETF[imageSets[0][IMG_STORE]], ivec3(coord, layer));
-    return texelFetch(FBOU[imageSets[1][IMG_STORE]], ivec3(coord, layer), 0);
+    return texelFetch(FBOU[imageSets[1][IMG_STORE]], ivec3((coord), layer), 0);
 }
 
 //
 vec4 framebufferLoadLinF(in int TEX_STORE, in vec2 coord, in int layer) {
-    return textureLod(sampler2DArray(FBOF[framebuffers[TEX_STORE]], samplers[nearestSampler]), vec3(coord, float(layer)), 0.0);
+    return textureLod(sampler2DArray(FBOF[framebuffers[TEX_STORE]], samplers[nearestSampler]), vec3(invertY(coord), float(layer)), 0.0);
 }
 
 //
 vec4 framebufferLoadF(in int TEX_STORE, in ivec2 coord, in int layer) {
-    return texelFetch(FBOF[framebuffers[TEX_STORE]], ivec3(coord, layer), 0);
+    return texelFetch(FBOF[framebuffers[TEX_STORE]], ivec3(invertY(coord), layer), 0);
 }
 
 //
 uvec4 framebufferLoadU(in int TEX_STORE, in ivec2 coord, in int layer) {
-    return texelFetch(FBOU[framebuffers[TEX_STORE]], ivec3(coord, layer), 0);
+    return texelFetch(FBOU[framebuffers[TEX_STORE]], ivec3(invertY(coord), layer), 0);
 }
 
 //

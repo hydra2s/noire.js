@@ -56,8 +56,8 @@ void main() {
         nrMaterial materialData = nrMaterial(geometryData.materialAddress);
 
         //
-        vec4 _ss = framebufferLoadF(_POSITION, ivec2(coord.x, coord.y), 1); _camera = unss(_ss);
-        origin = (_camera * modelView[1]).xyz;
+        vec4 _ss = framebufferLoadF(_POSITION, ivec2(coord.x, coord.y), 0); _ss.y *= -1.f; _camera = unss(_ss);
+        origin = (_camera * modelViewInverse[0]).xyz;
         dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
 
         //
@@ -89,6 +89,7 @@ void main() {
         vec3 texNormal = mat3(TAN.xyz, BIN.xyz, NOR.xyz) * (normal.xyz * 2.0 - 1.0);
 
         //
+        imageSetStoreF(_PRECISE, ivec2(coord), vec4(origin, 1.f), 0);
         imageSetStoreF(_DOTHERS, ivec2(coord), f16vec4(texNormal.xyz, 0.0), 2);
         imageSetStoreF(_DOTHERS, ivec2(coord), f16vec4(TAN.xyz, 0.0), 3);
         imageSetStoreF(_DOTHERS, ivec2(coord), f16vec4(BIN.xyz, 0.0), 4);
@@ -125,6 +126,7 @@ void main() {
         const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(dir));
 
         //
+        imageSetStoreF(_PRECISE, ivec2(coord), vec4(origin, 1.f), 0);
         imageSetStoreF(_DOTHERS, ivec2(coord), vec4(env), 1);
         imageSetStoreF(_DOTHERS, ivec2(coord), vec4(NOR.xyz, 0.0), 2);
         imageSetStoreF(_DOTHERS, ivec2(coord), vec4(0.0.xxx, 0.0), 3);
@@ -141,7 +143,6 @@ void main() {
         for (int i=0;i<2;i++) {
             imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), 2+i);
             imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
-            
         }
 
         imageSetStoreF(_METAPBR, ivec2(coord), vec4(0.f.xxxx), 1);

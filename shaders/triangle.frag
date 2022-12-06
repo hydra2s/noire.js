@@ -65,7 +65,7 @@ void main() {
 	fDerrive = uvec4(packFloat2x16(derrivative[0]), packFloat2x16(derrivative[1]), packFloat2x16(derrivative[2]), packFloat2x16(derrivative[3]));
 	fTex = texcoord;
 	fPos = vec4(gl_FragCoord.xy/vec2(width, height)*2.f-1.f, gl_FragCoord.z, 1.f);
-	//fPos.y *= -1.f;
+	fPos.y *= -1.f;
 	fBary = vec4(gl_BaryCoordEXT, gl_FragCoord.z);
 	fIndices = V[0].vIndices;
 	//fWpos = vec4(wpos.xyz, 1.f);

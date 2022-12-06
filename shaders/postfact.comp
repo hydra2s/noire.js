@@ -26,14 +26,14 @@ layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 
 //
 void main() {
-    //for (int i=0;i<2;i++) {
-        //vec4 colC = imageSetLoadF(_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), i);
-        //vec4 colR = imageSetAtomicLoadF(_FATOMIC, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), i, 0);
-        //imageSetStoreF(_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), colC + colR, i);
+    for (int i=0;i<2;i++) {
+        vec4 colC = imageSetLoadF(_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), i);
+        vec4 colR = imageSetAtomicLoadF(_FATOMIC, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), i, 0);
+        imageSetStoreF(_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), colC + colR, i);
 
         //
-        //vec4 cT = imageSetLoadF(_DREPROJ, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), i);
-        //vec4 rT = imageSetLoadF(_DREPROJ, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 2+i);
-        //imageSetStoreF(_DREPROJ, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(cT.xyz, max( cT.w , rT.w )), i);
-    //}
+        vec4 cT = imageSetLoadF(_DREPROJ, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), i);
+        vec4 rT = imageSetLoadF(_DREPROJ, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 2+i);
+        imageSetStoreF(_DREPROJ, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(cT.xyz, max( cT.w , rT.w )), i);
+    }
 }

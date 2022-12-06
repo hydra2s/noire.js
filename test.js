@@ -22,10 +22,10 @@ const nrUniformData = new Proxy(V.CStructView, new V.CStruct("nrUniformData", {
     instanceCount: "u32",
     width: "u16", height: "u16",
     windowWidth: "u16", windowHeight: "u16",
-    framebuffers: "u16[6]",
-    loadSets: "u16[6]",
-    prevSets: "u16[6]",
-    storeSets: "u16[6]",
+    framebuffers: "u16[8]",
+    loadSets: "u16[8]",
+    prevSets: "u16[8]",
+    storeSets: "u16[8]",
     frameCount: "u32",
     linearSampler: "u16",
     nearestSampler: "u16",
@@ -156,6 +156,9 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
             // float atomic-data (reserved)
             {width: frameSize[0]<<2, height: frameSize[1], depth: 1},
+
+            // positons, high precise required
+            {width: frameSize[0], height: frameSize[1], depth: 1},
         ],
 
         //
@@ -163,7 +166,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         memoryAllocator: memoryAllocatorObj.handle[0],
 
         // TODO: optional previous layer support
-        layerCount: [1, 4, 4, 2, 6, 3],
+        layerCount: [1, 4, 4, 2, 6, 3, 1, 1],
         manualSwap: [true, true, true, true, true, true, true],
 
         //
@@ -173,7 +176,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             V.VK_FORMAT_R8G8B8A8_UNORM,
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
-            V.VK_FORMAT_R32_SFLOAT
+            V.VK_FORMAT_R32_SFLOAT,
+            V.VK_FORMAT_R32G32B32A32_SFLOAT
         ]
     });
 
@@ -225,8 +229,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     //
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
-    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
+    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
@@ -292,7 +296,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             imageSetObj.imageViews[0][2].DSC_ID,
             imageSetObj.imageViews[0][3].DSC_ID,
             imageSetObj.imageViews[0][4].DSC_ID,
-            imageSetObj.imageViews[1][5].DSC_ID
+            imageSetObj.imageViews[0][5].DSC_ID,
+            imageSetObj.imageViews[0][6].DSC_ID
         ],
         prevSets: [
             imageSetObj.imageViews[1][0].DSC_ID,
@@ -300,7 +305,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             imageSetObj.imageViews[1][2].DSC_ID,
             imageSetObj.imageViews[1][3].DSC_ID,
             imageSetObj.imageViews[1][4].DSC_ID,
-            imageSetObj.imageViews[1][5].DSC_ID
+            imageSetObj.imageViews[1][5].DSC_ID,
+            imageSetObj.imageViews[1][6].DSC_ID
         ],
         storeSets: [
             imageSetObj.imageViews[2][0].DSC_ID,
@@ -308,7 +314,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             imageSetObj.imageViews[2][2].DSC_ID,
             imageSetObj.imageViews[2][3].DSC_ID,
             imageSetObj.imageViews[2][4].DSC_ID,
-            imageSetObj.imageViews[2][5].DSC_ID
+            imageSetObj.imageViews[2][5].DSC_ID,
+            imageSetObj.imageViews[2][6].DSC_ID
         ],
         linearSampler: deviceObj.createSampler({
             pipelineLayout: descriptorsObj.handle[0],
@@ -404,14 +411,14 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         //
         precacheObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3, 4, 5]);
+        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3, 4, 5, 6]);
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3]);
 
         // FidelityFX is bad for such purpose...
         //denoiseDiffuse(cmdBuf);
-        //dMotion.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        //imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 5]);
+        dMotion.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
+        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 5]);
         postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 3]);
 
@@ -461,7 +468,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         const dY = (mY - lastY) / windowSize[1] / DPI[1] * 2.0;
 
         //
-        const viewSpeed = 0.00001;
+        const viewSpeed = 0.01;
         let localEye = $M.vec4.transformMat4($M.vec4.create(), $M.vec4.fromValues(...eye, 1.0), $M.mat4.copy($M.mat4.create(), modelView)).subarray(0, 3);
         let moveVec = $M.vec3.create(0,0,0);
 

@@ -22,8 +22,8 @@ layout (set = 2, binding = 0, scalar) uniform MData {
     uint32_t instanceCount;
     uint16_t width, height;
     uint16_t windowWidth, windowHeight;
-    uint16_t framebuffers[6];
-    uint16_t imageSets[3][6];
+    uint16_t framebuffers[8];
+    uint16_t imageSets[3][8];
     uint32_t frameCount;
     uint16_t linearSampler;
     uint16_t nearestSampler;
@@ -183,6 +183,7 @@ uint readIndexData(in nrBinding binding, in uint index) {
 //#define _TBNDATA 4
 #define _DOTHERS 4
 #define _FATOMIC 5
+#define _PRECISE 6
 
 //
 vec4 ssW(in vec4 V4) {

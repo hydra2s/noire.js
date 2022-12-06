@@ -38,9 +38,8 @@ void rasterize(in uvec2 coord) {
     );
 
     //
-    vec4 pos = divW(framebufferLoadF(_POSITION, ivec2(coord), 0));
-    vec4 _camera = unss(pos);
-    vec4 _origin = (_camera * modelViewInverse[0]);
+    vec4 _origin = imageSetLoadF(_PRECISE, ivec2(coord), 0);
+    vec4 _camera = _origin * modelView[0];
 
     //
     rayData.dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
@@ -239,7 +238,7 @@ GIData globalIllumination() {
                     f16mat3x3 TBN = f16mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
 
                     //
-                    if (reflCoef > 0.9) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
+                    if (reflCoef > 0.9 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
                     lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
 
                     // TODO: load from pre-cache, store in rayData
@@ -290,7 +289,7 @@ GIData globalIllumination() {
                 }
             } else {
                 fcolor += vec4(energy.xyz * texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(rayData.dir)).xyz, 0.f);
-                //if (nearT <= 0.001f) { nearT == 10000.f; };
+                if (I == 1) { nearT = 10000.0f; };
                 break;
             }
         }

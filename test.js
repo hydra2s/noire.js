@@ -229,8 +229,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     //
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
-    const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
+    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
@@ -413,7 +413,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         precacheObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3, 4, 5, 6]);
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3]);
+        imageSetObj.cmdSwapstageId(cmdBuf, [1, 3]);
 
         // FidelityFX is bad for such purpose...
         //denoiseDiffuse(cmdBuf);
@@ -468,7 +468,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         const dY = (mY - lastY) / windowSize[1] / DPI[1] * 2.0;
 
         //
-        const viewSpeed = 0.01;
+        const viewSpeed = 0.00001;
         let localEye = $M.vec4.transformMat4($M.vec4.create(), $M.vec4.fromValues(...eye, 1.0), $M.mat4.copy($M.mat4.create(), modelView)).subarray(0, 3);
         let moveVec = $M.vec3.create(0,0,0);
 

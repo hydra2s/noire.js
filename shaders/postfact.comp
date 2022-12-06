@@ -31,15 +31,18 @@ void main() {
         uvec2 hashed = imageSetAtomicLoadU2(_UATOMIC, ivec2(coord), i);
 
         //
+        bool isValid = pack32(u16vec2(hashed)) > 0;
+
+        //
         vec4 colC = imageSetLoadF(_DIFFUSE, ivec2(coord), i);
-        vec4 colR = pack32(u16vec2(hashed)) > 0 ? imageSetLoadPrevF(_DIFFUSE, ivec2(hashed), i) : 0.f.xxxx;
+        vec4 colR = isValid ? imageSetLoadPrevF(_DIFFUSE, ivec2(hashed), i) : 0.f.xxxx;
 
         //
         imageSetStoreF(_DIFFUSE, ivec2(coord), colC + colR, i);
 
         //
         vec4 cT = imageSetLoadF(_DREPROJ, ivec2(coord), i);
-        vec4 rT = imageSetLoadPrevF(_DREPROJ, ivec2(hashed), i);
+        vec4 rT = isValid ? imageSetLoadPrevF(_DREPROJ, ivec2(hashed), i) : 0.f.xxxx;
         imageSetStoreF(_DREPROJ, ivec2(coord), vec4(cT.xyz, max( cT.w , rT.w )), i);
     }
 }

@@ -187,7 +187,19 @@ vec3 find_reflection_incident_point(in vec3 m0, in vec3 t0, in vec3 p0, in vec3 
   //
   h1 = abs(h1), h2 = abs(h2);
   return mix(c,d,h1/(h1+h2));
-};
+}
+
+/*
+vec3 find_reflection_incident_point(vec3 p0, vec3 p1, vec3 v0, vec3 n) {
+  float d0 = 0, d1 = 0;
+  vec3 proj_p0 = proj_point_in_plane(p0, v0, n, d0);
+  vec3 proj_p1 = proj_point_in_plane(p1, v0, n, d1);
+
+if(d1 < d0)
+   return (proj_p0 - proj_p1) * d1/(d0+d1) + proj_p1;
+else
+   return (proj_p1 - proj_p0) * d0/(d0+d1) + proj_p0;
+}*/
 
 //
 vec3 ndc(in vec3 v3) {

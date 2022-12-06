@@ -145,12 +145,12 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
         rayData.normal = readTexData(materialData.normal, texcoord.xy);;
         rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
         rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
-        rayData.PBR.g = 0.hf;
+        //rayData.PBR.g = 0.hf;
 
         // 
         rayData.TBN = f16mat3x3(TAN.xyz, BIN.xyz, NOR.xyz);
-        //rayData.normal.xyz = rayData.TBN * rayData.normal.xyz;
-        rayData.normal.xyz = f16vec3(NOR.xyz);
+        rayData.normal.xyz = rayData.TBN * rayData.normal.xyz;
+        //rayData.normal.xyz = f16vec3(NOR.xyz);
         rayData.normal.xyz = faceforward(rayData.normal.xyz, f16vec3(rayData.dir.xyz), rayData.normal.xyz);
     }
 }
@@ -265,7 +265,7 @@ GIData globalIllumination() {
                     // if diffuse
                     /*if (rtype == 0)*/
                     {
-                        const vec3 SO = lightPos.xyz + (vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz;
+                        const vec3 SO = lightPos.xyz; //+ (vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz;
                         const vec3 LC = SO - rayData.origin.xyz;
                         const float dt = dot(LC, LC);
                         const float cosL = sqrt(1.f - clamp((lightPos.w * lightPos.w) / dt, 0.f, 1.f));

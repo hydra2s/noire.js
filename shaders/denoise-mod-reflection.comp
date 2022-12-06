@@ -49,9 +49,8 @@ rproj reflectionReproj(in uvec2 coord, in int type)
 {
     // TODO: reproject by model previous transform
     float dirT = imageSetLoadPrevF(_DREPROJ, ivec2(coord.x, coord.y), type).w;
-    const vec3 bary = framebufferLoadF(_BARY, ivec2(coord), 0).xyz;
+    const vec3 bary = framebufferLoadF(_BARY, ivec2(coord), 1).xyz;
     rproj ot; ot.isValid = false; ot.T = 0.f; ot.T = 10000.f;
-    //if (dirT > 0.001f) 
     if (any(greaterThan(bary, 0.0001f.xxx))) {
         vec3 prevNormal = normalize(vec4(imageSetLoadPrevF(_DOTHERS, ivec2(coord), 2).rgb, 0.f)).xyz;
         vec4 prevOrigin = imageSetLoadPrevF(_PRECISE, ivec2(coord), 0);
@@ -69,28 +68,60 @@ rproj reflectionReproj(in uvec2 coord, in int type)
         vec3 normal = prevNormal;
 
         //
-        vec3 camOrigin = (origin * modelView[0]).xyz;
-        vec3 camHitPos = (vec4(prevHitpos, 1.f) * modelView[0]).xyz;
-        vec3 camDir    = normalize((modelViewInverse[0] * vec4(prevDir, 0.0f)).xyz);
-        vec3 camNormal = normalize((modelViewInverse[0] * vec4(prevNormal, 0.f)).xyz);
-        vec4 hview     = ss(vec4(camHitPos, 1.f));
-
-        //
         vec3 point = type == 0 ? origin.xyz : find_reflection_incident_point((vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz, hitPos, origin.xyz, normal.xyz);
-        vec4 pview = ss((vec4(point, 1.f) * modelView[0]));
-        vec3 pnormal = normalize(( vec4(imageSetLoadLinF(_DOTHERS, invertY(unorm(pview.xy)), 2).rgb, 0.f)).xyz).xyz;
+        vec4 pView = ss((vec4(point, 1.f) * modelView[0]));
+        vec3 pnormal = normalize(( vec4(imageSetLoadLinF(_DOTHERS, invertY(unorm(pView.xy)), 2).rgb, 0.f)).xyz).xyz;
 
         // may have threading conflict
-        ot.forStoreToCurrent = ivec2(pview.xy * vec2(width, height));
+        ot.forStoreToCurrent = ivec2(pView.xy * vec2(width, height));
         ot.nsimilarity = dot(pnormal, normal);
-        ot.dsimilarity = abs(pview.z - hview.z);
-        ot.motion = unorm(pview.xyz).xy - unorm(prevPView.xyz).xy;
+        //ot.dsimilarity = abs(pView.z - hview.z);
+        ot.motion = unorm(pView.xyz).xy - unorm(prevPView.xyz).xy;
         ot.from = prevPView;
-        ot.to = pview;
+        ot.to = pView;
         ot.isValid = true;
         ot.T = distance(hitPos.xyz, point.xyz);
     }
     return ot;
+
+    /*
+    // TODO: reproject by model previous transform
+    float dirT = imageSetLoadF(_DREPROJ, ivec2(coord.x, coord.y), type).w;
+    const vec3 bary = framebufferLoadF(_BARY, ivec2(coord), 0).xyz;
+    rproj ot; ot.isValid = false; ot.T = 0.f; ot.T = 10000.f;
+    if (any(greaterThan(bary, 0.0001f.xxx))) {
+        vec3 normal = normalize(vec4(imageSetLoadF(_DOTHERS, ivec2(coord), 2).rgb, 0.f)).xyz;
+        vec4 origin = imageSetLoadF(_PRECISE, ivec2(coord), 0);
+        vec4 camera = origin * modelView[0];
+        vec4 pView  = ss(camera);
+
+        //
+        vec3 dir    = normalize((modelView[0] * vec4(normalize(camera.xyz), 0.f)).xyz);
+        vec3 hitPos = origin.xyz + normalize(reflect(dir, normal)) * dirT;
+
+        // TODO: reproject by model transform
+        vec4 prevOrigin = origin;
+        vec3 prevHitPos = hitPos;
+        vec3 prevDir    = dir; // world space dir
+        vec3 prevNormal = normal;
+
+        //
+        vec3 prevPoint = type == 0 ? prevOrigin.xyz : find_reflection_incident_point((vec4(0.f.xxx, 1.f) * modelViewInverse[1]).xyz, prevHitPos, prevOrigin.xyz, prevNormal.xyz);
+        vec4 prevPView = ss((vec4(prevPoint, 1.f) * modelView[1]));
+        vec3 prevPnormal = normalize(( vec4(imageSetLoadLinF(_DOTHERS, invertY(unorm(prevPView.xy)), 2).rgb, 0.f)).xyz).xyz;
+
+        // may have threading conflict
+        ot.forStoreToCurrent = ivec2(pView.xy * vec2(width, height));
+        ot.nsimilarity = dot(prevPnormal, prevNormal);
+        //ot.dsimilarity = abs(prevPView.z - hview.z);
+        ot.motion = unorm(pView.xyz).xy - unorm(prevPView.xyz).xy;
+        ot.from = prevPView;
+        ot.to = pView;
+        ot.isValid = true;
+        ot.T = dirT;
+        //ot.T = distance(hitPos.xyz, point.xyz);
+    }
+    return ot;*/
 }
 
 //
@@ -103,8 +134,9 @@ void accumulate(in int type) {
 
     //
     const vec4 clr = imageSetLoadPrevLinF(_DIFFUSE, _from, type);
-    if (prj.isValid && imageSetLoadLinF(_METAPBR, _from, type).r > 0.001f && prj.nsimilarity > 0.9f && clr.w > 0.1f) {
+    if (prj.isValid && imageSetLoadPrevLinF(_METAPBR, _from, type).r > 0.001f && prj.nsimilarity > 0.9999f && clr.w > 0.1f) {
         imageSetAtomicAccumF(_FATOMIC, _to, clr, type);
+        //imageSetAtomicStoreF(_FATOMIC, _to, clr, type);
 
         //
         imageSetStoreF(_DREPROJ, _to, vec4(0.0, 0.0, 0.0, prj.T), 2+type);

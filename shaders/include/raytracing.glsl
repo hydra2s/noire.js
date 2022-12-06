@@ -238,54 +238,56 @@ GIData globalIllumination() {
         for (int I=0;I<2;I++) {
             if ((hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {
                 // shading
-                    f16mat3x3 TBN = f16mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
+                f16mat3x3 TBN = f16mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
+
+                //
+                if (reflCoef > 0.9 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
+                lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
+
+                // TODO: load from pre-cache, store in rayData
+                reflCoef = mix(pow(1.f - max(dot(vec3(TBN[2]), -reflDir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b));
+                reflCoef *= (1.f - float(rayData.PBR.g));
+
+                //
+                reflCol = 1.f.xxx;
+
+                // TODO: push first rays depence on pixel and frametime
+                int rtype = 0;
+                if (random_seeded(C, 1.0+F) <= reflCoef) { rtype = 1; };
+                if (I == 0) { type = rtype; }
+
+                // if reflection
+                if (rtype == 1) {
+                    reflDir = normalize(mix(normalize(reflect(rayData.dir, vec3(TBN[2]))), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
+                    reflCol *= min(mix(1.hf.xxx, max(rayData.diffuse.xyz, 0.hf.xxx), rayData.PBR.b), 1.hf);
+                } else 
+
+                // if diffuse
+                /*if (rtype == 0)*/
+                {
+                    const vec3 SO = lightPos.xyz; //+ (vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz;
+                    const vec3 LC = SO - rayData.origin.xyz;
+                    const float dt = dot(LC, LC);
+                    const float cosL = sqrt(1.f - clamp((lightPos.w * lightPos.w) / dt, 0.f, 1.f));
+                    const float weight = 2.f * (1.f - cosL);
 
                     //
-                    if (reflCoef > 0.9 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
-                    lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
+                    reflDir = normalize(cosineWeightedPoint(TBN, C, F));
+                    lightDir = coneSample(LC * inversesqrt(dt), cosL, C, F);
 
-                    // TODO: load from pre-cache, store in rayData
-                    reflCoef = mix(pow(1.f - max(dot(vec3(TBN[2]), -reflDir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b));
-                    reflCoef *= (1.f - float(rayData.PBR.g));
+                    // 
+                    shadowed = shadowTrace(rayData.origin.xyz + TBN[2] * epsilon, SO, lightDir);
+                    const vec3 directLight = (sqrt(max(dot(vec3(TBN[2]), lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f).xxx;
 
                     //
-                    reflCol = 1.f.xxx;
+                    f16vec3 diffCol = I == 0 ? 1.hf.xxx : rayData.diffuse.xyz;
+                    fcolor += vec4(lightCol * energy.xyz * directLight * diffCol, 0.f);
+                    reflCol *= diffCol;
+                }
 
-                    // TODO: push first rays depence on pixel and frametime
-                    int rtype = 0;
-                    if (random_seeded(C, 1.0+F) <= reflCoef) { rtype = 1; };
-                    if (I == 0) { type = rtype; }
-
-                    // if reflection
-                    if (rtype == 1) {
-                        reflDir = normalize(mix(normalize(reflect(rayData.dir, vec3(TBN[2]))), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
-                        reflCol *= min(mix(1.hf.xxx, max(rayData.diffuse.xyz, 0.hf.xxx), rayData.PBR.b), 1.hf);
-                    } else 
-
-                    // if diffuse
-                    /*if (rtype == 0)*/
-                    {
-                        const vec3 SO = lightPos.xyz; //+ (vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz;
-                        const vec3 LC = SO - rayData.origin.xyz;
-                        const float dt = dot(LC, LC);
-                        const float cosL = sqrt(1.f - clamp((lightPos.w * lightPos.w) / dt, 0.f, 1.f));
-                        const float weight = 2.f * (1.f - cosL);
-
-                        //
-                        reflDir = normalize(cosineWeightedPoint(TBN, C, F));
-                        lightDir = coneSample(LC * inversesqrt(dt), cosL, C, F);
-
-                        // 
-                        shadowed = shadowTrace(rayData.origin.xyz + TBN[2] * epsilon, SO, lightDir);
-                        const vec3 directLight = (sqrt(max(dot(vec3(TBN[2]), lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f) * rayData.diffuse.xyz;
-
-                        //
-                        fcolor += vec4(lightCol * energy.xyz * directLight, 0.f);
-                        reflCol *= min(max(I == 0 ? 1.hf.xxx : rayData.diffuse.xyz, 0.hf.xxx), 1.hf);
-                    }
-
-                    // if reflection
-                    energy *= vec4(max(min(reflCol, 1.f.xxx), 0.f.xxx), 1.f);
+                // 
+                energy.xyz *= reflCol.xyz;
+                
                 // next step
                 if (dot(energy.xyz, 1.f.xxx) > 0.001f && I < 1) {
                     rayTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, rayData.origin.xyz + rayData.TBN[2] * epsilon + reflDir * 10000.f, reflDir);

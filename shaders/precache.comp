@@ -41,8 +41,8 @@ void main() {
     vec3 origin = _origin.xyz;
 
     //
-    imageSetAtomicStoreF(_FATOMIC, ivec2(coord), vec4(0.f.xxxx), 0);
-    imageSetAtomicStoreF(_FATOMIC, ivec2(coord), vec4(0.f.xxxx), 1);
+    imageSetAtomicStoreU2(_UATOMIC, ivec2(coord), uvec2(0), 0);
+    imageSetAtomicStoreU2(_UATOMIC, ivec2(coord), uvec2(0), 1);
 
     //
     if (any(greaterThan(bary, 0.0001f.xxx))) {
@@ -112,7 +112,6 @@ void main() {
 
         // clear, needs reproject from previous!
         for (int i=0;i<2;i++) {
-            imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i+2);
             imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
         }
 
@@ -145,7 +144,6 @@ void main() {
 
         // make a background, needs reproject from previous
         for (int i=0;i<2;i++) {
-            imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), 2+i);
             imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
         }
 

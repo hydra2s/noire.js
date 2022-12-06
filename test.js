@@ -154,8 +154,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             // TBN, normal mapped, others
             {width: frameSize[0], height: frameSize[1], depth: 1},
 
-            // float atomic-data (reserved)
-            {width: frameSize[0]<<2, height: frameSize[1], depth: 1},
+            // uint atomic hash data
+            {width: frameSize[0], height: frameSize[1], depth: 1},
 
             // positons, high precise required
             {width: frameSize[0], height: frameSize[1], depth: 1},
@@ -166,7 +166,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         memoryAllocator: memoryAllocatorObj.handle[0],
 
         // TODO: optional previous layer support
-        layerCount: [1, 4, 4, 2, 6, 3, 1, 1],
+        layerCount: [1, 2, 4, 2, 6, 3, 2, 1],
         manualSwap: [true, true, true, true, true, true, true],
 
         //
@@ -176,7 +176,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             V.VK_FORMAT_R8G8B8A8_UNORM,
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
-            V.VK_FORMAT_R32_SFLOAT,
+            V.VK_FORMAT_R32_UINT,
             V.VK_FORMAT_R32G32B32A32_SFLOAT
         ]
     });
@@ -222,10 +222,10 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     });
 
     //
-    const dMotion = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-mod-reflection.comp.spv") });
-    const dReproject = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-reproject.comp.spv") });
-    const dPrefilter = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-prefilter.comp.spv") });
-    const dResolveTemporal = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-resolve_temporal.comp.spv") });
+    const dMotion = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/reprojection.comp.spv") });
+    //const dReproject = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-reproject.comp.spv") });
+    //const dPrefilter = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-prefilter.comp.spv") });
+    //const dResolveTemporal = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-resolve_temporal.comp.spv") });
 
     //
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
@@ -418,7 +418,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         // FidelityFX is bad for such purpose...
         //denoiseDiffuse(cmdBuf);
         dMotion.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 5]);
+        imageSetObj.cmdSwapstageId(cmdBuf, [5]);
         postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 3]);
 

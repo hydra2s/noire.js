@@ -135,11 +135,7 @@ void accumulate(in int type) {
     //
     const vec4 clr = imageSetLoadPrevLinF(_DIFFUSE, _from, type);
     if (prj.isValid && imageSetLoadPrevLinF(_METAPBR, _from, type).r > 0.001f && prj.nsimilarity > 0.9999f && clr.w > 0.1f) {
-        imageSetAtomicAccumF(_FATOMIC, _to, clr, type);
-        //imageSetAtomicStoreF(_FATOMIC, _to, clr, type);
-
-        //
-        imageSetStoreF(_DREPROJ, _to, vec4(0.0, 0.0, 0.0, prj.T), 2+type);
+        imageSetAtomicMaxU2(_UATOMIC, _to, uvec2(_from.xy*vec2(width, height)), type);
     }
 }
 

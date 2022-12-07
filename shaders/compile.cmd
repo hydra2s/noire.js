@@ -8,6 +8,7 @@ call glslangValidator --client vulkan100 --target-env spirv1.6 precache.comp -o 
 ::call glslangValidator --client vulkan100 --target-env spirv1.6 denoise-resolve_temporal.comp -o denoise-resolve_temporal.comp.spv
 call glslangValidator --client vulkan100 --target-env spirv1.6 final.comp -o final.comp.spv
 call glslangValidator --client vulkan100 --target-env spirv1.6 reprojection.comp -o reprojection.comp.spv
+call glslangValidator --client vulkan100 --target-env spirv1.6 filter.comp -o filter.comp.spv
 
 
 

@@ -166,7 +166,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         memoryAllocator: memoryAllocatorObj.handle[0],
 
         // TODO: optional previous layer support
-        layerCount: [1, 2, 4, 2, 6, 3, 2, 1],
+        layerCount: [1, 2, 4, 4, 6, 3, 2, 1],
         manualSwap: [true, true, true, true, true, true, true],
 
         //
@@ -240,6 +240,11 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     const postfactObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
         code: await fs.promises.readFile("shaders/postfact.comp.spv")
+    });
+
+    const filterObj = deviceObj.createComputePipeline({
+        pipelineLayout: descriptorsObj.handle[0],
+        code: await fs.promises.readFile("shaders/filter.comp.spv")
     });
 
     const precacheObj = deviceObj.createComputePipeline({
@@ -421,6 +426,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         imageSetObj.cmdSwapstageId(cmdBuf, [5]);
         postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 3]);
+        filterObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
+        imageSetObj.cmdSwapstageId(cmdBuf, [3]);
 
         //
         pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));

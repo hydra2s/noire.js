@@ -38,7 +38,7 @@ void main() {
         vec4 colR = isValid ? imageSetLoadPrevF(_DIFFUSE, ivec2(hashed), i) : 0.f.xxxx;
 
         //
-        imageSetStoreF(_DIFFUSE, ivec2(coord), colC + colR, i);
+        imageSetStoreF(_DIFFUSE, ivec2(coord), colC + colR /*filterComp(ivec2(coord), i)*/, i);
 
         //
         vec4 cT = imageSetLoadF(_DREPROJ, ivec2(coord), i);

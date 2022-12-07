@@ -60,8 +60,7 @@ float floatConstruct( uint m ) {
     m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
     m |= ieeeOne;                          // Add fractional part to 1.0
 
-    float  f = uintBitsToFloat( m );       // Range [1:2]
-    return fract(f - 1.0);                 // Range [0:1]
+    return fract(uintBitsToFloat( m ));
 }
 
 
@@ -71,11 +70,6 @@ float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
-
-//
-float gold_noise(in vec2 xy, in float seed){
-    return fract(tan(distance(xy*PHI, xy)*(seed + float(counter++)))*xy.x)*2.f-1.f;
-}
 
 //
 float random_seeded(in vec2 xy, in float seed) {
@@ -103,38 +97,6 @@ float snorm(in float snorm) {
 }
 
 // 
-vec3 cosineWeightedPoint(in vec2 uv, in float F) {
-    uv = vec2(random_seeded(uv, F+1.f), random_seeded(uv, F+2.f));
-    const float radial = sqrt(uv.x);
-    const float theta = TWO_PI * uv.y;
-    const float x = radial * cos(theta);
-    const float y = radial * sin(theta);
-    return normalize(vec3(x, y, sqrt(1 - uv.x)));
-};
-
-// 
-vec3 cosineWeightedPoint(in mat3x3 tbn, in vec2 uv, in float F) {
-    return normalize(tbn * cosineWeightedPoint(uv, F));
-};
-
-// TODO: replace by real tangent
-/*vec3 cosineWeightedDirection(in vec2 xy, float seed, vec3 normal) {
-   float u = random_seeded(xy, seed + 1.f);
-   float v = random_seeded(xy, seed + 2.f);
-   float r = sqrt(u);
-   float angle = 6.283185307179586 * v;
-    // compute basis from normal
-   vec3 sdir, tdir;
-   if (abs(normal.x)<.5) {
-     sdir = cross(normal, vec3(1,0,0));
-   } else {
-     sdir = cross(normal, vec3(0,1,0));
-   }
-   tdir = cross(normal, sdir);
-   return r*cos(angle)*sdir + r*sin(angle)*tdir + sqrt(1.-u)*normal;
-}*/
-
-// TODO: replace by real tangent
 void genTB(in vec3 N, out vec3 T, out vec3 B) {
     const float s = N.z < 0.0 ? -1.0 : 1.0;
     const float a = -1.0 / (s + N.z);
@@ -143,14 +105,32 @@ void genTB(in vec3 N, out vec3 T, out vec3 B) {
     B = vec3(b, s + N.y * N.y * a, -N.y);
 };
 
-// TODO: replace by real tangent
-vec3 coneSample(in vec3 N, in float cosTmax, in vec2 r, in float F) {
-    r = vec2(random_seeded(r, F+1.f), random_seeded(r, F+2.f));
-    vec3 T, B; genTB(N, T, B);
+//
+vec3 cosineWeightedPoint(in mat3x3 tbn, in vec2 uv, in float F) {
+    const vec3 rand = vec3(random_seeded(uv, F+1.f), random_seeded(uv, F+2.f), random_seeded(uv, F+2.f));
+    const float r = rand.x * 0.5 + 0.5;
+    const float angle = (rand.y + 1.0) * PI;
+    const float sr = sqrt(r);
+    const vec2 p = vec2(sr * cos(angle), sr * sin(angle));
+    const vec3 ph = vec3(p.xy, sqrt(1.0 - p*p));
+
+    //tbn[0] = normalize(rand);
+    //tbn[1] = cross(tbn[0], tbn[2]);
+    //tbn[0] = cross(tbn[1], tbn[2]);
+    genTB(tbn[2], tbn[0], tbn[1]);
+
+    //
+    return normalize(tbn[0] * ph.x + tbn[1] * ph.y + tbn[2] * ph.z);
+}
+
+// 
+vec3 coneSample(in vec3 N, in float cosTmax, in vec2 uv, in float F) {
+      vec2 r = vec2(random_seeded(uv, F+5.f), random_seeded(uv, F+6.f));
+    mat3x3 tbn = mat3x3(0.f.xxx, 0.f.xxx, N); genTB(tbn[2], tbn[0], tbn[1]);
     r.x *= 2.0 * PI;
     r.y = 1.0 - r.y * (1.0 - cosTmax);
     const float s = sqrt(1.0 - r.y * r.y);
-    return normalize(T * (cos(r.x) * s) + B * (sin(r.x) * s) + N * r.y);
+    return normalize(tbn[0] * (cos(r.x) * s) + tbn[1] * (sin(r.x) * s) + tbn[2] * r.y);
 };
 
 //

@@ -30,8 +30,8 @@ void main() {
     const uvec4 sys = framebufferLoadU(_INDICES, ivec2(coord), 0);
 
     //
-    f16vec4 normal = f16vec4(0.f, 0.f, 0.5f, 0.f);
-    vec3 NOR = normalize((modelView[0] * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
+    min16float3 NOR = min16float3(0.f, 0.f, 0.5f);
+    NOR = normalize((modelView[0] * vec4(NOR, 0.f)).xyz);
     float hitT = 0.f;
 
     //
@@ -66,22 +66,25 @@ void main() {
         // Hosico
         NOR = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
         NOR = normalize((nodeData.transformInverse * vec4(NOR, 0.0f)).xyz);
-        NOR = faceforward(NOR, dir, NOR);
+        NOR = normalize(faceforward(NOR, dir, NOR));
 
         // 
         vec4 TAN = readFloatData3(geometryData.tangent, indices) * bary;
         TAN.xyz = normalize((nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f)).xyz) * TAN.w;
         TAN.xyz = normalize(TAN.xyz - dot(TAN.xyz, NOR) * NOR);
-        // tangent.xyz = faceforward(tangent.xyz, dir, tangent.xyz);
+        //TAN.xyz = faceforward(TAN.xyz, dir, TAN.xyz);
 
         //
         vec3 BIN = normalize(cross(TAN.xyz, NOR));
+        BIN = BIN - NOR * dot(BIN, NOR);
+        BIN = normalize(BIN - TAN.xyz * dot(BIN, TAN.xyz));
+        //BIN.xyz = faceforward(BIN.xyz, dir, BIN.xyz);
 
         // 
-        f16vec4 emissive = f16vec4(readTexData(materialData.emissive, texcoord.xy));
-        f16vec4 diffuse = f16vec4(readTexData(materialData.diffuse, texcoord.xy));
-        f16vec4 normal = f16vec4(readTexData(materialData.normal, texcoord.xy));
-        f16vec4 PBR = f16vec4(readTexData(materialData.PBR, texcoord.xy));
+        min16float4 emissive = min16float4(readTexData(materialData.emissive, texcoord.xy));
+        min16float4 diffuse = min16float4(readTexData(materialData.diffuse, texcoord.xy));
+        min16float4 normal = min16float4(readTexData(materialData.normal, texcoord.xy));
+        min16float4 PBR = min16float4(readTexData(materialData.PBR, texcoord.xy));
         diffuse.xyz = pow(diffuse.xyz, 2.2hf.xxx);
 
         // DEBUG reflection
@@ -95,10 +98,10 @@ void main() {
 
         //
         imageSetStoreF(_PRECISE, ivec2(coord), vec4(origin, 1.f), 0);
-        imageSetStoreF(_DOTHERS, ivec2(coord), f16vec4(texNormal.xyz, 0.0), 2);
-        imageSetStoreF(_DOTHERS, ivec2(coord), f16vec4(TAN.xyz, 0.0), 3);
-        imageSetStoreF(_DOTHERS, ivec2(coord), f16vec4(BIN.xyz, 0.0), 4);
-        imageSetStoreF(_DOTHERS, ivec2(coord), f16vec4(NOR.xyz, 0.0), 5);
+        imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(texNormal.xyz, 0.0), 2);
+        imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(TAN.xyz, 0.0), 3);
+        imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(BIN.xyz, 0.0), 4);
+        imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(NOR.xyz, 0.0), 5);
         imageSetStoreF(_DOTHERS, ivec2(coord), diffuse, 1);
 
         //
@@ -108,10 +111,10 @@ void main() {
         // TODO: transparency support
         // per-type PBR (layers)
         imageSetStoreF(_METAPBR, ivec2(coord), vec4(1.f - reflCoef, 1.f, 0.f, 0.f), 0);
-        imageSetStoreF(_METAPBR, ivec2(coord), vec4(      reflCoef, max(PBR.g, 0.0002hf), 0.f, 0.f), 1);
+        imageSetStoreF(_METAPBR, ivec2(coord), vec4(      reflCoef, max(PBR.g, min16float(0.0002f)), 0.f, 0.f), 1);
 
         // general purpose PBR
-        imageSetStoreF(_METAPBR, ivec2(coord), vec4(reflCoef, max(PBR.gb, 0.0002hf.xx), 0), 2);
+        imageSetStoreF(_METAPBR, ivec2(coord), vec4(reflCoef, max(PBR.gb, min16float(0.0002f.xx)), 0), 2);
 
         // clear, needs reproject from previous!
         for (int i=0;i<2;i++) {

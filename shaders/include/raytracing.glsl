@@ -1,10 +1,10 @@
 //
 struct RayTracedData {
-    f16vec4 diffuse;
-    f16vec4 normal;
-    f16vec4 PBR;
-    f16vec4 emissive;
-    f16mat3x3 TBN;
+    min16float4 diffuse;
+    min16float4 normal;
+    min16float4 PBR;
+    min16float4 emissive;
+    mat3x3 TBN;
     uvec4 indices;
     uint64_t materialAddress;
     uint64_t transformAddress;
@@ -29,12 +29,12 @@ void rasterize(in uvec2 coord) {
     //
     rayData.texcoord = framebufferLoadF(_TEXCOORD, ivec2(coord), 0).xy;
     rayData.hitT = 0.f;
-    rayData.normal = f16vec4(imageSetLoadF(_DOTHERS, ivec2(coord), 2));
+    rayData.normal = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 2));
     rayData.bary = bary;
-    rayData.TBN = f16mat3x3(
-        imageSetLoadF(_DOTHERS, ivec2(coord), 3),
-        imageSetLoadF(_DOTHERS, ivec2(coord), 4),
-        imageSetLoadF(_DOTHERS, ivec2(coord), 5)
+    rayData.TBN = mat3x3(
+        normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 3)),
+        normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 4)),
+        normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 5))
     );
 
     //
@@ -52,15 +52,15 @@ void rasterize(in uvec2 coord) {
 
     //
     rayData.materialAddress = geometryData.materialAddress;
-    rayData.diffuse = f16vec4(imageSetLoadF(_DOTHERS, ivec2(coord), 1));
-    rayData.PBR     = f16vec4(imageSetLoadF(_METAPBR, ivec2(coord), 2));
+    rayData.diffuse = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 1));
+    rayData.PBR     = min16float4(imageSetLoadF(_METAPBR, ivec2(coord), 2));
 }
 
 //
-void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
-    rayData.normal = f16vec4(0.f, 0.f, 0.5f, 0.f);
-    rayData.diffuse = f16vec4(0.f.xxx, 1.f);
-    rayData.origin = vec4(far, 1.f);
+void rayTrace(in vec3 origin, in vec3 dir) {
+    rayData.normal = min16float4(0.f, 0.f, 0.5f, 0.f);
+    rayData.diffuse = min16float4(0.f.xxx, 1.f);
+    rayData.origin = vec4(origin + dir * 10000.f, 1.f);
     rayData.dir = dir;
     rayData.bary = vec3(0.f.xxx);
     rayData.hitT = 0.f;
@@ -127,7 +127,7 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
         // Hosico
         vec3 NOR = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
         NOR = normalize((nodeData.transformInverse * vec4(NOR.xyz, 0.0f)).xyz);
-        NOR = faceforward(NOR, rayData.dir, NOR);
+        NOR = normalize(faceforward(NOR, rayData.dir, NOR));
 
         // TOO PISSFUL for FPS
         vec4 TAN = readFloatData3(geometryData.tangent, indices) * bary;
@@ -136,7 +136,9 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
         TAN.xyz = normalize(TAN.xyz - dot(TAN.xyz, NOR) * NOR);
 
         //
-        const vec3 BIN = normalize(cross(TAN.xyz, NOR));
+        vec3 BIN = normalize(cross(TAN.xyz, NOR));
+        BIN = BIN - NOR * dot(BIN, NOR);
+        BIN = normalize(BIN - TAN.xyz * dot(BIN, TAN.xyz));
 
         //
         rayData.transformAddress = uint64_t(nodeData);
@@ -150,10 +152,10 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
         //rayData.PBR.g = 0.hf;
 
         // 
-        rayData.TBN = f16mat3x3(TAN.xyz, BIN.xyz, NOR.xyz);
+        rayData.TBN = mat3x3(TAN.xyz, BIN.xyz, NOR.xyz);
         rayData.normal.xyz = rayData.TBN * rayData.normal.xyz;
-        //rayData.normal.xyz = f16vec3(NOR.xyz); // DEBUG planes
-        rayData.normal.xyz = faceforward(rayData.normal.xyz, f16vec3(rayData.dir.xyz), rayData.normal.xyz);
+        //rayData.normal.xyz = min16float3(NOR.xyz); // DEBUG planes
+        rayData.normal.xyz = faceforward(rayData.normal.xyz, min16float3(rayData.dir.xyz), rayData.normal.xyz);
     }
 }
 
@@ -196,7 +198,7 @@ bool shadowTrace(in vec3 origin, in vec3 far, in vec3 dir) {
 
 //
 struct GIData {
-    f16vec4 color;
+    min16float4 color;
     float nearT;
     uint type;
 };
@@ -224,7 +226,7 @@ GIData globalIllumination() {
 
     //
     vec2 C = vec2(gl_GlobalInvocationID.xy);
-    float F = frameCount % 256;
+    float F = frameCount;
 
     //
     uvec4 indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u);
@@ -240,7 +242,7 @@ GIData globalIllumination() {
         for (int I=0;I<2;I++) {
             if ((hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {
                 // shading
-                f16mat3x3 TBN = f16mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
+                mat3x3 TBN = mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
 
                 //
                 if (reflCoef > 0.9 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
@@ -261,7 +263,7 @@ GIData globalIllumination() {
                 // if reflection
                 if (rtype == 1) {
                     reflDir = normalize(mix(normalize(reflect(rayData.dir, vec3(TBN[2]))), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
-                    reflCol *= min(mix(1.hf.xxx, max(rayData.diffuse.xyz * rayData.diffuse.a, 0.hf.xxx), rayData.PBR.b), 1.hf);
+                    reflCol *= min(mix(min16float3(1.f.xxx), max(rayData.diffuse.xyz * rayData.diffuse.a, min16float3(0.f.xxx)), rayData.PBR.b), min16float(1.f));
                 } else 
 
                 // if diffuse
@@ -275,14 +277,14 @@ GIData globalIllumination() {
 
                     //
                     reflDir = normalize(cosineWeightedPoint(TBN, C, F));
-                    lightDir = coneSample(LC * inversesqrt(dt), cosL, C, F);
+                    lightDir = normalize(coneSample(LC * inversesqrt(dt), cosL, C, F));
 
                     // 
-                    shadowed = shadowTrace(rayData.origin.xyz + TBN[2] * epsilon, SO, lightDir);
+                    shadowed = shadowTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, SO, lightDir);
                     const vec3 directLight = (sqrt(max(dot(vec3(TBN[2]), lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f).xxx;
 
                     //
-                    f16vec3 diffCol = (I == 0 ? 1.hf.xxx : rayData.diffuse.xyz) * rayData.diffuse.a;
+                    min16float3 diffCol = (I == 0 ? 1.hf.xxx : rayData.diffuse.xyz) * rayData.diffuse.a;
                     fcolor += vec4(lightCol * energy.xyz * directLight * diffCol, 0.f);
                     reflCol *= diffCol;
                 }
@@ -292,10 +294,10 @@ GIData globalIllumination() {
                 
                 // next step
                 if (dot(energy.xyz, 1.f.xxx) > 0.001f && I < 1) {
-                    rayTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, rayData.origin.xyz + rayData.TBN[2] * epsilon + reflDir * 10000.f, reflDir);
+                    rayTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, reflDir);
                 }
             } else {
-                fcolor += vec4(energy.xyz * pow(texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(rayData.dir)).xyz, 1.f/2.2f.xxx), 0.f);
+                fcolor += vec4(energy.xyz * pow(texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(reflDir)).xyz, 1.f/2.2f.xxx), 0.f);
                 if (I == 1) { nearT = 10000.0f; };
                 break;
             }
@@ -306,7 +308,7 @@ GIData globalIllumination() {
 
     //
     GIData data;
-    data.color = f16vec4(fcolor.xyz/fcolor.w, 1.f);
+    data.color = min16float4(fcolor.xyz/fcolor.w, 1.f);
     data.nearT = nearT;
     data.type = type;
     return data;

@@ -16,6 +16,7 @@
 #extension GL_EXT_shader_atomic_float : enable
 
 //
+#include "include/hlsl_map.glsl"
 #include "include/math.glsl"
 #include "include/noire.glsl"
 #include "include/raytracing.glsl"

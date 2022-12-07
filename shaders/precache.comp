@@ -103,7 +103,7 @@ void main() {
         imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(TAN.xyz, 0.0), 3);
         imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(BIN.xyz, 0.0), 4);
         imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(NOR.xyz, 0.0), 5);
-        imageSetStoreF(_DOTHERS, ivec2(coord), diffuse + vec4(emissive.xyz, 0.f), 1);
+        imageSetStoreF(_DOTHERS, ivec2(coord), max(diffuse + vec4(emissive.xyz, 0.f), 0.f.xxxx), 1);
         imageSetStoreF(_DOTHERS, ivec2(coord), emissive, 6);
 
         //

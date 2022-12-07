@@ -116,7 +116,7 @@ class GraphicsPipelineObj extends PipelineObj {
             depthClampEnable: false,
             rasterizerDiscardEnable: false,
             polygonMode: V.VK_POLYGON_MODE_FILL,
-            cullMode: V.VK_CULL_MODE_NONE,//V.VK_CULL_MODE_BACK_BIT, // TODO: manual 
+            cullMode: V.VK_CULL_MODE_BACK_BIT, // TODO: manual 
             frontFace: V.VK_FRONT_FACE_CLOCKWISE,
             depthBiasEnable: false,
             depthBiasConstantFactor: 0.0,

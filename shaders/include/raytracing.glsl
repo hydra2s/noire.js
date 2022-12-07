@@ -46,6 +46,10 @@ void rasterize(in uvec2 coord) {
     rayData.origin = _origin;
 
     //
+    rayData.TBN[2] = faceforward(rayData.TBN[2], rayData.dir, rayData.TBN[2]);
+    rayData.normal.xyz = faceforward(rayData.normal.xyz, rayData.dir, rayData.normal.xyz);
+
+    //
     nrNode nodeData = nrNode(nodeBuffer) + sys.x;
     nrMesh meshData = nrMesh(nodeData.meshBuffer);
     nrGeometry geometryData = nrGeometry(meshData.address) + sys.y;
@@ -71,7 +75,7 @@ void rayTrace(in vec3 origin, in vec3 dir) {
 
     //
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), /*gl_RayFlagsCullBackFacingTrianglesEXT*/0, 0xFF, origin, 0.0001f, normalize(dir), 10000.f);
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT, 0xFF, origin, 0.0001f, normalize(dir), 10000.f);
 
     //
     while(rayQueryProceedEXT(rayQuery)) {
@@ -149,7 +153,7 @@ void rayTrace(in vec3 origin, in vec3 dir) {
         rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
         rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
         rayData.emissive.xyz = pow(rayData.emissive.xyz, 2.2hf.xxx);
-        rayData.diffuse.xyz += rayData.emissive.xyz;
+        rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
 
         // DEBUG reflection
         //rayData.PBR.g = 0.hf;
@@ -162,9 +166,11 @@ void rayTrace(in vec3 origin, in vec3 dir) {
     }
 }
 
-bool shadowTrace(in vec3 origin, in vec3 far, in vec3 dir) {
+bool shadowTrace(in vec3 origin, in float dist, in vec3 dir) {
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), /*gl_RayFlagsCullBackFacingTrianglesEXT |*/ gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0001f, dir, distance(origin, far));
+
+    // BROKEN culling..
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0001f, dir, dist);
 
     //
     while(rayQueryProceedEXT(rayQuery)) {
@@ -214,7 +220,7 @@ GIData globalIllumination() {
     float diff = sqrt(max(dot(vec3(rayData.normal.xyz), lightDir), 0.0));
 
     //
-    const float epsilon = 0.001f * pow(divW(framebufferLoadF(_POSITION, ivec2(gl_GlobalInvocationID.xy), 0)).z, 256.f);
+    const float epsilon = 0.0001f * pow(divW(framebufferLoadF(_POSITION, ivec2(gl_GlobalInvocationID.xy), 0)).z, 256.f);
     const vec3 diffuseCol = rayData.diffuse.xyz * (diff + 0.2f) * 1.f;
 
     //
@@ -283,13 +289,13 @@ GIData globalIllumination() {
                     lightDir = normalize(coneSample(LC * inversesqrt(dt), cosL, C, F));
 
                     // 
-                    shadowed = shadowTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, SO, lightDir);
-                    const vec3 directLight = (sqrt(max(dot(vec3(TBN[2]), lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f).xxx;
+                    shadowed = shadowTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, length(LC), lightDir);
+                    const vec3 directLight = (sqrt(max(dot(TBN[2], lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f).xxx;
 
                     //
                     min16float3 diffCol = (I == 0 ? 1.hf.xxx : rayData.diffuse.xyz) * rayData.diffuse.a;
-                    if (dot(rayData.emissive.xyz, 1.f.xxx) > 0.1f) { fcolor.xyz += energy.xyz * diffCol * reflCol; diffCol.xyz *= max(rayData.diffuse.xyz - rayData.emissive.xyz, 0.f.xxx); };
-                    fcolor += vec4(lightCol * energy.xyz * directLight * diffCol * reflCol, 0.f);
+                    if (dot(rayData.emissive.xyz, 1.f.xxx) > 0.1f) { fcolor.xyz += energy.xyz * diffCol; diffCol.xyz *= max(rayData.diffuse.xyz - rayData.emissive.xyz, 0.f.xxx); };
+                    fcolor += vec4(lightCol * energy.xyz * directLight * diffCol, 0.f);
                     reflCol *= diffCol;
                 }
 

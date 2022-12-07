@@ -26,7 +26,7 @@ layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 
 //
 vec4 upto(in vec4 samples, in float to) {
-    const float scnt = max(samples.w, 1.f);
+    const float scnt = max(samples.w, 0.0001f);
     samples  = samples/scnt;
     samples *= min(scnt, to);
     return samples;

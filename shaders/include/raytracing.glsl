@@ -145,12 +145,14 @@ void rayTrace(in vec3 origin, in vec3 far, in vec3 dir) {
         rayData.normal = readTexData(materialData.normal, texcoord.xy);;
         rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
         rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
+
+        // DEBUG reflection
         //rayData.PBR.g = 0.hf;
 
         // 
         rayData.TBN = f16mat3x3(TAN.xyz, BIN.xyz, NOR.xyz);
         rayData.normal.xyz = rayData.TBN * rayData.normal.xyz;
-        //rayData.normal.xyz = f16vec3(NOR.xyz);
+        //rayData.normal.xyz = f16vec3(NOR.xyz); // DEBUG planes
         rayData.normal.xyz = faceforward(rayData.normal.xyz, f16vec3(rayData.dir.xyz), rayData.normal.xyz);
     }
 }
@@ -259,7 +261,7 @@ GIData globalIllumination() {
                 // if reflection
                 if (rtype == 1) {
                     reflDir = normalize(mix(normalize(reflect(rayData.dir, vec3(TBN[2]))), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
-                    reflCol *= min(mix(1.hf.xxx, max(rayData.diffuse.xyz, 0.hf.xxx), rayData.PBR.b), 1.hf);
+                    reflCol *= min(mix(1.hf.xxx, max(rayData.diffuse.xyz * rayData.diffuse.a, 0.hf.xxx), rayData.PBR.b), 1.hf);
                 } else 
 
                 // if diffuse
@@ -280,7 +282,7 @@ GIData globalIllumination() {
                     const vec3 directLight = (sqrt(max(dot(vec3(TBN[2]), lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f).xxx;
 
                     //
-                    f16vec3 diffCol = I == 0 ? 1.hf.xxx : rayData.diffuse.xyz;
+                    f16vec3 diffCol = (I == 0 ? 1.hf.xxx : rayData.diffuse.xyz) * rayData.diffuse.a;
                     fcolor += vec4(lightCol * energy.xyz * directLight * diffCol, 0.f);
                     reflCol *= diffCol;
                 }
@@ -299,7 +301,7 @@ GIData globalIllumination() {
             }
         }
     } else {
-        fcolor = vec4(rayData.diffuse.xyz, 1.f);
+        fcolor = vec4(rayData.diffuse.xyz * rayData.diffuse.a, 1.f);
     }
 
     //

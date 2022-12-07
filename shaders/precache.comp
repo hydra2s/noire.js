@@ -83,11 +83,14 @@ void main() {
         f16vec4 normal = f16vec4(readTexData(materialData.normal, texcoord.xy));
         f16vec4 PBR = f16vec4(readTexData(materialData.PBR, texcoord.xy));
         diffuse.xyz = pow(diffuse.xyz, 2.2hf.xxx);
+
+        // DEBUG reflection
         //PBR.g = 0.hf;
 
         //
         vec3 viewNormal = (modelViewInverse[0] * vec4(NOR.xyz, 0.0)).xyz;
         vec3 texNormal = mat3(TAN.xyz, BIN.xyz, NOR.xyz) * (normal.xyz * 2.0 - 1.0);
+        //texNormal.xyz = NOR.xyz; // DEBUG planes
         texNormal.xyz = faceforward(texNormal.xyz, dir, texNormal.xyz);
 
         //

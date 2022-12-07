@@ -34,10 +34,10 @@ void main() {
         const vec4 MULT    = i == 0 ? imageSetLoadF(_DOTHERS, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 1) : vec4(1.f.xxx, 1.f);
         const float coef   = imageSetLoadF(_METAPBR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), i).r;
         const vec4 rcolor  = imageSetLoadF(_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), i+2);
-                   fcolor += rcolor / max(rcolor.w, 1.f) * coef * MULT;
+                   fcolor += rcolor / max(rcolor.w, 0.001f) * coef * MULT;
     }
     //fcolor = vec4(imageSetAtomicLoadF(_FATOMIC, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 1, 0));
 
     //
-    imageStore(SWAP[imageIndex], ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(pow(fcolor.xyz/max(fcolor.w, 1.f), 1.f.xxx/2.2f), 1.f));
+    imageStore(SWAP[imageIndex], ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(pow(fcolor.xyz/max(fcolor.w, 0.001f), 1.f.xxx/2.2f), 1.f));
 }

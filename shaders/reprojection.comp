@@ -133,8 +133,9 @@ void accumulate(in int type) {
     vec2 _from = unorm(prj.from.xyz).xy;
 
     //
+    const vec4 meta = imageSetLoadPrevLinF(_METAPBR, _from, type);
     const vec4 clr = imageSetLoadPrevLinF(_DIFFUSE, _from, type);
-    if (prj.isValid && imageSetLoadPrevLinF(_METAPBR, _from, type).r > 0.001f && prj.nsimilarity > 0.9999f && clr.w > 0.1f) {
+    if (prj.isValid && meta.r > 0.001f && prj.nsimilarity > mix(0.9999f, 0.999f, meta.g) && clr.w > 0.1f) {
         imageSetAtomicMaxU2(_UATOMIC, _to, uvec2(_from.xy*vec2(width, height)), type);
     }
 }

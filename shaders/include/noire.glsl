@@ -273,9 +273,8 @@ vec4 imageSetLoadLinF(in int IMG_STORE, in vec2 coord, in int layer) {
 }
 
 //
-vec4 imageSetLoadNearestF( in uint F, in vec2 texCoord_f, in int layer ) {
-    const ivec3 texCoord_i = ivec3((texCoord_f) * imageSize(SETF[imageSets[0][F]]).xy, layer);
-    return imageLoad(SETF[imageSets[0][F]], texCoord_i);
+vec4 imageSetLoadNearestF(in uint IMG_STORE, in vec2 coord, in int layer ) {
+    return textureLod(sampler2DArray(FBOF[imageSets[0][IMG_STORE]], samplers[nearestSampler]), vec3((coord), float(layer) /*/ textureSize(FBOF[framebuffers[TEX_STORE]], 0).z*/), 0.0);
 }
 
 //

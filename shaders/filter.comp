@@ -14,6 +14,7 @@
 #extension GL_EXT_samplerless_texture_functions : enable
 #extension GL_EXT_shared_memory_block : enable
 #extension GL_EXT_shader_atomic_float : enable
+#extension GL_EXT_control_flow_attributes : enable
 
 //
 #include "include/hlsl_map.glsl"
@@ -120,7 +121,7 @@ vec4 filterComp(in ivec2 coord, in int type) {
 
     float denoiseStrength = (DENOISE_RANGE.x + (DENOISE_RANGE.y-DENOISE_RANGE.x)*hash1(641.128752*coord.x + 312.321374*coord.y+1.92357812*frameCount));
 
-    for(int i=0; i<25; i++)
+    [[unroll]] for(int i=0; i<25; i++)
     {
         vec2 px = vec2(coord)+m*(offset[i]* denoiseStrength);
         vec2 uv = px/vec2(width, height);
@@ -128,18 +129,18 @@ vec4 filterComp(in ivec2 coord, in int type) {
         vec4 ctmp = imageSetLoadLinF(_DIFFUSE, uv, type);
         vec4 t = cval/max(cval.w, 0.001f) - ctmp/max(ctmp.w, 0.001f);
         float dist2 = dot(t.xyz,t.xyz);
-        float c_w = max(min(exp(-(dist2)/c_phi), 1.0), 0.0);
+        float c_w = max(min(exp(-(dist2)/c_phi), 1.0), 0.001f);
 
         vec3 ntmp = imageSetLoadLinF(_DOTHERS, uv, 2).xyz;
         t = vec4(nval - ntmp, 0.f);
         dist2 = max(dot(t.xyz,t.xyz), 0.0);
-        float n_w = max(min(exp(-(dist2)/n_phi), 1.0), 0.0);
+        float n_w = max(min(exp(-(dist2)/n_phi), 1.0), 0.001f);
 
         uvec2 hashed = imageSetAtomicLoadU2(_UATOMIC, ivec2(px), type);
         vec4 rtmp = pack32(u16vec2(hashed)) > 0 ? imageSetLoadPrevF(_DIFFUSE, ivec2(hashed), type) : 0.f.xxxx;
         t = rval/max(rval.w, 0.001f) - rtmp/max(rtmp.w, 0.001f);
         dist2 = dot(t.xyz,t.xyz);
-        float r_w = max(min(exp(-(dist2)/r_phi), 1.0), 0.0);
+        float r_w = max(min(exp(-(dist2)/r_phi), 1.0), 0.001f);
 
         // new denoised frame
         float weight0 = c_w*n_w;

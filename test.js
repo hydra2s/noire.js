@@ -175,7 +175,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
             V.VK_FORMAT_R8G8B8A8_UNORM,
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
-            V.VK_FORMAT_R16G16B16A16_SFLOAT,//V.VK_FORMAT_R16G16B16A16_SFLOAT,
+            V.VK_FORMAT_R16G16B16A16_SNORM,
             V.VK_FORMAT_R32_UINT,
             V.VK_FORMAT_R32G32B32A32_SFLOAT
         ]
@@ -230,7 +230,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
     const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
-    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf");
+    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf"); // needs downscale model
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],

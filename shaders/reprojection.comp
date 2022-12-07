@@ -41,6 +41,7 @@ struct rproj {
     vec4 from;
     vec4 to;
     float T;
+    float h;
     bool isValid;
 };
 
@@ -71,16 +72,17 @@ rproj reflectionReproj(in uvec2 coord, in int type)
         vec3 point = type == 0 ? origin.xyz : find_reflection_incident_point((vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz, hitPos, origin.xyz, normal.xyz);
         vec4 pView = ss((vec4(point, 1.f) * modelView[0]));
         vec3 pnormal = normalize(( vec4(imageSetLoadLinF(_DOTHERS, invertY(unorm(pView.xy)), 2).rgb, 0.f)).xyz).xyz;
-        vec4 hview   = framebufferLoadF(_POSITION, ivec2(coord.x, coord.y), 0);
+        vec4 hview   = framebufferLoadF(_POSITION, ivec2(invertY(unorm(pView.xy))*vec2(width,height)), 0);
 
         // may have threading conflict
         ot.forStoreToCurrent = ivec2(pView.xy * vec2(width, height));
         ot.nsimilarity = dot(pnormal, normal);
-        ot.dsimilarity = abs(pView.z - hview.z);
+        ot.dsimilarity = pow(abs(pView.z - hview.z), 2.f);
         ot.motion = unorm(pView.xyz).xy - unorm(prevPView.xyz).xy;
         ot.from = prevPView;
         ot.to = pView;
         ot.isValid = true;
+        ot.h = pow(hview.z, 2.f);
         ot.T = distance(hitPos.xyz, point.xyz);
     }
     return ot;
@@ -136,7 +138,8 @@ void accumulate(in int type) {
     //
     const vec4 meta = imageSetLoadPrevLinF(_METAPBR, _from, type);
     const vec4 clr = imageSetLoadPrevLinF(_DIFFUSE, _from, type);
-    if (prj.isValid && meta.r > 0.001f && prj.nsimilarity > mix(0.999f, 0.99f, meta.g) && clr.w > 0.1f && prj.dsimilarity < 0.01f) {
+    const vec3 bary = framebufferLoadF(_BARY, _to, 0).xyz;
+    if (prj.isValid && prj.h < 0.9999f && meta.r > 0.001f && prj.nsimilarity > mix(0.999f, 0.99f, meta.g) && clr.w > 0.1f && prj.dsimilarity < 0.01f && any(greaterThan(bary, 0.0001f.xxx))) {
         imageSetAtomicMaxU2(_UATOMIC, _to, uvec2(_from.xy*vec2(width, height)), type);
     }
 }

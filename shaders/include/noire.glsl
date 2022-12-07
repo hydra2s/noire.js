@@ -3,11 +3,11 @@ layout (set = 0, binding = 0) uniform  texture2D textures[];
 
 layout (set = 0, binding = 0) uniform  texture2DArray FBOF[];
 layout (set = 0, binding = 0) uniform utexture2DArray FBOU[];
-layout (set = 0, binding = 0, rgba16f ) uniform  image2DArray SETF[];
+layout (set = 0, binding = 0, rgba32f ) uniform  image2DArray SETF[];
 layout (set = 0, binding = 0, rgba32ui) uniform uimage2DArray SETU[];
 layout (set = 0, binding = 0, r32ui) uniform uimage2DArray SETA[];
-
-layout (set = 0, binding = 0, rgba8 ) uniform  image2D SWAP[];
+//_DOTHERS
+layout (set = 0, binding = 0, rgb10_a2 ) uniform  image2D SWAP[];
 
 layout (set = 1, binding = 0) uniform sampler samplers[];
 

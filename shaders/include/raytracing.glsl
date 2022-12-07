@@ -59,6 +59,7 @@ void rasterize(in uvec2 coord) {
     rayData.diffuse  = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 1));
     rayData.PBR      = min16float4(imageSetLoadF(_METAPBR, ivec2(coord), 2));
     rayData.emissive = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 6));
+    rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
 }
 
 //
@@ -75,7 +76,7 @@ void rayTrace(in vec3 origin, in vec3 dir) {
 
     //
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT, 0xFF, origin, 0.0001f, normalize(dir), 10000.f);
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), /*gl_RayFlagsCullBackFacingTrianglesEXT*/0, 0xFF, origin, 0.0001f, normalize(dir), 10000.f);
 
     //
     while(rayQueryProceedEXT(rayQuery)) {
@@ -169,8 +170,8 @@ void rayTrace(in vec3 origin, in vec3 dir) {
 bool shadowTrace(in vec3 origin, in float dist, in vec3 dir) {
     rayQueryEXT rayQuery;
 
-    // BROKEN culling..
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0001f, dir, dist);
+    // 
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), /*gl_RayFlagsCullBackFacingTrianglesEXT |*/ gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0001f, dir, dist);
 
     //
     while(rayQueryProceedEXT(rayQuery)) {
@@ -220,7 +221,7 @@ GIData globalIllumination() {
     float diff = sqrt(max(dot(vec3(rayData.normal.xyz), lightDir), 0.0));
 
     //
-    const float epsilon = 0.0001f * pow(divW(framebufferLoadF(_POSITION, ivec2(gl_GlobalInvocationID.xy), 0)).z, 256.f);
+    const float epsilon = max(0.1f + pow(divW(framebufferLoadF(_POSITION, ivec2(gl_GlobalInvocationID.xy), 0)).z, 256.f), 0.1f) * 0.0001f;
     const vec3 diffuseCol = rayData.diffuse.xyz * (diff + 0.2f) * 1.f;
 
     //
@@ -255,7 +256,6 @@ GIData globalIllumination() {
 
                 //
                 if (reflCoef > 0.9 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
-                lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
 
                 // TODO: load from pre-cache, store in rayData
                 reflCoef = mix(pow(1.f - max(dot(vec3(TBN[2]), -reflDir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b));
@@ -287,9 +287,11 @@ GIData globalIllumination() {
                     //
                     reflDir = normalize(cosineWeightedPoint(TBN, C, F));
                     lightDir = normalize(coneSample(LC * inversesqrt(dt), cosL, C, F));
+                    //const vec3 N = faceforward(rayData.TBN[2], -lightDir, rayData.TBN[2]);
+                    //const vec3 Nt = faceforward(TBN[2], -lightDir, TBN[2]);
 
                     // 
-                    shadowed = shadowTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, length(LC), lightDir);
+                    shadowed = shadowTrace(rayData.origin.xyz + lightDir * epsilon, length(LC), lightDir);
                     const vec3 directLight = (sqrt(max(dot(TBN[2], lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f).xxx;
 
                     //
@@ -301,19 +303,21 @@ GIData globalIllumination() {
 
                 // 
                 energy.xyz *= reflCol.xyz;
-                
+
                 // next step
                 if (dot(energy.xyz, 1.f.xxx) > 0.001f && I < 1) {
-                    rayTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, reflDir);
+                    rayTrace(rayData.origin.xyz + reflDir * epsilon, reflDir);
                 }
             } else {
                 fcolor += vec4(energy.xyz * pow(texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(reflDir)).xyz, 1.f/2.2f.xxx), 0.f);
+                energy.xyz *= 0.f.xxx;
                 if (I == 1) { nearT = 10000.0f; };
                 break;
             }
         }
     } else {
         fcolor = vec4(rayData.diffuse.xyz * rayData.diffuse.a, 1.f);
+        energy.xyz *= 0.f.xxx;
     }
 
     //

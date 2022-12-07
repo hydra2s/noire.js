@@ -52,8 +52,9 @@ void rasterize(in uvec2 coord) {
 
     //
     rayData.materialAddress = geometryData.materialAddress;
-    rayData.diffuse = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 1));
-    rayData.PBR     = min16float4(imageSetLoadF(_METAPBR, ivec2(coord), 2));
+    rayData.diffuse  = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 1));
+    rayData.PBR      = min16float4(imageSetLoadF(_METAPBR, ivec2(coord), 2));
+    rayData.emissive = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 6));
 }
 
 //
@@ -70,7 +71,7 @@ void rayTrace(in vec3 origin, in vec3 dir) {
 
     //
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT, 0xFF, origin, 0.0001f, normalize(dir), 10000.f);
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), /*gl_RayFlagsCullBackFacingTrianglesEXT*/0, 0xFF, origin, 0.0001f, normalize(dir), 10000.f);
 
     //
     while(rayQueryProceedEXT(rayQuery)) {
@@ -147,6 +148,8 @@ void rayTrace(in vec3 origin, in vec3 dir) {
         rayData.normal = readTexData(materialData.normal, texcoord.xy);;
         rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
         rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
+        rayData.emissive.xyz = pow(rayData.emissive.xyz, 2.2hf.xxx);
+        rayData.diffuse.xyz += rayData.emissive.xyz;
 
         // DEBUG reflection
         //rayData.PBR.g = 0.hf;
@@ -161,7 +164,7 @@ void rayTrace(in vec3 origin, in vec3 dir) {
 
 bool shadowTrace(in vec3 origin, in vec3 far, in vec3 dir) {
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0001f, dir, distance(origin, far));
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), /*gl_RayFlagsCullBackFacingTrianglesEXT |*/ gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0001f, dir, distance(origin, far));
 
     //
     while(rayQueryProceedEXT(rayQuery)) {
@@ -285,7 +288,8 @@ GIData globalIllumination() {
 
                     //
                     min16float3 diffCol = (I == 0 ? 1.hf.xxx : rayData.diffuse.xyz) * rayData.diffuse.a;
-                    fcolor += vec4(lightCol * energy.xyz * directLight * diffCol, 0.f);
+                    if (dot(rayData.emissive.xyz, 1.f.xxx) > 0.1f) { fcolor.xyz += energy.xyz * diffCol * reflCol; diffCol.xyz *= max(rayData.diffuse.xyz - rayData.emissive.xyz, 0.f.xxx); };
+                    fcolor += vec4(lightCol * energy.xyz * directLight * diffCol * reflCol, 0.f);
                     reflCol *= diffCol;
                 }
 

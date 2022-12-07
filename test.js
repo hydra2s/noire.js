@@ -166,7 +166,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         memoryAllocator: memoryAllocatorObj.handle[0],
 
         // TODO: optional previous layer support
-        layerCount: [1, 2, 4, 4, 6, 3, 2, 1],
+        layerCount: [1, 2, 4, 4, 7, 3, 2, 1],
         manualSwap: [true, true, true, true, true, true, true],
 
         //

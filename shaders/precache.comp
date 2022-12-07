@@ -86,6 +86,7 @@ void main() {
         min16float4 normal = min16float4(readTexData(materialData.normal, texcoord.xy));
         min16float4 PBR = min16float4(readTexData(materialData.PBR, texcoord.xy));
         diffuse.xyz = pow(diffuse.xyz, 2.2hf.xxx);
+        emissive.xyz = pow(emissive.xyz, 2.2hf.xxx);
 
         // DEBUG reflection
         //PBR.g = 0.hf;
@@ -102,7 +103,8 @@ void main() {
         imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(TAN.xyz, 0.0), 3);
         imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(BIN.xyz, 0.0), 4);
         imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(NOR.xyz, 0.0), 5);
-        imageSetStoreF(_DOTHERS, ivec2(coord), diffuse, 1);
+        imageSetStoreF(_DOTHERS, ivec2(coord), diffuse + vec4(emissive.xyz, 0.f), 1);
+        imageSetStoreF(_DOTHERS, ivec2(coord), emissive, 6);
 
         //
         float reflCoef = mix(pow(1.f - max(dot(vec3(texNormal), -dir.xyz), 0.f), 2.f) * 1.f, 1.f, float(PBR.b));

@@ -224,6 +224,7 @@ class GltfLoaderObj extends B.BasicObj {
             const X = Math.max(M.pbrMetallicRoughness?.baseColorTexture?.index, -1);
             const P = Math.max(M.pbrMetallicRoughness?.metallicRoughnessTexture?.index, -1);
             const N = Math.max(M.normalTexture?.index, -1);
+            const E = Math.max(M.emissiveTexture?.index, -1);
             material.diffuse = {
                 tex: X >= 0 ? Math.max(textureDescIndices[rawData.textures[X].source], -1): -1,
                 sam: X >= 0 ? Math.max(samplerDescIndices[rawData.textures[X].sampler], 0) : 0,
@@ -240,8 +241,9 @@ class GltfLoaderObj extends B.BasicObj {
                 col: [0.0, 0.0, 0.5, 0.5]
             }
             material.emissive = {
-                tex: -1,
-                col: M.emissiveFactor ? [...M.emissiveFactor, 1.0] : [0,0,0,1]
+                tex: E >= 0 ? Math.max(textureDescIndices[rawData.textures[E].source], -1) : -1,
+                sam: E >= 0 ? Math.max(samplerDescIndices[rawData.textures[E].sampler], 0) :  0,
+                col: M.emissiveFactor ? [...M.emissiveFactor, 0.0] : [0,0,0,0]
             }
         });
 

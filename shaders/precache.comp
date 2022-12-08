@@ -29,14 +29,15 @@ void main() {
     const uvec2 coord = gl_GlobalInvocationID.xy;
     const vec3 bary = framebufferLoadF(_BARY, ivec2(coord), 0).xyz;
     const uvec4 sys = framebufferLoadU(_INDICES, ivec2(coord), 0);
+    const vec2 vcrd = (vec2(coord)+0.5f)/vec2(width, height);
 
     //
     vec3 dir = vec3(0.f);
     vec3 origin = vec3(0.f);
 
     //
-    if (any(greaterThan(bary, 0.0001f.xxx))) {
-        vec4 _ss = framebufferLoadF(_POSITION, ivec2(coord.x, coord.y), 0); _ss.y *= -1.f; 
+    if (any(greaterThan(bary, 0.00001f.xxx))) {
+        vec4 _ss = vec4((vcrd*2.f-1.f)*vec2(1.f, -1.f), framebufferLoadLinF(_BARY, vcrd, 0).w, 1.f);
         vec4 _camera = unss(_ss);
         origin = (_camera * modelViewInverse[0]).xyz;
         dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
@@ -45,8 +46,7 @@ void main() {
         imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 0);
         imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 1);
     } else {
-        //
-        vec4 _camera = unss(vec4((vec2(coord)/vec2(width, height)*2.f-1.f)*vec2(1.f, -1.f), 1.f, 1.f));
+        vec4 _camera = unss(vec4((vcrd*2.f-1.f)*vec2(1.f, -1.f), 1.f, 1.f));
         vec4 _origin = (_camera * modelViewInverse[0]);
         dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
         origin = _origin.xyz;

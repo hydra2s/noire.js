@@ -171,8 +171,7 @@ uint readIndexData(in nrBinding binding, in uint index) {
 #define _INDICES 0
 #define _DERRIVE 1
 #define _BARY 2
-#define _POSITION 3
-#define _TEXCOORD 4
+#define _TEXCOORD 3
 //#define _WPOS 5
 
 // image sets

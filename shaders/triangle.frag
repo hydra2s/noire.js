@@ -25,7 +25,6 @@
 layout (location = _INDICES) out uvec4 fIndices;
 layout (location = _DERRIVE) out uvec4 fDerrive;
 layout (location = _BARY) out vec4 fBary;
-layout (location = _POSITION) out vec4 fPos;
 layout (location = _TEXCOORD) out vec4 fTex;
 //layout (location = _WPOS) out vec4 fWpos;
 
@@ -63,10 +62,8 @@ void main() {
 
 	//
 	fDerrive = uvec4(packFloat2x16(derrivative[0]), packFloat2x16(derrivative[1]), packFloat2x16(derrivative[2]), packFloat2x16(derrivative[3]));
-	fTex = texcoord;
-	fPos = vec4(gl_FragCoord.xy/vec2(width, height)*2.f-1.f, gl_FragCoord.z, 1.f);
-	fPos.y *= -1.f;
-	fBary = vec4(gl_BaryCoordEXT, gl_FragCoord.z);
+	fTex = vec4(fract(texcoord.xy), 0.f, 0.f); // TODO: support other addressation modes
+	fBary = vec4(max(gl_BaryCoordEXT, 0.00002f.xxx), gl_FragCoord.z);
 	fIndices = V[0].vIndices;
 	//fWpos = vec4(wpos.xyz, 1.f);
 }

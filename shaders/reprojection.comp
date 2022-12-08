@@ -52,7 +52,7 @@ rproj reflectionReproj(in uvec2 coord, in int type)
     float dirT = imageSetLoadPrevF(_DREPROJ, ivec2(coord.x, coord.y), type).w;
     const vec3 bary = framebufferLoadF(_BARY, ivec2(coord), 1).xyz;
     rproj ot; ot.isValid = false; ot.T = 0.f; ot.T = 10000.f;
-    if (any(greaterThan(bary, 0.0001f.xxx)) && (dirT > 0.f || type == 0)) {
+    if (any(greaterThan(bary, 0.00001f.xxx)) && (dirT > 0.f || type == 0)) {
         vec3 prevNormal = normalize(vec4(imageSetLoadPrevF(_DOTHERS, ivec2(coord), 2).rgb, 0.f)).xyz;
         vec4 prevOrigin = imageSetLoadPrevF(_PRECISE, ivec2(coord), 0);
         vec4 prevCamera = prevOrigin * modelView[1];
@@ -72,17 +72,17 @@ rproj reflectionReproj(in uvec2 coord, in int type)
         vec3 point = type == 0 ? origin.xyz : find_reflection_incident_point((vec4(0.f.xxx, 1.f) * modelViewInverse[0]).xyz, hitPos, origin.xyz, normal.xyz);
         vec4 pView = ss((vec4(point, 1.f) * modelView[0]));
         vec3 pnormal = normalize(( vec4(imageSetLoadLinF(_DOTHERS, invertY(unorm(pView.xy)), 2).rgb, 0.f)).xyz).xyz;
-        vec4 hview   = framebufferLoadF(_POSITION, ivec2(invertY(unorm(pView.xy))*vec2(width,height)), 0);
+        float hview  = framebufferLoadLinF(_BARY, invertY(unorm(pView.xy)), 0).w;
 
         // may have threading conflict
         ot.forStoreToCurrent = ivec2(pView.xy * vec2(width, height));
         ot.nsimilarity = dot(pnormal, normal);
-        ot.dsimilarity = pow(abs(pView.z - hview.z), 2.f);
+        ot.dsimilarity = pow(abs(pView.z - hview), 2.f);
         ot.motion = unorm(pView.xyz).xy - unorm(prevPView.xyz).xy;
         ot.from = prevPView;
         ot.to = pView;
         ot.isValid = true;
-        ot.h = pow(hview.z, 2.f);
+        ot.h = pow(hview, 2.f);
         ot.T = type == 0 ? 0.f : distance(hitPos.xyz, point.xyz);
     }
     return ot;
@@ -100,7 +100,7 @@ void accumulate(in int type) {
     const vec4 meta = imageSetLoadPrevLinF(_METAPBR, _from, type);
     const vec4 clr = imageSetLoadPrevLinF(_DIFFUSE, _from, type);
     const vec3 bary = framebufferLoadF(_BARY, _to, 0).xyz;
-    if (prj.isValid && prj.h < 0.9999f && meta.r > 0.001f && prj.nsimilarity > mix(0.999f, 0.99f, meta.g) && clr.w > 0.1f && prj.dsimilarity < 0.001f && any(greaterThan(bary, 0.0001f.xxx))) {
+    if (prj.isValid && prj.h < 0.9999f && meta.r > 0.001f && prj.nsimilarity > mix(0.999f, 0.99f, meta.g) && clr.w > 0.1f && prj.dsimilarity < 0.001f && any(greaterThan(bary, 0.00001f.xxx))) {
         imageSetAtomicMaxU2(_UATOMIC, _to, uvec2(_from.xy*vec2(width, height)), type);
     }
 }

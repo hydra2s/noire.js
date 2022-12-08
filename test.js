@@ -88,21 +88,14 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             },
             {   // barycentrics
                 blend: {},
-                format: V.VK_FORMAT_R16G16B16A16_UNORM,
-                dynamicState: {
-                    clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
-                }
-            },
-            {   // position of depth-data
-                blend: {},
                 format: V.VK_FORMAT_R32G32B32A32_SFLOAT,
                 dynamicState: {
-                    clearValue: new Float32Array([0.0, 0.0, 1.0, 1.0]).as("u32[4]")
+                    clearValue: new Float32Array([0.0, 0.0, 0.0, 1.0]).as("u32[4]")
                 }
             },
             {   // texcoords
                 blend: {},
-                format: V.VK_FORMAT_R16G16B16A16_SFLOAT, // V.VK_FORMAT_R16G16B16A16_UNORM
+                format: V.VK_FORMAT_R16G16B16A16_UNORM,
                 dynamicState: {
                     clearValue: new Float32Array([0.0, 0.0, 0.0, 0.0]).as("u32[4]")
                 }
@@ -295,8 +288,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             framebufferObj.colorImageViews[0].DSC_ID, 
             framebufferObj.colorImageViews[1].DSC_ID, 
             framebufferObj.colorImageViews[2].DSC_ID, 
-            framebufferObj.colorImageViews[3].DSC_ID,
-            framebufferObj.colorImageViews[4].DSC_ID
+            framebufferObj.colorImageViews[3].DSC_ID
         ],
         loadSets: [
             imageSetObj.imageViews[0][0].DSC_ID,

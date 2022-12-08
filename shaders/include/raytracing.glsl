@@ -96,7 +96,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
     );
 
     //
-    if (any(greaterThan(rayData.bary, 0.0001f.xxx))) {
+    if (any(greaterThan(rayData.bary, 0.00001f.xxx))) {
         //
         nrNode nodeData = nrNode(nodeBuffer) + sys.x;
         nrMesh meshData = nrMesh(nodeData.meshBuffer);
@@ -206,7 +206,7 @@ RayTracedData rayTrace(in vec3 origin, in vec3 dir) {
     //
     if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) {
         const vec2 bary_ = rayQueryGetIntersectionBarycentricsEXT(rayQuery, true);
-        rayData.bary = max(vec3(1.f - bary_.x - bary_.y, bary_.xy), 0.0002f.xxx);
+        rayData.bary = max(vec3(1.f - bary_.x - bary_.y, bary_.xy), 0.00002f.xxx);
         rayData.indices = uvec4(rayQueryGetIntersectionInstanceIdEXT(rayQuery, true), rayQueryGetIntersectionGeometryIndexEXT(rayQuery, true), rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true), 0u);
         rayData.hitT = rayQueryGetIntersectionTEXT(rayQuery, true);
     }
@@ -294,9 +294,9 @@ GIData globalIllumination(in RayTracedData rayData) {
 
     //
     const int ITERATION_COUNT = 2;
-    if (hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) {
+    if (hasHit = any(greaterThan(rayData.bary, 0.00001f.xxx))) {
         for (int I=0;I<ITERATION_COUNT;I++) {
-            if ((hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {
+            if ((hasHit = any(greaterThan(rayData.bary, 0.00001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {
                 // shading
                 mat3x3 TBN = mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
                 genTB(TBN[2], TBN[0], TBN[1]);

@@ -64,8 +64,7 @@ void rasterize(in uvec2 coord) {
 
 //
 void rayTrace(in vec3 origin, in vec3 dir) {
-    rayData.normal = min16float4(0.f, 0.f, 0.5f, 0.f);
-    rayData.diffuse = min16float4(0.f.xxx, 1.f);
+    rayData.diffuse = min16float4(1.f.xxx, 1.f);
     rayData.origin = vec4(origin + dir * 10000.f, 1.f);
     rayData.dir = dir;
     rayData.bary = vec3(0.f.xxx);
@@ -73,6 +72,12 @@ void rayTrace(in vec3 origin, in vec3 dir) {
 
     //
     vec3 NOR = normalize((modelView[0] * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
+    rayData.normal = min16float4(NOR.xyz, 0.f);
+    rayData.TBN = mat3x3(
+        min16float3(0.f.xxx),
+        min16float3(0.f.xxx),
+        rayData.normal.xyz
+    );
 
     //
     rayQueryEXT rayQuery;
@@ -221,7 +226,7 @@ GIData globalIllumination() {
     float diff = sqrt(max(dot(vec3(rayData.normal.xyz), lightDir), 0.0));
 
     //
-    const float epsilon = max(0.1f + pow(divW(framebufferLoadF(_POSITION, ivec2(gl_GlobalInvocationID.xy), 0)).z, 256.f), 0.1f) * 0.01f;
+    const float epsilon = max(0.01f + pow(divW(framebufferLoadF(_POSITION, ivec2(gl_GlobalInvocationID.xy), 0)).z, 256.f), 0.01f) * 0.1f;
     const vec3 diffuseCol = rayData.diffuse.xyz * (diff + 0.2f) * 1.f;
 
     //
@@ -249,7 +254,7 @@ GIData globalIllumination() {
 
     //
     if (hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) {
-        for (int I=0;I<2;I++) {
+        for (int I=0;I<3;I++) {
             if ((hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {
                 // shading
                 mat3x3 TBN = mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
@@ -305,7 +310,7 @@ GIData globalIllumination() {
                 energy.xyz *= reflCol.xyz;
 
                 // next step
-                if (dot(energy.xyz, 1.f.xxx) > 0.001f && I < 1) {
+                if (dot(energy.xyz, 1.f.xxx) > 0.001f) {
                     rayTrace(rayData.origin.xyz + reflDir * epsilon, reflDir);
                 }
             } else {

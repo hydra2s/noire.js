@@ -129,7 +129,7 @@ rproj reflectionReproj(in uvec2 coord, in int type)
 
 //
 void accumulate(in int type) {
-    rproj prj = reflectionReproj(gl_GlobalInvocationID.xy, type);
+    rproj prj = reflectionReproj(gl_GlobalInvocationID.xy%uvec2(width, height), type);
     prj.to.y *= -1.f;
     prj.from.y *= -1.f;
     ivec2 _to = ivec2(unorm(prj.to.xyz).xy*vec2(width,height));
@@ -145,14 +145,13 @@ void accumulate(in int type) {
 }
 
 //
-layout(local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
+layout(local_size_x = 32, local_size_y = 12, local_size_z = 1) in;
 void main() {
     //
-    ivec2 dispatchThreadId = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 groupThreadId = ivec2(gl_LocalInvocationID.xy);
+    ivec2 dispatchThreadId = ivec2(gl_GlobalInvocationID.xy)%ivec2(width, height);
+    ivec2 groupThreadId = ivec2(gl_LocalInvocationID.xy)%ivec2(width, height);
     uvec2 targetSize = uvec2(width, height);
 
-    //
-    accumulate(0);
-    accumulate(1);
+    // because is single ray! (1spp)
+    accumulate(int(gl_GlobalInvocationID.y / height));
 }

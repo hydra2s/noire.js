@@ -223,11 +223,27 @@ u16vec2 imageSetAtomicMaxU2(in int IMG_STORE, in ivec2 coord, in uvec2 XY, in in
 }
 
 void imageSetAtomicStoreU2(in int IMG_STORE, in ivec2 coord, in uvec2 XY, in int layer) {
-    imageStore(SETA[imageSets[2][IMG_STORE]], ivec3(coord, layer), uvec4(pack32(u16vec2(XY))));
+    imageAtomicExchange(SETA[imageSets[2][IMG_STORE]], ivec3(coord, layer), pack32(u16vec2(XY)));
+}
+
+void imageSetAtomicStoreU(in int IMG_STORE, in ivec2 coord, in uint X, in int layer) {
+    imageAtomicExchange(SETA[imageSets[2][IMG_STORE]], ivec3(coord, layer), X);
+}
+
+uint imageSetAtomicLoadU(in int IMG_STORE, in ivec2 coord, in int layer) {
+    return texelFetch(FBOU[imageSets[0][IMG_STORE]], ivec3(coord.x, coord.y, layer), 0).r;
 }
 
 u16vec2 imageSetAtomicLoadU2(in int IMG_STORE, in ivec2 coord, in int layer) {
     return unpack16(texelFetch(FBOU[imageSets[0][IMG_STORE]], ivec3(coord.x, coord.y, layer), 0).r);
+}
+
+uint imageSetAtomicLoadPrevU(in int IMG_STORE, in ivec2 coord, in int layer) {
+    return texelFetch(FBOU[imageSets[1][IMG_STORE]], ivec3(coord.x, coord.y, layer), 0).r;
+}
+
+u16vec2 imageSetAtomicLoadPrevU2(in int IMG_STORE, in ivec2 coord, in int layer) {
+    return unpack16(texelFetch(FBOU[imageSets[1][IMG_STORE]], ivec3(coord.x, coord.y, layer), 0).r);
 }
 
 //

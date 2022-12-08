@@ -76,7 +76,7 @@ void rayTrace(in vec3 origin, in vec3 dir) {
 
     //
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), /*gl_RayFlagsCullBackFacingTrianglesEXT*/0, 0xFF, origin, 0.0001f, normalize(dir), 10000.f);
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), /*gl_RayFlagsCullBackFacingTrianglesEXT*/0, 0xFF, origin, 0.01f, normalize(dir), 10000.f);
 
     //
     while(rayQueryProceedEXT(rayQuery)) {
@@ -171,7 +171,7 @@ bool shadowTrace(in vec3 origin, in float dist, in vec3 dir) {
     rayQueryEXT rayQuery;
 
     // 
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), /*gl_RayFlagsCullBackFacingTrianglesEXT |*/ gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0001f, dir, dist);
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), /*gl_RayFlagsCullBackFacingTrianglesEXT |*/ gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.01f, dir, dist);
 
     //
     while(rayQueryProceedEXT(rayQuery)) {
@@ -221,7 +221,7 @@ GIData globalIllumination() {
     float diff = sqrt(max(dot(vec3(rayData.normal.xyz), lightDir), 0.0));
 
     //
-    const float epsilon = max(0.1f + pow(divW(framebufferLoadF(_POSITION, ivec2(gl_GlobalInvocationID.xy), 0)).z, 256.f), 0.1f) * 0.0001f;
+    const float epsilon = max(0.1f + pow(divW(framebufferLoadF(_POSITION, ivec2(gl_GlobalInvocationID.xy), 0)).z, 256.f), 0.1f) * 0.01f;
     const vec3 diffuseCol = rayData.diffuse.xyz * (diff + 0.2f) * 1.f;
 
     //

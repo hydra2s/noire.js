@@ -364,7 +364,11 @@ class GltfLoaderObj extends B.BasicObj {
         };
 
         // only single instanced data supported
-        const instancedData = parseNode(rawData.nodes[rawData.scenes[0].nodes[0]], $M.mat4.create());
+        const instancedData = parseNode(rawData.nodes[rawData.scenes[0].nodes[0]], $M.mat4.fromScaling($M.mat4.create(), [
+            this.cInfo.scale || 1.0,
+            this.cInfo.scale || 1.0,
+            this.cInfo.scale || 1.0
+        ]));
 
         //
         const nodeData = new nrNode(instancedData.map((ID)=>(ID.node)));

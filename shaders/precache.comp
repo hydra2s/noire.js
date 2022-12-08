@@ -130,7 +130,7 @@ void main() {
         vec4 _camera = unss(vec4((vec2(coord)/vec2(width, height)*2.f-1.f)*vec2(1.f, -1.f), 1.f, 1.f));
         vec4 _origin = (_camera * modelViewInverse[0]);
         dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
-        dir.y *= -1.f;
+        //dir.y *= -1.f;
         origin = _origin.xyz;
 
         //

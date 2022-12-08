@@ -58,10 +58,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
     });
-    const gltfLoaderA = new K.GltfLoaderObj(deviceObj.handle, {
-        pipelineLayout: descriptorsObj.handle[0],
-        memoryAllocator: memoryAllocatorObj.handle[0],
-    });
+    
 
     // // // // // // //
     // THE CONTINUE!  //
@@ -227,10 +224,16 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //const dPrefilter = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-prefilter.comp.spv") });
     //const dResolveTemporal = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-resolve_temporal.comp.spv") });
 
+    const gltfLoaderA = new K.GltfLoaderObj(deviceObj.handle, {
+        scale: 1.0,
+        pipelineLayout: descriptorsObj.handle[0],
+        memoryAllocator: memoryAllocatorObj.handle[0],
+    });
+
     //
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
-    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf"); // needs downscale model
+    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf"); // needs downscale model
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
@@ -268,7 +271,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     let up = $M.vec3.fromValues(0,1,0);
 
     //
-    const perspective = Array.from($M.mat4.perspective($M.mat4.create(), 60.0 * Math.PI / 180.0, frameSize[0]/frameSize[1], 0.0001, 10000.0));
+    const perspective = Array.from($M.mat4.perspective($M.mat4.create(), 60.0 * Math.PI / 180.0, frameSize[0]/frameSize[1], 0.001, 10000.0));
     const modelView = $M.mat4.lookAt($M.mat4.create(), eye, center, up);
 
     //
@@ -475,7 +478,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         const dY = (mY - lastY) / windowSize[1] / DPI[1] * 2.0;
 
         //
-        const viewSpeed = 0.0001;
+        const viewSpeed = 0.01;
         let localEye = $M.vec4.transformMat4($M.vec4.create(), $M.vec4.fromValues(...eye, 1.0), $M.mat4.copy($M.mat4.create(), modelView)).subarray(0, 3);
         let moveVec = $M.vec3.create(0,0,0);
 

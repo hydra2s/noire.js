@@ -44,7 +44,6 @@ void main() {
 
         //
         imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 0);
-        imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 1);
     } else {
         vec4 _camera = unss(vec4((vcrd*2.f-1.f)*vec2(1.f, -1.f), 1.f, 1.f));
         vec4 _origin = (_camera * modelViewInverse[0]);
@@ -53,14 +52,20 @@ void main() {
 
         //
         imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(1.f.xxxx), 0);
-        imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 1);
     }
+
+    //
+    imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 1);
+    imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 2);
+    imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 3);
+    imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 4);
+    imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 5);
 
     //
     RayTracedData rayData = getData(origin.xyz, dir.xyz, sys, bary, 0.f);
 
     // make a background, needs reproject from previous
-    for (int i=0;i<2;i++) {
+    for (int i=0;i<3;i++) {
         imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
     }
 
@@ -75,7 +80,8 @@ void main() {
     imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.TBN[1].xyz, 0.0), 4);
     imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.TBN[2].xyz, 0.0), 5);
     imageSetStoreF(_DOTHERS, ivec2(coord), rayData.emissive, 6);
-    imageSetStoreF(_METAPBR, ivec2(coord), vec4(1.f - rayData.PBR.r, 1.f, 0.f, 0.f), 0);
-    imageSetStoreF(_METAPBR, ivec2(coord), vec4(      rayData.PBR.r, rayData.PBR.g , 0.f, 0.f), 1);
-    imageSetStoreF(_METAPBR, ivec2(coord), vec4(      rayData.PBR.r, rayData.PBR.gb, 0.f     ), 2);
+    imageSetStoreF(_METAPBR, ivec2(coord), vec4(   (1.f - rayData.PBR.r) * rayData.diffuse.a,      1.f, 0.f, 0.f), 0);
+    imageSetStoreF(_METAPBR, ivec2(coord), vec4(          rayData.PBR.r,                 rayData.PBR.g, 0.f, 0.f), 1);
+    imageSetStoreF(_METAPBR, ivec2(coord), vec4(max(1.f - rayData.diffuse.a, 0.f),                 0.f, 0.f, 0.f), 2);
+    imageSetStoreF(_METAPBR, ivec2(coord), vec4(          rayData.PBR.r,                rayData.PBR.gb,      0.f), 3);
 }

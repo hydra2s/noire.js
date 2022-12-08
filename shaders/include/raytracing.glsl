@@ -58,7 +58,7 @@ RayTracedData rasterize(in uvec2 coord) {
     //
     rayData.materialAddress = geometryData.materialAddress;
     rayData.diffuse  = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 1));
-    rayData.PBR      = min16float4(imageSetLoadF(_METAPBR, ivec2(coord), 2));
+    rayData.PBR      = min16float4(imageSetLoadF(_METAPBR, ivec2(coord), 3));
     rayData.emissive = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 6));
     //rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
 
@@ -293,7 +293,9 @@ GIData globalIllumination(in RayTracedData rayData) {
     uint type = 0;
 
     //
-    const int ITERATION_COUNT = 2;
+    //int REFL_RIGHT = 0;
+    float reflCoef = rayData.PBR.r, transpCoef = 1.f - rayData.diffuse.a;
+    int ITERATION_COUNT = 2;
     if (hasHit = any(greaterThan(rayData.bary, 0.00001f.xxx))) {
         for (int I=0;I<ITERATION_COUNT;I++) {
             if ((hasHit = any(greaterThan(rayData.bary, 0.00001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {
@@ -305,7 +307,8 @@ GIData globalIllumination(in RayTracedData rayData) {
 
                 // TODO: push first rays depence on pixel and frametime
                 int rtype = 0;
-                if (random_seeded(C, 1.0+F) <= rayData.PBR.r) { rtype = 1; };
+                if (random_seeded(C, 1.0+F) <= rayData.PBR.r) { rtype = 1; } else 
+                if (random_seeded(C, 1.5+F) <= (1.f - rayData.diffuse.a)) { rtype = 2; }
                 if (I == 0) { type = rtype; }
 
                 // if reflection
@@ -314,8 +317,13 @@ GIData globalIllumination(in RayTracedData rayData) {
                     energy.xyz *= min(mix(min16float3(1.f.xxx), max(rayData.diffuse.xyz, min16float3(0.f.xxx)), rayData.PBR.b), min16float(1.f));
 
                     //
-                    if (rayData.PBR.r > 0.9 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
+                    if (reflCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); if (I == 0) ITERATION_COUNT += 1; };
                 } else 
+
+                if (rtype == 2) {
+                    // TODO: transmission materials support, and IOR
+                    if (transpCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); if (I == 0) ITERATION_COUNT += 1; };
+                } else
 
                 // if diffuse
                 /*if (rtype == 0)*/
@@ -345,6 +353,9 @@ GIData globalIllumination(in RayTracedData rayData) {
                     }
                     energy.xyz *= diffCol;
                 }
+
+                //
+                reflCoef = rayData.PBR.r, transpCoef = 1.f - rayData.diffuse.a;
 
                 // next step
                 if (dot(energy.xyz, 1.f.xxx) > 0.001f && I<(ITERATION_COUNT-1)) {

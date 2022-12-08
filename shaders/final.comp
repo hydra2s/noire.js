@@ -30,14 +30,14 @@ void main() {
     ivec2 coord = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
 
     vec4 fcolor = vec4(0.f.xxx, 0.f);
-    for (int i=0;i<2;i++) {
+    for (int i=0;i<3;i++) {
         const vec4 MULT    = i == 0 ? vec4(max(imageSetLoadF(_DOTHERS, coord, 1).xyz, 0.001f.xxx), 1.f) : vec4(1.f.xxx, 1.f);
         const float coef   = imageSetLoadF(_METAPBR, coord, i).r;
-        const vec4 rcolor  = imageSetLoadF(_DIFFUSE, coord, i+2);
-                   fcolor += rcolor / max(rcolor.w, 0.001f) * coef * MULT;
+        const vec4 rcolor  = imageSetLoadF(_DIFFUSE, coord, i+3);
+                   fcolor += vec4(rcolor.xyz / max(rcolor.w, 0.001f) * coef * MULT.xyz, 1.f);
     }
     //fcolor = vec4(imageSetAtomicLoadF(_FATOMIC, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 1, 0));
 
     //
-    imageStore(SWAP[imageIndex], coord, vec4(pow(fcolor.xyz/max(fcolor.w, 0.001f), 1.f.xxx/2.2f), 1.f));
+    imageStore(SWAP[imageIndex], coord, vec4(pow(fcolor.xyz, 1.f.xxx/2.2f), 1.f));
 }

@@ -106,7 +106,7 @@ void accumulate(in int type) {
 }
 
 //
-layout(local_size_x = 32, local_size_y = 12, local_size_z = 1) in;
+layout(local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 void main() {
     //
     ivec2 dispatchThreadId = ivec2(gl_GlobalInvocationID.xy)%ivec2(width, height);
@@ -114,5 +114,7 @@ void main() {
     uvec2 targetSize = uvec2(width, height);
 
     // because is single ray! (1spp)
-    accumulate(int(gl_GlobalInvocationID.y / height));
+    accumulate(0);
+    accumulate(1);
+    accumulate(2);
 }

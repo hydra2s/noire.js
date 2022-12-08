@@ -167,10 +167,10 @@ vec4 filterComp(in ivec2 coord, in int type) {
 
 //
 void main() {
-    for (int i=0;i<2;i++) {
+    for (int i=0;i<3;i++) {
         uvec2 coord = gl_GlobalInvocationID.xy;
 
         //
-        imageSetStoreF(_DIFFUSE, ivec2(coord), filterComp(ivec2(coord), i), 2+i);
+        imageSetStoreF(_DIFFUSE, ivec2(coord), filterComp(ivec2(coord), i), 3+i);
     }
 }

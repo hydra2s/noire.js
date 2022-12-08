@@ -34,7 +34,7 @@ vec4 upto(in vec4 samples, in float to) {
 
 //
 void main() {
-    for (int i=0;i<2;i++) {
+    for (int i=0;i<3;i++) {
         uvec2 coord = gl_GlobalInvocationID.xy;
         uvec2 hashed = imageSetAtomicLoadU2(_UATOMIC, ivec2(coord), i);
 

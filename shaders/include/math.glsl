@@ -101,8 +101,8 @@ void genTB(in vec3 N, out vec3 T, out vec3 B) {
     const float s = N.z < 0.0 ? -1.0 : 1.0;
     const float a = -1.0 / (s + N.z);
     const float b = N.x * N.y * a;
-    T = vec3(1.0 + s * N.x * N.x * a, s * b, -s * N.x);
-    B = vec3(b, s + N.y * N.y * a, -N.y);
+    T = normalize(vec3(1.0 + s * N.x * N.x * a, s * b, -s * N.x));
+    B = normalize(vec3(b, s + N.y * N.y * a, -N.y));
 };
 
 vec3 randomSpherePoint(in vec2 uv, in float F) {
@@ -126,10 +126,11 @@ vec3 cosineWeightedPoint(in mat3x3 tbn, in vec2 uv, in float F) {
     const vec2 p = vec2(sr * cos(angle), sr * sin(angle));
     const vec3 ph = vec3(p.xy, sqrt(1.0 - p*p));
 
-    //tbn[0] = normalize(rand);
-    //tbn[1] = cross(tbn[0], tbn[2]);
-    //tbn[0] = cross(tbn[1], tbn[2]);
-    genTB(tbn[2], tbn[0], tbn[1]);
+    //
+    tbn[0] = normalize(rand);
+    tbn[1] = normalize(cross(tbn[0], tbn[2]));
+    tbn[0] = normalize(cross(tbn[1], tbn[2]));
+    //genTB(tbn[2], tbn[0], tbn[1]);
 
     //
     return normalize(tbn[0] * ph.x + tbn[1] * ph.y + tbn[2] * ph.z);
@@ -147,14 +148,14 @@ vec3 coneSample(in vec3 N, in float cosTmax, in vec2 uv, in float F) {
 
 //
 vec2 lcts(in vec3 direct) { 
-  return vec2(fma(atan(direct.z,direct.x),INV_TWO_PI,0.5f), acos(direct.y)*INV_PI); 
+    return vec2(fma(atan(direct.z,direct.x),INV_TWO_PI,0.5f), acos(direct.y)*INV_PI); 
 };
 
 //
 vec3 dcts(in vec2 hr) { 
-  hr = fma(hr,vec2(TWO_PI,PI), vec2(-PI,0.f));
-  const float up=-cos(hr.y), over=sqrt(fma(up,-up,1.f)); 
-  return vec3(cos(hr.x)*over ,up , sin(hr.x)*over); 
+    hr = fma(hr,vec2(TWO_PI,PI), vec2(-PI,0.f));
+    const float up=-cos(hr.y), over=sqrt(fma(up,-up,1.f)); 
+    return vec3(cos(hr.x)*over ,up , sin(hr.x)*over); 
 };
 
 // m0 - view point of current frame
@@ -166,19 +167,19 @@ vec3 dcts(in vec2 hr) {
 
 // NEEDS MOD FOR FDNSR
 vec3 proj_point_in_plane(in vec3 p, in vec3 v0, in vec3 n, inout float d) {
- d = dot(n, p - v0);
- return p - (n * d);
+    d = dot(n, p - v0);
+    return p - (n * d);
 };
 
 // NEEDS MOD FOR FDNSR
 vec3 find_reflection_incident_point(in vec3 m0, in vec3 t0, in vec3 p0, in vec3 n0) {
-  float h1=0, h2=0;
-  vec3 c = proj_point_in_plane(m0, p0, n0, h1);
-  vec3 d = proj_point_in_plane(t0, p0, n0, h2);
+    float h1=0, h2=0;
+    vec3 c = proj_point_in_plane(m0, p0, n0, h1);
+    vec3 d = proj_point_in_plane(t0, p0, n0, h2);
 
-  //
-  h1 = abs(h1), h2 = abs(h2);
-  return mix(c,d,h1/(h1+h2));
+    //
+    h1 = abs(h1), h2 = abs(h2);
+    return mix(c,d,h1/(h1+h2));
 }
 
 /*

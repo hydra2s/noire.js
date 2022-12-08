@@ -153,8 +153,11 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         rayData.PBR.r *= (1.f - float(rayData.PBR.g));
 
         // debug reflection
-        rayData.PBR.g = 0.f;
-        rayData.normal.xyz = rayData.TBN[2];
+        //rayData.PBR.g = 0.f;
+        //rayData.normal.xyz = rayData.TBN[2];
+
+        //
+        rayData.PBR.xyz = max(rayData.PBR.xyz, 0.01f);
     }
 
     // TODO: remove such sh&t
@@ -296,6 +299,9 @@ GIData globalIllumination(in RayTracedData rayData) {
             if ((hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {
                 // shading
                 mat3x3 TBN = mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
+                genTB(TBN[2], TBN[0], TBN[1]);
+                //TBN[1] = (cross(TBN[0], TBN[2]));
+                //TBN[0] = (cross(TBN[1], TBN[2]));
 
                 //
                 if (rayData.PBR.r > 0.9 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };

@@ -72,13 +72,11 @@ void main() {
         vec4 TAN = readFloatData3(geometryData.tangent, indices) * bary;
         TAN.xyz = normalize((nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f)).xyz) * TAN.w;
         TAN.xyz = normalize(TAN.xyz - dot(TAN.xyz, NOR) * NOR);
-        //TAN.xyz = faceforward(TAN.xyz, dir, TAN.xyz);
 
         //
         vec3 BIN = normalize(cross(TAN.xyz, NOR));
         BIN = BIN - NOR * dot(BIN, NOR);
         BIN = normalize(BIN - TAN.xyz * dot(BIN, TAN.xyz));
-        //BIN.xyz = faceforward(BIN.xyz, dir, BIN.xyz);
 
         // 
         min16float4 emissive = min16float4(readTexData(materialData.emissive, texcoord.xy));
@@ -93,7 +91,7 @@ void main() {
 
         //
         vec3 viewNormal = (modelViewInverse[0] * vec4(NOR.xyz, 0.0)).xyz;
-        vec3 texNormal = mat3(TAN.xyz, BIN.xyz, NOR.xyz) * (normal.xyz * 2.0 - 1.0);
+        vec3 texNormal = normalize(mat3(TAN.xyz, BIN.xyz, NOR.xyz) * (normal.xyz * 2.0 - 1.0));
         //texNormal.xyz = NOR.xyz; // DEBUG planes
         texNormal.xyz = faceforward(texNormal.xyz, dir, texNormal.xyz);
 

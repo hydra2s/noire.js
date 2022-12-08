@@ -105,9 +105,21 @@ void genTB(in vec3 N, out vec3 T, out vec3 B) {
     B = vec3(b, s + N.y * N.y * a, -N.y);
 };
 
+vec3 randomSpherePoint(in vec2 uv, in float F) {
+    const vec3 rand = vec3(random_seeded(uv, F+1.f), random_seeded(uv, F+2.f), random_seeded(uv, F+3.f));
+    const float ang1 = (rand.x + 1.0) * PI; // [-1..1) -> [0..2*PI)
+    const float u = rand.y; // [-1..1), cos and acos(2v-1) cancel each other out, so we arrive at [-1..1)
+    const float u2 = u * u;
+    const float sqrt1MinusU2 = sqrt(1.0 - u2);
+    const float x = sqrt1MinusU2 * cos(ang1);
+    const float y = sqrt1MinusU2 * sin(ang1);
+    const float z = u;
+    return normalize(vec3(x, y, z));
+}
+
 //
 vec3 cosineWeightedPoint(in mat3x3 tbn, in vec2 uv, in float F) {
-    const vec3 rand = vec3(random_seeded(uv, F+1.f), random_seeded(uv, F+2.f), random_seeded(uv, F+2.f));
+    const vec3 rand = vec3(random_seeded(uv, F+2.f), random_seeded(uv, F+3.f), random_seeded(uv, F+4.f));
     const float r = rand.x * 0.5 + 0.5;
     const float angle = (rand.y + 1.0) * PI;
     const float sr = sqrt(r);

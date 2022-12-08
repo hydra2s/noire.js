@@ -151,6 +151,10 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         //
         rayData.PBR.r = mix(pow(1.f - max(dot(vec3(rayData.normal.xyz), -rayData.dir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b));
         rayData.PBR.r *= (1.f - float(rayData.PBR.g));
+
+        // debug reflection
+        rayData.PBR.g = 0.f;
+        rayData.normal.xyz = rayData.TBN[2];
     }
 
     // TODO: remove such sh&t
@@ -263,7 +267,6 @@ GIData globalIllumination(in RayTracedData rayData) {
     const vec4 lightPos = vec4(0, 100, 10, 1);
     vec3 lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
     vec3 lightCol = 4.f.xxx;
-    float diff = sqrt(max(dot(vec3(rayData.normal.xyz), lightDir), 0.0));
 
     //
     const float epsilon = 0.001f;
@@ -287,7 +290,7 @@ GIData globalIllumination(in RayTracedData rayData) {
     uint type = 0;
 
     //
-    const int ITERATION_COUNT = 3;
+    const int ITERATION_COUNT = 2;
     if (hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) {
         for (int I=0;I<ITERATION_COUNT;I++) {
             if ((hasHit = any(greaterThan(rayData.bary, 0.0001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {

@@ -60,7 +60,7 @@ RayTracedData rasterize(in uvec2 coord) {
     rayData.diffuse  = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 1));
     rayData.PBR      = min16float4(imageSetLoadF(_METAPBR, ivec2(coord), 2));
     rayData.emissive = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 6));
-    rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
+    //rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
 
     //
     return rayData;
@@ -83,7 +83,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
     const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(dir));
 
     //
-    rayData.diffuse = vec4(0.f.xxx, 1.f);
+    rayData.diffuse = vec4(1.f.xxx, 1.f);
     rayData.emissive = env;
 
     //
@@ -161,7 +161,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
     }
 
     // TODO: remove such sh&t
-    rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
+    //rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
 
     //
     return rayData;
@@ -303,9 +303,6 @@ GIData globalIllumination(in RayTracedData rayData) {
                 //TBN[1] = (cross(TBN[0], TBN[2]));
                 //TBN[0] = (cross(TBN[1], TBN[2]));
 
-                //
-                if (rayData.PBR.r > 0.9 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
-
                 // TODO: push first rays depence on pixel and frametime
                 int rtype = 0;
                 if (random_seeded(C, 1.0+F) <= rayData.PBR.r) { rtype = 1; };
@@ -315,6 +312,9 @@ GIData globalIllumination(in RayTracedData rayData) {
                 if (rtype == 1) {
                     reflDir = normalize(mix(normalize(reflect(rayData.dir, vec3(TBN[2]))), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
                     energy.xyz *= min(mix(min16float3(1.f.xxx), max(rayData.diffuse.xyz, min16float3(0.f.xxx)), rayData.PBR.b), min16float(1.f));
+
+                    //
+                    if (rayData.PBR.r > 0.9 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
                 } else 
 
                 // if diffuse
@@ -337,9 +337,12 @@ GIData globalIllumination(in RayTracedData rayData) {
                     const vec3 directLight = (sqrt(max(dot(TBN[2], lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f).xxx;
 
                     //
-                    min16float3 diffCol = (I == 0 ? 1.hf.xxx : rayData.diffuse.xyz) /** rayData.diffuse.a*/;
-                    if (dot(rayData.emissive.xyz, 1.f.xxx) > 0.1f) { fcolor.xyz += energy.xyz * diffCol; diffCol.xyz *= max(rayData.diffuse.xyz - rayData.emissive.xyz, 0.f.xxx); };
-                    fcolor += vec4(lightCol * energy.xyz * directLight * diffCol, 0.f);
+                    min16float3 diffCol = (I == 0 ? 1.f.xxx : rayData.diffuse.xyz);
+                    if (dot(rayData.emissive.xyz, 1.f.xxx) > 0.1f) { 
+                        fcolor += vec4(energy.xyz * rayData.emissive.xyz / max(I == 0 ? rayData.diffuse.xyz : 1.f.xxx, 0.001f.xxx), 0.f);
+                    } else {
+                        fcolor += vec4(energy.xyz * lightCol * directLight * diffCol, 0.f);
+                    }
                     energy.xyz *= diffCol;
                 }
 
@@ -349,14 +352,14 @@ GIData globalIllumination(in RayTracedData rayData) {
                     rayData = _rayData;
                 }
             } else {
-                fcolor += vec4(energy.xyz * rayData.diffuse.xyz, 0.f);
+                fcolor += vec4(energy.xyz * rayData.emissive.xyz, 0.f);
                 energy.xyz *= 0.f.xxx;
                 if (I == 1) { nearT = 10000.0f; };
                 break;
             }
         }
     } else {
-        fcolor = vec4(1.f.xxx, 1.f);
+        fcolor = vec4(rayData.emissive.xyz, 1.f);
         energy.xyz *= 0.f.xxx;
     }
 

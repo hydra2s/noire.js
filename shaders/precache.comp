@@ -69,7 +69,7 @@ void main() {
     imageSetAtomicStoreU2(_UATOMIC, ivec2(coord), uvec2(0), 1);
     imageSetAtomicStoreU2(_UATOMIC, ivec2(coord), uvec2(0), 2);
     imageSetStoreF(_PRECISE, ivec2(coord), vec4(origin.xyz, 1.f), 0);
-    imageSetStoreF(_DOTHERS, ivec2(coord), max(rayData.diffuse - rayData.emissive, 0.f.xxxx), 1);
+    imageSetStoreF(_DOTHERS, ivec2(coord), max(rayData.diffuse, 0.f.xxxx), 1);
     imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.normal.xyz, 0.0), 2);
     imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.TBN[0].xyz, 0.0), 3);
     imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.TBN[1].xyz, 0.0), 4);

@@ -52,7 +52,7 @@ rproj reflectionReproj(in uvec2 coord, in int type)
     float dirT = imageSetLoadPrevF(_DREPROJ, ivec2(coord.x, coord.y), type).w;
     const vec3 bary = framebufferLoadF(_BARY, ivec2(coord), 1).xyz;
     rproj ot; ot.isValid = false; ot.T = 0.f; ot.T = 10000.f;
-    if (any(greaterThan(bary, 0.0001f.xxx))) {
+    if (any(greaterThan(bary, 0.0001f.xxx)) && (dirT > 0.f || type == 0)) {
         vec3 prevNormal = normalize(vec4(imageSetLoadPrevF(_DOTHERS, ivec2(coord), 2).rgb, 0.f)).xyz;
         vec4 prevOrigin = imageSetLoadPrevF(_PRECISE, ivec2(coord), 0);
         vec4 prevCamera = prevOrigin * modelView[1];
@@ -83,48 +83,9 @@ rproj reflectionReproj(in uvec2 coord, in int type)
         ot.to = pView;
         ot.isValid = true;
         ot.h = pow(hview.z, 2.f);
-        ot.T = distance(hitPos.xyz, point.xyz);
+        ot.T = type == 0 ? 0.f : distance(hitPos.xyz, point.xyz);
     }
     return ot;
-
-    /*
-    // TODO: reproject by model previous transform
-    float dirT = imageSetLoadF(_DREPROJ, ivec2(coord.x, coord.y), type).w;
-    const vec3 bary = framebufferLoadF(_BARY, ivec2(coord), 0).xyz;
-    rproj ot; ot.isValid = false; ot.T = 0.f; ot.T = 10000.f;
-    if (any(greaterThan(bary, 0.0001f.xxx))) {
-        vec3 normal = normalize(vec4(imageSetLoadF(_DOTHERS, ivec2(coord), 2).rgb, 0.f)).xyz;
-        vec4 origin = imageSetLoadF(_PRECISE, ivec2(coord), 0);
-        vec4 camera = origin * modelView[0];
-        vec4 pView  = ss(camera);
-
-        //
-        vec3 dir    = normalize((modelView[0] * vec4(normalize(camera.xyz), 0.f)).xyz);
-        vec3 hitPos = origin.xyz + normalize(reflect(dir, normal)) * dirT;
-
-        // TODO: reproject by model transform
-        vec4 prevOrigin = origin;
-        vec3 prevHitPos = hitPos;
-        vec3 prevDir    = dir; // world space dir
-        vec3 prevNormal = normal;
-
-        //
-        vec3 prevPoint = type == 0 ? prevOrigin.xyz : find_reflection_incident_point((vec4(0.f.xxx, 1.f) * modelViewInverse[1]).xyz, prevHitPos, prevOrigin.xyz, prevNormal.xyz);
-        vec4 prevPView = ss((vec4(prevPoint, 1.f) * modelView[1]));
-        vec3 prevPnormal = normalize(( vec4(imageSetLoadLinF(_DOTHERS, invertY(unorm(prevPView.xy)), 2).rgb, 0.f)).xyz).xyz;
-
-        // may have threading conflict
-        ot.forStoreToCurrent = ivec2(pView.xy * vec2(width, height));
-        ot.nsimilarity = dot(prevPnormal, prevNormal);
-        //ot.dsimilarity = abs(prevPView.z - hview.z);
-        ot.motion = unorm(pView.xyz).xy - unorm(prevPView.xyz).xy;
-        ot.from = prevPView;
-        ot.to = pView;
-        ot.isValid = true;
-        ot.T = dirT;
-        //ot.T = distance(hitPos.xyz, point.xyz);
-    }
-    return ot;*/
 }
 
 //

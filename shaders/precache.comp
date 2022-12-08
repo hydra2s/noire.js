@@ -19,6 +19,7 @@
 #include "include/hlsl_map.glsl"
 #include "include/math.glsl"
 #include "include/noire.glsl"
+#include "include/raytracing.glsl"
 
 //
 layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
@@ -30,97 +31,17 @@ void main() {
     const uvec4 sys = framebufferLoadU(_INDICES, ivec2(coord), 0);
 
     //
-    min16float3 NOR = min16float3(0.f, 0.f, 0.5f);
-    NOR = normalize((modelView[0] * vec4(NOR, 0.f)).xyz);
-    float hitT = 0.f;
-
-    //
-    vec4 _camera = unss(vec4((vec2(coord)/vec2(width, height)*2.f-1.f)*(1.f, 1.f), 1.f, 1.f));
-    vec4 _origin = (_camera * modelViewInverse[0]);
-    vec3 dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
-    vec3 origin = _origin.xyz;
-
-    //
-    imageSetAtomicStoreU2(_UATOMIC, ivec2(coord), uvec2(0), 0);
-    imageSetAtomicStoreU2(_UATOMIC, ivec2(coord), uvec2(0), 1);
+    vec3 dir = vec3(0.f);
+    vec3 origin = vec3(0.f);
 
     //
     if (any(greaterThan(bary, 0.0001f.xxx))) {
-        nrNode nodeData = nrNode(nodeBuffer) + sys.x;
-        nrMesh meshData = nrMesh(nodeData.meshBuffer);
-        nrGeometry geometryData = nrGeometry(meshData.address) + sys.y;
-        uvec3 indices = readIndexData3(geometryData.indice, sys.z);
-        vec4 texcoord = readFloatData3(geometryData.texcoord, indices) * bary;
-
-        //
-        nrMaterial materialData = nrMaterial(geometryData.materialAddress);
-
-        //
-        vec4 _ss = framebufferLoadF(_POSITION, ivec2(coord.x, coord.y), 0); _ss.y *= -1.f; _camera = unss(_ss);
+        vec4 _ss = framebufferLoadF(_POSITION, ivec2(coord.x, coord.y), 0); _ss.y *= -1.f; 
+        vec4 _camera = unss(_ss);
         origin = (_camera * modelViewInverse[0]).xyz;
         dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
 
         //
-        uint64_t materialAddress = geometryData.materialAddress;
-
-        // Hosico
-        NOR = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
-        NOR = normalize((nodeData.transformInverse * vec4(NOR, 0.0f)).xyz);
-        NOR = normalize(faceforward(NOR, dir, NOR));
-
-        // 
-        vec4 TAN = readFloatData3(geometryData.tangent, indices) * bary;
-        TAN.xyz = normalize((nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f)).xyz) * TAN.w;
-        TAN.xyz = normalize(TAN.xyz - dot(TAN.xyz, NOR) * NOR);
-
-        //
-        vec3 BIN = normalize(cross(TAN.xyz, NOR));
-        BIN = BIN - NOR * dot(BIN, NOR);
-        BIN = normalize(BIN - TAN.xyz * dot(BIN, TAN.xyz));
-
-        // 
-        min16float4 emissive = min16float4(readTexData(materialData.emissive, texcoord.xy));
-        min16float4 diffuse = min16float4(readTexData(materialData.diffuse, texcoord.xy));
-        min16float4 normal = min16float4(readTexData(materialData.normal, texcoord.xy));
-        min16float4 PBR = min16float4(readTexData(materialData.PBR, texcoord.xy));
-        diffuse.xyz = pow(diffuse.xyz, 2.2hf.xxx);
-        emissive.xyz = pow(emissive.xyz, 2.2hf.xxx);
-
-        // DEBUG reflection
-        //PBR.g = 0.hf;
-
-        //
-        vec3 viewNormal = (modelViewInverse[0] * vec4(NOR.xyz, 0.0)).xyz;
-        vec3 texNormal = normalize(mat3(TAN.xyz, BIN.xyz, NOR.xyz) * (normal.xyz * 2.0 - 1.0));
-        //texNormal.xyz = NOR.xyz; // DEBUG planes
-        texNormal.xyz = faceforward(texNormal.xyz, dir, texNormal.xyz);
-
-        //
-        imageSetStoreF(_PRECISE, ivec2(coord), vec4(origin, 1.f), 0);
-        imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(texNormal.xyz, 0.0), 2);
-        imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(TAN.xyz, 0.0), 3);
-        imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(BIN.xyz, 0.0), 4);
-        imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(NOR.xyz, 0.0), 5);
-        imageSetStoreF(_DOTHERS, ivec2(coord), diffuse, 1);
-        imageSetStoreF(_DOTHERS, ivec2(coord), emissive, 6);
-
-        //
-        float reflCoef = mix(pow(1.f - max(dot(vec3(texNormal), -dir.xyz), 0.f), 2.f) * 1.f, 1.f, float(PBR.b));
-        reflCoef *= (1.f - float(PBR.g));
-
-        // TODO: transparency support
-        // per-type PBR (layers)
-        imageSetStoreF(_METAPBR, ivec2(coord), vec4(1.f - reflCoef, 1.f, 0.f, 0.f), 0);
-        imageSetStoreF(_METAPBR, ivec2(coord), vec4(      reflCoef, max(PBR.g, min16float(0.0002f)), 0.f, 0.f), 1);
-
-        // general purpose PBR
-        imageSetStoreF(_METAPBR, ivec2(coord), vec4(reflCoef, max(PBR.gb, min16float(0.0002f.xx)), 0), 2);
-
-        // clear, needs reproject from previous!
-        for (int i=0;i<2;i++) {
-            imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
-        }
-
         imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 0);
         imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 1);
     } else {
@@ -128,34 +49,32 @@ void main() {
         vec4 _camera = unss(vec4((vec2(coord)/vec2(width, height)*2.f-1.f)*vec2(1.f, -1.f), 1.f, 1.f));
         vec4 _origin = (_camera * modelViewInverse[0]);
         dir = normalize((modelView[0] * vec4(normalize(_camera.xyz), 0.f)).xyz);
-        //dir.y *= -1.f;
         origin = _origin.xyz;
-
-        //
-        const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(dir));
-
-        //
-        imageSetStoreF(_PRECISE, ivec2(coord), vec4(origin, 1.f), 0);
-        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(pow(env.xyz, 1.f/2.2f.xxx), 1.f), 1);
-        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(NOR.xyz, 0.0), 2);
-        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(0.0.xxx, 0.0), 3);
-        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(0.0.xxx, 0.0), 4);
-        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(NOR.xyz, 0.0), 5);
-        imageSetStoreF(_DOTHERS, ivec2(coord), vec4(0.0.xxx, 0.0), 6);
-        imageSetStoreF(_METAPBR, ivec2(coord), vec4(0.f.xxx, 0.f), 0);
-        imageSetStoreF(_METAPBR, ivec2(coord), vec4(0.f.xxx, 0.f), 2);
 
         //
         imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(1.f.xxxx), 0);
         imageSetStoreF(_DIFFUSE, ivec2(coord), vec4(0.f.xxxx), 1);
-
-        // make a background, needs reproject from previous
-        for (int i=0;i<2;i++) {
-            imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
-        }
-
-        imageSetStoreF(_METAPBR, ivec2(coord), vec4(0.f.xxxx), 1);
-        imageSetStoreF(_METAPBR, ivec2(coord), vec4(1.f, 0.f.xxx), 0);
-        imageSetStoreF(_METAPBR, ivec2(coord), vec4(0.f.xxxx), 2);
     }
+
+    //
+    RayTracedData rayData = getData(origin.xyz, dir.xyz, sys, bary, 0.f);
+
+    // make a background, needs reproject from previous
+    for (int i=0;i<2;i++) {
+        imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
+    }
+
+    //
+    imageSetAtomicStoreU2(_UATOMIC, ivec2(coord), uvec2(0), 0);
+    imageSetAtomicStoreU2(_UATOMIC, ivec2(coord), uvec2(0), 1);
+    imageSetStoreF(_PRECISE, ivec2(coord), vec4(origin.xyz, 1.f), 0);
+    imageSetStoreF(_DOTHERS, ivec2(coord), max(rayData.diffuse - rayData.emissive, 0.f.xxxx), 1);
+    imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.normal.xyz, 0.0), 2);
+    imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.TBN[0].xyz, 0.0), 3);
+    imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.TBN[1].xyz, 0.0), 4);
+    imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.TBN[2].xyz, 0.0), 5);
+    imageSetStoreF(_DOTHERS, ivec2(coord), rayData.emissive, 6);
+    imageSetStoreF(_METAPBR, ivec2(coord), vec4(1.f - rayData.PBR.r, 1.f, 0.f, 0.f), 0);
+    imageSetStoreF(_METAPBR, ivec2(coord), vec4(      rayData.PBR.r, rayData.PBR.g , 0.f, 0.f), 1);
+    imageSetStoreF(_METAPBR, ivec2(coord), vec4(      rayData.PBR.r, rayData.PBR.gb, 0.f     ), 2);
 }

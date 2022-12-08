@@ -13,7 +13,7 @@ struct RayTracedData {
     vec3 dir;
     vec3 bary;
     float hitT;
-} rayData;
+};
 
 // for backward compatibility
 void swap(inout  vec2 a, inout  vec2 b) { const  vec2 a_ = a; a = b; b = a_; };
@@ -22,11 +22,16 @@ void swap(inout  vec4 a, inout  vec4 b) { const  vec4 a_ = a; a = b; b = a_; };
 void swap(inout float a, inout float b) { const float a_ = a; a = b; b = a_; };
 
 //
-void rasterize(in uvec2 coord) {
+RayTracedData rasterize(in uvec2 coord) {
     const vec3 bary = framebufferLoadF(_BARY, ivec2(coord), 0).xyz;
     const uvec4 sys = framebufferLoadU(_INDICES, ivec2(coord), 0);
 
     //
+    RayTracedData rayData;
+    rayData.materialAddress = uint64_t(0u);
+    rayData.transformAddress = uint64_t(0u);
+    rayData.bary = framebufferLoadF(_BARY, ivec2(coord), 0).xyz;
+    rayData.indices = framebufferLoadU(_INDICES, ivec2(coord), 0);
     rayData.texcoord = framebufferLoadF(_TEXCOORD, ivec2(coord), 0).xy;
     rayData.hitT = 0.f;
     rayData.normal = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 2));
@@ -46,10 +51,6 @@ void rasterize(in uvec2 coord) {
     rayData.origin = _origin;
 
     //
-    rayData.TBN[2] = faceforward(rayData.TBN[2], rayData.dir, rayData.TBN[2]);
-    rayData.normal.xyz = faceforward(rayData.normal.xyz, rayData.dir, rayData.normal.xyz);
-
-    //
     nrNode nodeData = nrNode(nodeBuffer) + sys.x;
     nrMesh meshData = nrMesh(nodeData.meshBuffer);
     nrGeometry geometryData = nrGeometry(meshData.address) + sys.y;
@@ -60,15 +61,30 @@ void rasterize(in uvec2 coord) {
     rayData.PBR      = min16float4(imageSetLoadF(_METAPBR, ivec2(coord), 2));
     rayData.emissive = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 6));
     rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
+
+    //
+    return rayData;
 }
 
 //
-void rayTrace(in vec3 origin, in vec3 dir) {
-    rayData.diffuse = min16float4(1.f.xxx, 1.f);
-    rayData.origin = vec4(origin + dir * 10000.f, 1.f);
+RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, in float T) {
+    RayTracedData rayData;
     rayData.dir = dir;
-    rayData.bary = vec3(0.f.xxx);
-    rayData.hitT = 0.f;
+    rayData.origin = vec4(origin.xyz, 1.f);
+    rayData.bary = bary;
+    rayData.hitT = T;
+    rayData.indices = sys;
+    rayData.texcoord = vec2(0.f);
+    rayData.materialAddress = uint64_t(0u);
+    rayData.transformAddress = uint64_t(0u);
+    rayData.PBR = vec4(0.f.xxxx);
+
+    //
+    const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(dir));
+
+    //
+    rayData.diffuse = vec4(0.f.xxx, 1.f);
+    rayData.emissive = env;
 
     //
     vec3 NOR = normalize((modelView[0] * vec4(0.f, 0.f, 0.5f, 0.f)).xyz);
@@ -78,6 +94,79 @@ void rayTrace(in vec3 origin, in vec3 dir) {
         min16float3(0.f.xxx),
         rayData.normal.xyz
     );
+
+    //
+    if (any(greaterThan(rayData.bary, 0.0001f.xxx))) {
+        //
+        nrNode nodeData = nrNode(nodeBuffer) + sys.x;
+        nrMesh meshData = nrMesh(nodeData.meshBuffer);
+        nrGeometry geometryData = nrGeometry(meshData.address) + sys.y;
+        uvec3 indices = readIndexData3(geometryData.indice, sys.z);
+        vec4 texcoord = readFloatData3(geometryData.texcoord, indices) * bary;
+
+        //
+        nrMaterial materialData = nrMaterial(geometryData.materialAddress);
+
+        //
+        vec4 vertex = readFloatData3(geometryData.vertex, indices) * bary;
+        vec4 _origin = vec4(vertex.xyz, 1.f) * nodeData.transform; //vec4(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true) * vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f), rayQueryGetIntersectionTEXT(rayQuery, true));
+        rayData.origin = _origin;
+        rayData.bary = bary;
+        rayData.hitT = T;
+
+        //
+        rayData.texcoord = texcoord.xy;
+        rayData.materialAddress = geometryData.materialAddress;
+        rayData.indices = sys;
+
+        // 
+        vec3 NOR = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
+        NOR = normalize((nodeData.transformInverse * vec4(NOR.xyz, 0.0f)).xyz);
+        NOR = normalize(faceforward(NOR, rayData.dir, NOR));
+
+        // 
+        vec4 TAN = readFloatData3(geometryData.tangent, indices) * bary;
+        TAN.xyz = normalize((nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f)).xyz) * TAN.w;
+        TAN.xyz = normalize(TAN.xyz - dot(TAN.xyz, NOR) * NOR);
+
+        //
+        vec3 BIN = normalize(cross(TAN.xyz, NOR));
+        BIN = BIN - NOR * dot(BIN, NOR);
+        BIN = normalize(BIN - TAN.xyz * dot(BIN, TAN.xyz));
+
+        //
+        rayData.transformAddress = uint64_t(nodeData);
+        rayData.emissive = readTexData(materialData.emissive, texcoord.xy);
+        rayData.diffuse = readTexData(materialData.diffuse, texcoord.xy);
+        rayData.normal = readTexData(materialData.normal, texcoord.xy);
+        rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
+        rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
+        rayData.emissive.xyz = pow(rayData.emissive.xyz, 2.2hf.xxx);
+
+        // 
+        rayData.TBN = mat3x3(TAN.xyz, BIN.xyz, NOR.xyz);
+        rayData.normal.xyz = normalize(rayData.TBN * (rayData.normal.xyz * 2.f - 1.f));
+        rayData.normal.xyz = faceforward(rayData.normal.xyz, min16float3(rayData.dir.xyz), rayData.normal.xyz);
+
+        //
+        rayData.PBR.r = mix(pow(1.f - max(dot(vec3(rayData.normal.xyz), -rayData.dir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b));
+        rayData.PBR.r *= (1.f - float(rayData.PBR.g));
+    }
+
+    // TODO: remove such sh&t
+    rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
+
+    //
+    return rayData;
+}
+
+//
+RayTracedData rayTrace(in vec3 origin, in vec3 dir) {
+    RayTracedData rayData;
+    rayData.origin = vec4(origin.xyz, 0.f);
+    rayData.dir = dir;
+    rayData.hitT = 10000.f;
+    rayData.bary = vec3(0.f);
 
     //
     rayQueryEXT rayQuery;
@@ -110,61 +199,16 @@ void rayTrace(in vec3 origin, in vec3 dir) {
     //
     if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) {
         const vec2 bary_ = rayQueryGetIntersectionBarycentricsEXT(rayQuery, true);
-        const vec3 bary = vec3(1.f - bary_.x - bary_.y, bary_.xy);
-        const uvec4 sys = uvec4(rayQueryGetIntersectionInstanceIdEXT(rayQuery, true), rayQueryGetIntersectionGeometryIndexEXT(rayQuery, true), rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true), 0u);
-
-        //
-        nrNode nodeData = nrNode(nodeBuffer) + sys.x;
-        nrMesh meshData = nrMesh(nodeData.meshBuffer);
-        nrGeometry geometryData = nrGeometry(meshData.address) + sys.y;
-        uvec3 indices = readIndexData3(geometryData.indice, sys.z);
-        vec4 texcoord = readFloatData3(geometryData.texcoord, indices) * bary;
-
-        //
-        nrMaterial materialData = nrMaterial(geometryData.materialAddress);
-
-        //
-        vec4 vertex = readFloatData3(geometryData.vertex, indices) * bary;
-        vec4 _origin = vec4(vertex.xyz, 1.f) * nodeData.transform; //vec4(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true) * vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true), 1.f), rayQueryGetIntersectionTEXT(rayQuery, true));
-        rayData.origin = _origin;
-        rayData.bary = bary;
+        rayData.bary = max(vec3(1.f - bary_.x - bary_.y, bary_.xy), 0.0002f.xxx);
+        rayData.indices = uvec4(rayQueryGetIntersectionInstanceIdEXT(rayQuery, true), rayQueryGetIntersectionGeometryIndexEXT(rayQuery, true), rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true), 0u);
         rayData.hitT = rayQueryGetIntersectionTEXT(rayQuery, true);
-
-        //
-        rayData.texcoord = texcoord.xy;
-        rayData.materialAddress = geometryData.materialAddress;
-        rayData.indices = sys;
-
-        // 
-        vec3 NOR = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
-        NOR = normalize((nodeData.transformInverse * vec4(NOR.xyz, 0.0f)).xyz);
-        NOR = normalize(faceforward(NOR, rayData.dir, NOR));
-
-        // 
-        vec4 TAN = readFloatData3(geometryData.tangent, indices) * bary;
-        TAN.xyz = normalize((nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f)).xyz) * TAN.w;
-        TAN.xyz = normalize(TAN.xyz - dot(TAN.xyz, NOR) * NOR);
-
-        //
-        vec3 BIN = normalize(cross(TAN.xyz, NOR));
-        BIN = BIN - NOR * dot(BIN, NOR);
-        BIN = normalize(BIN - TAN.xyz * dot(BIN, TAN.xyz));
-
-        //
-        rayData.transformAddress = uint64_t(nodeData);
-        rayData.emissive = readTexData(materialData.emissive, texcoord.xy);
-        rayData.diffuse = readTexData(materialData.diffuse, texcoord.xy);
-        rayData.normal = readTexData(materialData.normal, texcoord.xy);
-        rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
-        rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
-        rayData.emissive.xyz = pow(rayData.emissive.xyz, 2.2hf.xxx);
-        rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
-
-        // 
-        rayData.TBN = mat3x3(TAN.xyz, BIN.xyz, NOR.xyz);
-        rayData.normal.xyz = normalize(rayData.TBN * (rayData.normal.xyz * 2.f - 1.f));
-        rayData.normal.xyz = faceforward(rayData.normal.xyz, min16float3(rayData.dir.xyz), rayData.normal.xyz);
     }
+
+    //
+    rayData = getData(origin, dir, rayData.indices, rayData.bary, rayData.hitT);
+
+    //
+    return rayData;
 }
 
 //
@@ -193,7 +237,7 @@ bool shadowTrace(in vec3 origin, in float dist, in vec3 dir) {
         const float transparency = readTexData(materialData.diffuse, texcoord.xy).a;
 
         //
-        if (transparency > 0.f && rayQueryGetIntersectionTEXT(rayQuery, false) <= dist) {
+        if (transparency > 0.f && T <= dist) {
             rayQueryConfirmIntersectionEXT(rayQuery);
         }
     }
@@ -215,25 +259,19 @@ struct GIData {
 };
 
 //
-GIData globalIllumination() {
+GIData globalIllumination(in RayTracedData rayData) {
     const vec4 lightPos = vec4(0, 100, 10, 1);
     vec3 lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
     vec3 lightCol = 4.f.xxx;
     float diff = sqrt(max(dot(vec3(rayData.normal.xyz), lightDir), 0.0));
 
     //
-    const float epsilon = 0.f;
-    const vec3 diffuseCol = rayData.diffuse.xyz * (diff + 0.2f) * 1.f;
+    const float epsilon = 0.001f;
 
     //
     vec4 fcolor = vec4(0.f.xxx, 1.f);
     vec4 energy = vec4(1.f.xxx, 1.f);
-
-    //
-    bool shadowed = true;
-    float reflCoef = 1.f;
     vec3 reflDir = normalize(rayData.dir);
-    vec3 reflCol = 1.f.xxx;
 
     //
     vec2 C = vec2(gl_GlobalInvocationID.xy);
@@ -257,25 +295,17 @@ GIData globalIllumination() {
                 mat3x3 TBN = mat3x3(rayData.TBN[0], rayData.TBN[1], rayData.normal.xyz);
 
                 //
-                if (reflCoef > 0.9 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
-
-                // TODO: load from pre-cache, store in rayData
-                reflCoef = mix(pow(1.f - max(dot(vec3(TBN[2]), -reflDir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b));
-                reflCoef *= (1.f - float(rayData.PBR.g));
-
-                //
-                reflCol = 1.f.xxx;
+                if (rayData.PBR.r > 0.9 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
 
                 // TODO: push first rays depence on pixel and frametime
                 int rtype = 0;
-                if (random_seeded(C, 1.0+F) <= reflCoef) { rtype = 1; };
+                if (random_seeded(C, 1.0+F) <= rayData.PBR.r) { rtype = 1; };
                 if (I == 0) { type = rtype; }
 
                 // if reflection
                 if (rtype == 1) {
-                    min16float3 diffCol = rayData.diffuse.xyz/**rayData.diffuse.a*/;//(I == 0 ? 1.hf.xxx : rayData.diffuse.xyz) * rayData.diffuse.a;
                     reflDir = normalize(mix(normalize(reflect(rayData.dir, vec3(TBN[2]))), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
-                    reflCol *= min(mix(min16float3(1.f.xxx), max(diffCol, min16float3(0.f.xxx)), rayData.PBR.b), min16float(1.f));
+                    energy.xyz *= min(mix(min16float3(1.f.xxx), max(rayData.diffuse.xyz, min16float3(0.f.xxx)), rayData.PBR.b), min16float(1.f));
                 } else 
 
                 // if diffuse
@@ -294,32 +324,30 @@ GIData globalIllumination() {
                     lightDir = normalize(LS);
 
                     // 
-                    shadowed = shadowTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, length(LS), lightDir);
+                    const bool shadowed = shadowTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, length(LS), lightDir);
                     const vec3 directLight = (sqrt(max(dot(TBN[2], lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f).xxx;
 
                     //
                     min16float3 diffCol = (I == 0 ? 1.hf.xxx : rayData.diffuse.xyz) /** rayData.diffuse.a*/;
                     if (dot(rayData.emissive.xyz, 1.f.xxx) > 0.1f) { fcolor.xyz += energy.xyz * diffCol; diffCol.xyz *= max(rayData.diffuse.xyz - rayData.emissive.xyz, 0.f.xxx); };
                     fcolor += vec4(lightCol * energy.xyz * directLight * diffCol, 0.f);
-                    reflCol *= diffCol;
+                    energy.xyz *= diffCol;
                 }
-
-                // 
-                energy.xyz *= reflCol.xyz;
 
                 // next step
                 if (dot(energy.xyz, 1.f.xxx) > 0.001f && I<(ITERATION_COUNT-1)) {
-                    rayTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, reflDir);
+                    RayTracedData _rayData = rayTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, reflDir);
+                    rayData = _rayData;
                 }
             } else {
-                fcolor += vec4(energy.xyz * pow(texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(reflDir)).xyz, 1.f/2.2f.xxx), 0.f);
+                fcolor += vec4(energy.xyz * rayData.diffuse.xyz, 0.f);
                 energy.xyz *= 0.f.xxx;
                 if (I == 1) { nearT = 10000.0f; };
                 break;
             }
         }
     } else {
-        fcolor = vec4(rayData.diffuse.xyz/* * rayData.diffuse.a*/, 1.f);
+        fcolor = vec4(1.f.xxx, 1.f);
         energy.xyz *= 0.f.xxx;
     }
 

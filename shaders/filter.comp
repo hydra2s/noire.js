@@ -111,7 +111,7 @@ vec4 filterComp(in ivec2 coord, in int type) {
 
 	vec4 cval = imageSetLoadF(_DIFFUSE, ivec2(coord), type);
     vec4 rval = pack32(u16vec2(hashed)) > 0 ? imageSetLoadPrevF(_DIFFUSE, ivec2(coord), type) : 0.f.xxxx;
-	vec3 nval = imageSetLoadF(_DOTHERS, ivec2(coord), 2).xyz;
+	vec3 nval = imageSetLoadF(_PRECISE, ivec2(coord), 1).xyz;
 
     float ang = 2.0*3.1415926535*hash1(251.12860182*coord.x + 729.9126812*coord.y+5.1839513*frameCount);
 	mat2 m = mat2(cos(ang),sin(ang),-sin(ang),cos(ang));
@@ -131,7 +131,7 @@ vec4 filterComp(in ivec2 coord, in int type) {
         float dist2 = dot(t.xyz,t.xyz);
         float c_w = max(min(exp(-(dist2)/c_phi), 1.0), 0.001f);
 
-        vec3 ntmp = imageSetLoadLinF(_DOTHERS, uv, 2).xyz;
+        vec3 ntmp = imageSetLoadLinF(_PRECISE, uv, 1).xyz;
         t = vec4(nval - ntmp, 0.f);
         dist2 = max(dot(t.xyz,t.xyz), 0.0);
         float n_w = max(min(exp(-(dist2)/n_phi), 1.0), 0.001f);
@@ -171,6 +171,6 @@ void main() {
         uvec2 coord = gl_GlobalInvocationID.xy;
 
         //
-        imageSetStoreF(_DIFFUSE, ivec2(coord), filterComp(ivec2(coord), i), 3+i);
+        imageSetStoreF(_DFILTER, ivec2(coord), filterComp(ivec2(coord), i), i);
     }
 }

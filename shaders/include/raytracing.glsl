@@ -34,12 +34,12 @@ RayTracedData rasterize(in uvec2 coord) {
     rayData.indices = framebufferLoadU(_INDICES, ivec2(coord), 0);
     rayData.texcoord = framebufferLoadF(_TEXCOORD, ivec2(coord), 0).xy;
     rayData.hitT = 0.f;
-    rayData.normal = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 2));
+    rayData.normal = min16float4(imageSetLoadF(_PRECISE, ivec2(coord), 1));
     rayData.bary = bary;
     rayData.TBN = mat3x3(
+        normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 2)),
         normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 3)),
-        normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 4)),
-        normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 5))
+        normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 4))
     );
 
     //
@@ -57,9 +57,9 @@ RayTracedData rasterize(in uvec2 coord) {
 
     //
     rayData.materialAddress = geometryData.materialAddress;
-    rayData.diffuse  = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 1));
+    rayData.diffuse  = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 0));
+    rayData.emissive = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 1));
     rayData.PBR      = min16float4(imageSetLoadF(_METAPBR, ivec2(coord), 3));
-    rayData.emissive = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 6));
     //rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
 
     //

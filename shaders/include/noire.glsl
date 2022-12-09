@@ -183,6 +183,7 @@ uint readIndexData(in nrBinding binding, in uint index) {
 #define _DOTHERS 4
 #define _UATOMIC 5
 #define _PRECISE 6
+#define _DFILTER 7
 
 //
 vec4 ssW(in vec4 V4) {

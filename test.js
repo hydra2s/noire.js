@@ -149,6 +149,9 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
             // positons, high precise required
             {width: frameSize[0], height: frameSize[1], depth: 1},
+
+            // diffuse filtered
+            {width: frameSize[0], height: frameSize[1], depth: 1},
         ],
 
         //
@@ -156,8 +159,9 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         memoryAllocator: memoryAllocatorObj.handle[0],
 
         // TODO: optional previous layer support
-        layerCount: [1, 3, 4, 6, 7, 3, 1],
-        manualSwap: [true, true, true, true, true, true, true],
+        layerCount: [1    , 3   , 4    , 3   , 5    , 3   , 2   , 3    ],
+        manualSwap: [true , true, true , true, true , true, true, true ],
+        hasHistory: [false, true, false, true, false, true, true, false],
 
         //
         formats: [
@@ -167,7 +171,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
             V.VK_FORMAT_R16G16B16A16_SNORM,
             V.VK_FORMAT_R32_UINT,
-            V.VK_FORMAT_R32G32B32A32_SFLOAT
+            V.VK_FORMAT_R32G32B32A32_SFLOAT,
+            V.VK_FORMAT_R16G16B16A16_SFLOAT
         ]
     });
 
@@ -272,6 +277,11 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     let _modelViewInverse = $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), modelView));
 
     //
+    const nullOr = (id, ms)=>{
+        return id == null ? ms : id;
+    };
+
+    //
     const uniformData = new nrUniformData({
         width: frameSize[0], height: frameSize[1],
         windowWidth: windowSize[0], windowHeight: windowSize[1],
@@ -291,31 +301,34 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             framebufferObj.colorImageViews[3].DSC_ID
         ],
         loadSets: [
-            imageSetObj.imageViews[0][0].DSC_ID,
-            imageSetObj.imageViews[0][1].DSC_ID,
-            imageSetObj.imageViews[0][2].DSC_ID,
-            imageSetObj.imageViews[0][3].DSC_ID,
-            imageSetObj.imageViews[0][4].DSC_ID,
-            imageSetObj.imageViews[0][5].DSC_ID,
-            imageSetObj.imageViews[0][6].DSC_ID
+            nullOr(imageSetObj.imageViews[1][0]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[1][1]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[1][2]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[1][3]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[1][4]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[1][5]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[1][6]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[1][7]?.DSC_ID, -1)
         ],
         prevSets: [
-            imageSetObj.imageViews[1][0].DSC_ID,
-            imageSetObj.imageViews[1][1].DSC_ID,
-            imageSetObj.imageViews[1][2].DSC_ID,
-            imageSetObj.imageViews[1][3].DSC_ID,
-            imageSetObj.imageViews[1][4].DSC_ID,
-            imageSetObj.imageViews[1][5].DSC_ID,
-            imageSetObj.imageViews[1][6].DSC_ID
+            nullOr(imageSetObj.imageViews[2][0]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[2][1]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[2][2]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[2][3]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[2][4]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[2][5]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[2][6]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[2][7]?.DSC_ID, -1)
         ],
         storeSets: [
-            imageSetObj.imageViews[2][0].DSC_ID,
-            imageSetObj.imageViews[2][1].DSC_ID,
-            imageSetObj.imageViews[2][2].DSC_ID,
-            imageSetObj.imageViews[2][3].DSC_ID,
-            imageSetObj.imageViews[2][4].DSC_ID,
-            imageSetObj.imageViews[2][5].DSC_ID,
-            imageSetObj.imageViews[2][6].DSC_ID
+            nullOr(imageSetObj.imageViews[0][0]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[0][1]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[0][2]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[0][3]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[0][4]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[0][5]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[0][6]?.DSC_ID, -1),
+            nullOr(imageSetObj.imageViews[0][7]?.DSC_ID, -1)
         ],
         linearSampler: deviceObj.createSampler({
             pipelineLayout: descriptorsObj.handle[0],
@@ -411,7 +424,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         //
         precacheObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3, 4, 5, 6]);
+        imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3, 4, 5, 6, 7]);
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 3]);
 
@@ -422,7 +435,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 3]);
         filterObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstageId(cmdBuf, [3]);
+        imageSetObj.cmdSwapstageId(cmdBuf, [7]);
 
         //
         pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));

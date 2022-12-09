@@ -1,1 +1,0 @@
-../../deps/FidelityFX-Denoiser/ffx-reflection-dnsr/ffx_denoiser_reflections_config.h

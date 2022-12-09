@@ -4,9 +4,3 @@
 [submodule "deps/vulkan.node.js"]
 	path = deps/vulkan.node.js
 	url = https://github.com/hydra2s/vulkan.node.js.git
-[submodule "deps/FidelityFX-Denoiser"]
-	path = deps/FidelityFX-Denoiser
-	url = https://github.com/GPUOpen-Effects/FidelityFX-Denoiser.git
-[submodule "deps/FidelityFX-FSR"]
-	path = deps/FidelityFX-FSR
-	url = https://github.com/GPUOpen-Effects/FidelityFX-FSR.git

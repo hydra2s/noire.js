@@ -69,7 +69,7 @@ void main() {
 
     // make a background, needs reproject from previous
     for (int i=0;i<3;i++) {
-        imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f.xxxx), i);
+        imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f), i);
     }
 
     //

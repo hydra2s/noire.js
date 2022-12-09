@@ -166,7 +166,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         //
         formats: [
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
-            V.VK_FORMAT_R16G16B16A16_SFLOAT,
+            V.VK_FORMAT_R32_SFLOAT,
             V.VK_FORMAT_R8G8B8A8_UNORM,
             V.VK_FORMAT_R16G16B16A16_SFLOAT,
             V.VK_FORMAT_R16G16B16A16_SNORM,
@@ -422,22 +422,27 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         // 
         framebufferObj.cmdToGeneral(cmdBuf);
 
-        //
+        // 
         precacheObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 2, 3, 4, 5, 6, 7]);
+
+        // VERY IMPACTFL TO FPS!
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 3]);
 
-        // FidelityFX is bad for such purpose...
-        //denoiseDiffuse(cmdBuf);
+        // TOO IMPACTFUL TO FPS!
         dMotion.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [5]);
+
+        //
         postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 3]);
+
+        // TOO IMPACTFUL TO FPS!
         filterObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [7]);
 
-        //
+        // Render To Swapchain!
         pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));
 
         //

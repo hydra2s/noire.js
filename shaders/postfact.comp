@@ -50,7 +50,7 @@ void main() {
 
         //
         vec4 cT = imageSetLoadF(_DREPROJ, ivec2(coord), i);
-        vec4 rT = isValid ? imageSetLoadPrevF(_DREPROJ, ivec2(hashed), i) : 0.f.xxxx;
-        imageSetStoreF(_DREPROJ, ivec2(coord), vec4(cT.xyz, max( cT.w , rT.w )), i);
+        vec4 rT = isValid ? imageSetLoadPrevF(_DREPROJ, ivec2(hashed), i) : vec4(0.f);
+        imageSetStoreF(_DREPROJ, ivec2(coord), vec4(max( cT.r , rT.r )), i);
     }
 }

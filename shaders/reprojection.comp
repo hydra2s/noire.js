@@ -49,7 +49,7 @@ struct rproj {
 rproj reflectionReproj(in uvec2 coord, in int type) 
 {
     // TODO: reproject by model previous transform
-    float dirT = imageSetLoadPrevF(_DREPROJ, ivec2(coord.x, coord.y), type).w;
+    float dirT = imageSetLoadPrevF(_DREPROJ, ivec2(coord.x, coord.y), type).r;
     const vec3 bary = framebufferLoadF(_BARY, ivec2(coord), 1).xyz;
     rproj ot; ot.isValid = false; ot.T = 0.f; ot.T = 10000.f;
     if (any(greaterThan(bary, 0.00001f.xxx)) && (dirT > 0.f || type == 0)) {

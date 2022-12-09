@@ -60,7 +60,7 @@ rproj reflectionReproj(in uvec2 coord, in int type)
 
         //
         vec3 prevDir    = normalize((modelView[1] * vec4(normalize(prevCamera.xyz), 0.f)).xyz);
-        vec3 prevHitpos = prevOrigin.xyz + normalize(reflect(prevDir, prevNormal)) * dirT;
+        vec3 prevHitpos = prevOrigin.xyz + prevDir * dirT;//+ normalize(reflect(prevDir, prevNormal)) * dirT;
 
         // TODO: reproject by model transform
         vec4 origin = prevOrigin;

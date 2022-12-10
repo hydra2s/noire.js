@@ -86,7 +86,7 @@ RayTracedData rasterize(in uvec2 coord) {
 // 
 const vec4 lightPos[1] = { vec4(5, 100, 5, 10) };
 const vec3 lightCol[1] = { vec3(4.f.xxx * 200.f) };
-const float epsilon = 0.001f;
+const float epsilon = 0.0001f;
 
 // 
 RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, in float T, in int source) {
@@ -106,7 +106,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
     const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(dir));
 
     //
-    rayData.diffuse = vec4(1.f.xxx, 1.f);
+    rayData.diffuse = vec4(0.f.xxx, 1.f);
     rayData.emissive = env;
 
     //
@@ -162,7 +162,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         //
         bool backface = false;
         if (dot(NOR, rayData.dir) >= 0.f) {
-            rayData.transmission.g = 1.f / rayData.transmission.g; backface = true;
+            rayData.transmission.g = 1.f / max(rayData.transmission.g, 0.001f); backface = true;
         };
 
         //

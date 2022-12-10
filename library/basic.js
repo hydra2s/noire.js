@@ -116,7 +116,7 @@ const createInstanceBuffer = (physicalDevice, device, instances) => {
 //
 const getBufferDeviceAddress = (device, $buffer, byteLength = 1n)=>{
     const deviceAddress = V.vkGetBufferDeviceAddress(device, new V.VkBufferDeviceAddressInfo({ $buffer }));
-    Handles[device].BufferAddresses.insert([parseInt(deviceAddress), parseInt(deviceAddress+byteLength)], $buffer);
+    Handles[device].BufferAddresses.insert(deviceAddress, deviceAddress+BigInt(byteLength), $buffer);
     return deviceAddress; // conflict-less
 }
 

@@ -34,6 +34,7 @@
     "jimp": "^0.16.2",
     "jsox": "^1.2.116",
     "ktx-parse": "^0.4.5",
+    "node-interval-tree": "^2.1.1",
     "pngjs": "^6.0.0"
   }
 }

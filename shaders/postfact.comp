@@ -52,7 +52,7 @@ void main() {
 
         //
         vec4 cT = imageSetLoadF(_DREPROJ, ivec2(coord), i);
-        vec4 rT = isValid ? imageSetLoadPrevF(_DREPROJ, ivec2(coord), i) : vec4(0.f);
+        vec4 rT = imageSetLoadPrevF(_DREPROJ, ivec2(coord), i);
         imageSetStoreF(_DREPROJ, ivec2(coord), vec4(max( cT.r , rT.r )), i);
     }
 }

@@ -1,6 +1,6 @@
 import { default as B } from "./basic.js";
 import { default as V } from "../deps/vulkan.node.js/index.js";
-import IntervalTree from '@flatten-js/interval-tree'
+import { IntervalTree } from 'node-interval-tree'
 
 //
 class DeviceObj extends B.BasicObj {
@@ -82,8 +82,8 @@ class DeviceObj extends B.BasicObj {
             Pipelines: {},
             ImageViews: {},
             Samplers: {},
-            BufferAddresses: new IntervalTree.default(),
-            AccelerationStructureAddresses: new IntervalTree.default()
+            BufferAddresses: new IntervalTree(),
+            AccelerationStructureAddresses: new IntervalTree()
         });
 
         //
@@ -112,7 +112,7 @@ class DeviceObj extends B.BasicObj {
     }
 
     getBufferHandleByAddress(address) {
-        return this.BufferAddresses.search([address, address])[0];
+        return this.BufferAddresses.search(address, address)[0];
     }
 
     getAccelerationStructureHandleByAddress(address) {

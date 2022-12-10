@@ -205,3 +205,16 @@ vec3 undc(in vec3 v3) {
     v3.xy = v3.xy * 2.f - 1.f;
     return v3;
 }
+
+//
+float fresnel(float cos_theta_incident, float cos_critical, float refractive_ratio) {
+	if (cos_theta_incident <= cos_critical)
+		return 1.f;
+
+	float sin_theta_incident2 = 1.f - cos_theta_incident*cos_theta_incident;
+	float t = sqrt(1.f - sin_theta_incident2 / (refractive_ratio * refractive_ratio));
+	float sqrtRs = (cos_theta_incident - refractive_ratio * t) / (cos_theta_incident + refractive_ratio * t);
+	float sqrtRp = (t - refractive_ratio * cos_theta_incident) / (t + refractive_ratio * cos_theta_incident);
+
+	return mix(sqrtRs * sqrtRs, sqrtRp * sqrtRp, .5f);
+}

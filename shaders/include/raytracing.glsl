@@ -159,7 +159,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         rayData.normal.xyz = faceforward(rayData.normal.xyz, min16float3(rayData.dir.xyz), rayData.normal.xyz);
 
         //
-        rayData.PBR.r = mix(pow(1.f - max(dot(vec3(rayData.normal.xyz), -rayData.dir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b));
+        rayData.PBR.r = mix(fresnel(max(dot(vec3(rayData.normal.xyz), -rayData.dir.xyz), 0.f), 0.1f, 1.333f/1.f), 1.f, float(rayData.PBR.b));
         rayData.PBR.r *= (1.f - float(rayData.PBR.g));
 
         // emitent can't to be transmissive
@@ -376,7 +376,7 @@ GIData globalIllumination(in RayTracedData rayData) {
 
                 // next step
                 if (dot(energy.xyz, 1.f.xxx) > 0.001f && I<(ITERATION_COUNT-1)) {
-                    RayTracedData _rayData = rayTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon * sign(dot(rayData.TBN[2], -reflDir)), reflDir);
+                    RayTracedData _rayData = rayTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon * sign(dot(rayData.TBN[2], reflDir)), reflDir);
                     rayData = _rayData;
                 }
             } else {

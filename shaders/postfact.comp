@@ -49,10 +49,5 @@ void main() {
         //
         imageSetStoreF(_DFACTOR, ivec2(coord), upto(colC/max(colC.w, 0.0001f) + colR, 1024.f) /*filterComp(ivec2(coord), i)*/, i);
         imageSetStoreF(_DFILTER, ivec2(coord), upto(colC/max(colC.w, 0.0001f) + colR, 1024.f) /*filterComp(ivec2(coord), i)*/, i);
-
-        //
-        vec4 cT = imageSetLoadF(_DREPROJ, ivec2(coord), i);
-        vec4 rT = imageSetLoadPrevF(_DREPROJ, ivec2(coord), i);
-        imageSetStoreF(_DREPROJ, ivec2(coord), vec4(max( cT.r , rT.r )), i);
     }
 }

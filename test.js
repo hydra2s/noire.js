@@ -223,7 +223,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //const dResolveTemporal = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-resolve_temporal.comp.spv") });
 
     const gltfLoaderA = new K.GltfLoaderObj(deviceObj.handle, {
-        scale: 1.0,
+        scale: 100.0,
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
     });
@@ -232,8 +232,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //const gltfModel = await gltfLoaderA.load("models/MosquitoInAmber.gltf");
     //const gltfModel = await gltfLoaderA.load("models/TransmissionTest.gltf");
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
-    const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf"); // needs downscale model
+    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf"); // needs downscale model
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],

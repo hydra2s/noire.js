@@ -50,10 +50,10 @@ struct rproj {
 rproj reflectionReproj(in uvec2 coord, in int type) 
 {
     // TODO: reproject by model previous transform
-    float dirT = imageSetLoadPrevF(_DREPROJ, ivec2(coord.x, coord.y), type).r;
+    float dirT = max(imageSetLoadPrevF(_DREPROJ, ivec2(coord.x, coord.y), type).r, 0.f);
     const vec3 bary = framebufferLoadF(_BARY, ivec2(coord), 1).xyz;
-    rproj ot; ot.isValid = false; ot.T = 0.f; ot.T = 10000.f;
-    if (any(greaterThan(bary, 0.00001f.xxx)) && (dirT > 0.f || type == 0)) {
+    rproj ot; ot.isValid = false; ot.T = 0.f;
+    if (any(greaterThan(bary, 0.00001f.xxx)) && (dirT >= 0.f || type == 0)) {
         vec3 prevNormal = normalize(vec4(imageSetLoadPrevF(_PRECISE, ivec2(coord), 1).rgb, 0.f)).xyz;
         vec4 prevOrigin = imageSetLoadPrevF(_PRECISE, ivec2(coord), 0);
         vec4 prevCamera = prevOrigin * modelView[1];
@@ -103,7 +103,7 @@ void accumulate(in int type) {
     const vec3 bary = framebufferLoadF(_BARY, _to, 0).xyz;
     if (prj.isValid && prj.h < 0.9999f && meta.r > 0.001f && prj.nsimilarity > mix(0.999f, 0.99f, meta.g) && clr.w > 0.1f && prj.dsimilarity < 0.001f && any(greaterThan(bary, 0.00001f.xxx))) {
         imageSetAtomicMaxU2(_UATOMIC, _to, uvec2(_from.xy*vec2(width, height)), type);
-        imageSetAtomicStoreF(_DREPROJ, _to, prj.T, type); // unpreferred, but NVIDIA isn't support max operation
+        if (prj.T > 0.f) { imageSetAtomicStoreF(_DREPROJ, _to, prj.T, type); }; // unpreferred, but NVIDIA isn't support max operation
         //imageSetAtomicMaxF(_DREPROJ, _to, prj.T, type);
     }
 }

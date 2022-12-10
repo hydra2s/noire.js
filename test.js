@@ -229,6 +229,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     });
 
     //
+    //const gltfModel = await gltfLoaderA.load("models/MosquitoInAmber.gltf");
     //const gltfModel = await gltfLoaderA.load("models/TransmissionTest.gltf");
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
     const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");

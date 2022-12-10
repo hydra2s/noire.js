@@ -14,6 +14,7 @@ struct RayTracedData {
     vec3 dir;
     vec3 bary;
     float hitT;
+    int source;
 };
 
 // for backward compatibility
@@ -21,6 +22,20 @@ void swap(inout  vec2 a, inout  vec2 b) { const  vec2 a_ = a; a = b; b = a_; };
 void swap(inout  vec3 a, inout  vec3 b) { const  vec3 a_ = a; a = b; b = a_; };
 void swap(inout  vec4 a, inout  vec4 b) { const  vec4 a_ = a; a = b; b = a_; };
 void swap(inout float a, inout float b) { const float a_ = a; a = b; b = a_; };
+
+//
+float raySphereIntersect(vec3 origin, vec3 ray, vec4 sphere) {
+    vec3 toSphere = origin - sphere.xyz;
+    float a = dot(ray, ray);
+    float b = 2.0 * dot(toSphere, ray);
+    float c = dot(toSphere, toSphere) - sphere.w*sphere.w;
+    float discriminant = b*b - 4.0*a*c;
+    if(discriminant > 0.0) {
+        float t = (-b - sqrt(discriminant)) / (2.0 * a);
+        if(t > 0.0) return t;
+    }
+    return 10000.f;
+}
 
 //
 RayTracedData rasterize(in uvec2 coord) {
@@ -69,12 +84,12 @@ RayTracedData rasterize(in uvec2 coord) {
 }
 
 // 
-const vec4 lightPos = vec4(0, 100, 10, 1);
-const vec3 lightCol = 4.f.xxx;
+const vec4 lightPos[1] = { vec4(20, 100, 20, 10) };
+const vec3 lightCol[1] = { vec3(4.f.xxx * 100.f) };
 const float epsilon = 0.001f;
 
-// TODO: custom material sources (such as sunlight)
-RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, in float T) {
+// 
+RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, in float T, in int source) {
     RayTracedData rayData;
     rayData.dir = dir;
     rayData.origin = vec4(origin.xyz, 1.f);
@@ -85,7 +100,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
     rayData.materialAddress = uint64_t(0u);
     rayData.transformAddress = uint64_t(0u);
     rayData.PBR = vec4(0.f.xxxx);
-    rayData.transmission = f16vec4(0.f.xxxx);
+    rayData.transmission = f16vec4(0.f, 1.f, 1.f, 1.f);
 
     //
     const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(dir));
@@ -104,7 +119,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
     );
 
     //
-    if (any(greaterThan(rayData.bary, 0.00001f.xxx))) {
+    if (source == -1 && any(greaterThan(rayData.bary, 0.00001f.xxx))) {
         //
         nrNode nodeData = nrNode(nodeBuffer) + sys.x;
         nrMesh meshData = nrMesh(nodeData.meshBuffer);
@@ -140,6 +155,9 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         // 
         vec3 NOR = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
         NOR = normalize((nodeData.transformInverse * vec4(NOR.xyz, 0.0f)).xyz);
+
+        // broken transmission IOR
+        if (rayData.transmission.g < 1.f) { rayData.transmission.g = 1.f; };
 
         //
         if (dot(NOR, rayData.dir) >= 0.f) {
@@ -184,26 +202,33 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         //
         rayData.PBR.xyz = max(rayData.PBR.xyz, 0.01f);
         rayData.PBR.r *= rayData.diffuse.a;
+    } else 
+    // TODO: more light source support
+    if (source >= 0) {
+        //
+        rayData.origin.xyz = rayData.origin.xyz + rayData.dir.xyz * rayData.hitT;
+        rayData.emissive = vec4(lightCol[source], 1.f);
+        rayData.PBR.g = 1.f;
+        rayData.PBR.b = 1.f;
+        rayData.PBR.r = 0.f;
     }
-
-    // TODO: remove such sh&t
-    //rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
 
     //
     return rayData;
 }
 
-// TODO: support a sun light and spheric light sources
+// 
 RayTracedData rayTrace(in vec3 origin, in vec3 dir) {
     RayTracedData rayData;
     rayData.origin = vec4(origin.xyz, 0.f);
     rayData.dir = dir;
-    rayData.hitT = 10000.f;
+    rayData.hitT = raySphereIntersect(origin, dir, lightPos[0]);
     rayData.bary = vec3(0.f);
+    rayData.source = -1;
 
     //
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), /*gl_RayFlagsCullBackFacingTrianglesEXT*/0, 0xFF, origin, 0.01f, dir, 10000.f);
+    rayQueryInitializeEXT(rayQuery, accelerationStructureEXT(accStruct), /*gl_RayFlagsCullBackFacingTrianglesEXT*/0, 0xFF, origin, 0.01f, dir, rayData.hitT);
 
     //
     while(rayQueryProceedEXT(rayQuery)) {
@@ -235,10 +260,13 @@ RayTracedData rayTrace(in vec3 origin, in vec3 dir) {
         rayData.bary = max(vec3(1.f - bary_.x - bary_.y, bary_.xy), 0.00002f.xxx);
         rayData.indices = uvec4(rayQueryGetIntersectionInstanceIdEXT(rayQuery, true), rayQueryGetIntersectionGeometryIndexEXT(rayQuery, true), rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true), 0u);
         rayData.hitT = rayQueryGetIntersectionTEXT(rayQuery, true);
+    } else // TODO: more light sources support
+    if (rayData.hitT < 10000.f) {
+        rayData.source = 0;    
     }
 
     //
-    rayData = getData(origin, dir, rayData.indices, rayData.bary, rayData.hitT);
+    rayData = getData(origin, dir, rayData.indices, rayData.bary, rayData.hitT, rayData.source);
 
     //
     return rayData;
@@ -349,12 +377,12 @@ GIData globalIllumination(in RayTracedData rayData) {
                 // if diffuse
                 /*if (rtype == 0)*/
                 {
-                    const vec3 SO = lightPos.xyz;
-                    const vec3 SS = lightPos.w * randomSpherePoint(C, F) + SO;
+                    const vec3 SO = lightPos[0].xyz;
+                    const vec3 SS = lightPos[0].w * randomSpherePoint(C, F) + SO;
                     const vec3 LC = SO - rayData.origin.xyz;
                     const vec3 LS = SS - rayData.origin.xyz;
                     const float dt = dot(LC, LC);
-                    const float cosL = sqrt(1.f - clamp((lightPos.w * lightPos.w) / dt, 0.f, 1.f));
+                    const float cosL = sqrt(1.f - clamp((lightPos[0].w * lightPos[0].w) / dt, 0.f, 1.f));
                     const float weight = 2.f * (1.f - cosL);
 
                     //
@@ -365,14 +393,14 @@ GIData globalIllumination(in RayTracedData rayData) {
                     // support such features too expensive for shadows
                     // also, direct light doesn't support refraction
                     const bool shadowed = shadowTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, length(LS), lightDir);
-                    const vec3 directLight = (sqrt(max(dot(TBN[2], lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f).xxx;
+                    const vec3 directLight = weight * (sqrt(max(dot(TBN[2], lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f).xxx;
 
                     //
                     min16float3 diffCol = (I == 0 ? 1.f.xxx : rayData.diffuse.xyz);
                     if (dot(rayData.emissive.xyz, 1.f.xxx) > 0.1f) { 
                         fcolor += vec4(energy.xyz * rayData.emissive.xyz / max(I == 0 ? rayData.diffuse.xyz : 1.f.xxx, 0.001f.xxx), 0.f);
                     } else {
-                        fcolor += vec4(energy.xyz * lightCol * directLight * diffCol, 0.f);
+                        fcolor += vec4(energy.xyz * lightCol[0] * directLight * diffCol, 0.f);
                     }
                     energy.xyz *= diffCol;
                 }

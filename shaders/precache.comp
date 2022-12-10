@@ -65,7 +65,7 @@ void main() {
     imageSetStoreF(_DFILTER, ivec2(coord), vec4(0.f.xxxx), 2);
 
     //
-    RayTracedData rayData = getData(origin.xyz, dir.xyz, sys, bary, 0.f);
+    RayTracedData rayData = getData(origin.xyz, dir.xyz, sys, bary, 0.f, -1);
 
     // make a background, needs reproject from previous
     for (int i=0;i<3;i++) {

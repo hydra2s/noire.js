@@ -57,7 +57,6 @@ void main() {
     //
     imageSetStoreF(_DFACTOR, ivec2(coord), vec4(0.f.xxxx), 1);
     imageSetStoreF(_DFACTOR, ivec2(coord), vec4(0.f.xxxx), 2);
-    imageSetStoreF(_DFACTOR, ivec2(coord), vec4(0.f.xxxx), 3);
 
     //
     imageSetStoreF(_DFILTER, ivec2(coord), vec4(0.f.xxxx), 0);

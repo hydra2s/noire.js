@@ -84,8 +84,8 @@ RayTracedData rasterize(in uvec2 coord) {
 }
 
 // 
-const vec4 lightPos[1] = { vec4(20, 100, 20, 10) };
-const vec3 lightCol[1] = { vec3(4.f.xxx * 100.f) };
+const vec4 lightPos[1] = { vec4(5, 100, 5, 10) };
+const vec3 lightCol[1] = { vec3(4.f.xxx * 200.f) };
 const float epsilon = 0.001f;
 
 // 
@@ -399,7 +399,7 @@ GIData globalIllumination(in RayTracedData rayData) {
                     //
                     min16float3 diffCol = (I == 0 ? 1.f.xxx : rayData.diffuse.xyz);
                     if (dot(rayData.emissive.xyz, 1.f.xxx) > 0.1f) { 
-                        fcolor += vec4(energy.xyz * rayData.emissive.xyz / max(I == 0 ? rayData.diffuse.xyz : 1.f.xxx, 0.001f.xxx), 0.f);
+                        fcolor += vec4(energy.xyz * (I == 0 ? 0.f.xxx : rayData.emissive.xyz) /*/ max(I == 0 ? rayData.diffuse.xyz : 1.f.xxx, 0.0001f.xxx)*/, 0.f);
                     } else {
                         fcolor += vec4(energy.xyz * lightCol[0] * directLight * diffCol, 0.f);
                     }

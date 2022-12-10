@@ -68,7 +68,12 @@ RayTracedData rasterize(in uvec2 coord) {
     return rayData;
 }
 
-//
+// 
+const vec4 lightPos = vec4(0, 100, 10, 1);
+const vec3 lightCol = 4.f.xxx;
+const float epsilon = 0.001f;
+
+// TODO: custom material sources (such as sunlight)
 RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, in float T) {
     RayTracedData rayData;
     rayData.dir = dir;
@@ -122,9 +127,26 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         rayData.materialAddress = geometryData.materialAddress;
         rayData.indices = sys;
 
+        //
+        rayData.transformAddress = uint64_t(nodeData);
+        rayData.emissive = readTexData(materialData.emissive, texcoord.xy);
+        rayData.diffuse = readTexData(materialData.diffuse, texcoord.xy);
+        rayData.normal = readTexData(materialData.normal, texcoord.xy);
+        rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
+        rayData.transmission = readTexData(materialData.transmission, texcoord.xy);
+        rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
+        rayData.emissive.xyz = pow(rayData.emissive.xyz, 2.2hf.xxx);
+
         // 
         vec3 NOR = normalize((readFloatData3(geometryData.normal, indices) * bary).xyz);
         NOR = normalize((nodeData.transformInverse * vec4(NOR.xyz, 0.0f)).xyz);
+
+        //
+        if (dot(NOR, rayData.dir) >= 0.f) {
+            rayData.transmission.g = 1.f / rayData.transmission.g;
+        };
+
+        //
         NOR = normalize(faceforward(NOR, rayData.dir, NOR));
 
         // 
@@ -143,23 +165,13 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
             genTB(NOR.xyz, TAN.xyz, BIN.xyz); TAN.w = 1.f;
         }
 
-        //
-        rayData.transformAddress = uint64_t(nodeData);
-        rayData.emissive = readTexData(materialData.emissive, texcoord.xy);
-        rayData.diffuse = readTexData(materialData.diffuse, texcoord.xy);
-        rayData.normal = readTexData(materialData.normal, texcoord.xy);
-        rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
-        rayData.transmission = readTexData(materialData.transmission, texcoord.xy);
-        rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
-        rayData.emissive.xyz = pow(rayData.emissive.xyz, 2.2hf.xxx);
-
         // 
         rayData.TBN = mat3x3(TAN.xyz, BIN.xyz, NOR.xyz);
         rayData.normal.xyz = normalize(rayData.TBN * (rayData.normal.xyz * 2.f - 1.f));
         rayData.normal.xyz = faceforward(rayData.normal.xyz, min16float3(rayData.dir.xyz), rayData.normal.xyz);
 
         //
-        rayData.PBR.r = mix(fresnel(max(dot(vec3(rayData.normal.xyz), -rayData.dir.xyz), 0.f), 0.1f, 1.333f/1.f), 1.f, float(rayData.PBR.b));
+        rayData.PBR.r = mix(fresnel(max(dot(vec3(rayData.normal.xyz), -rayData.dir.xyz), 0.f), 0.1f, rayData.transmission.g), 1.f, float(rayData.PBR.b));
         rayData.PBR.r *= (1.f - float(rayData.PBR.g));
 
         // emitent can't to be transmissive
@@ -181,7 +193,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
     return rayData;
 }
 
-//
+// TODO: support a sun light and spheric light sources
 RayTracedData rayTrace(in vec3 origin, in vec3 dir) {
     RayTracedData rayData;
     rayData.origin = vec4(origin.xyz, 0.f);
@@ -281,14 +293,6 @@ struct GIData {
 
 //
 GIData globalIllumination(in RayTracedData rayData) {
-    const vec4 lightPos = vec4(0, 100, 10, 1);
-    vec3 lightDir = normalize(lightPos.xyz - rayData.origin.xyz);
-    vec3 lightCol = 4.f.xxx;
-
-    //
-    const float epsilon = 0.001f;
-
-    //
     vec4 fcolor = vec4(0.f.xxx, 1.f);
     vec4 energy = vec4(1.f.xxx, 1.f);
     vec3 reflDir = normalize(rayData.dir);
@@ -335,9 +339,9 @@ GIData globalIllumination(in RayTracedData rayData) {
                 } else 
 
                 if (rtype == 2) {
-                    // TODO: IOR support
+                    // TODO: volume support
                     if (transpCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
-                    reflDir = normalize(mix(rayData.dir, -normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g) * rayData.diffuse.a * random_seeded(C, 2.0+F)));
+                    reflDir = normalize(mix(refract(rayData.dir, vec3(TBN[2]), 1.f / rayData.transmission.g), -normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g) * rayData.diffuse.a * random_seeded(C, 2.0+F)));
                     energy.xyz *= mix(1.f.xxx, rayData.diffuse.xyz, rayData.diffuse.a); // transmission is broken with alpha channels
                     if (R > 0) { ITERATION_COUNT += 1; R--; }
                 } else
@@ -355,10 +359,11 @@ GIData globalIllumination(in RayTracedData rayData) {
 
                     //
                     reflDir = normalize(cosineWeightedPoint(TBN, C, F));
-                    lightDir = normalize(LS);
+                    const vec3 lightDir = normalize(LS);
 
                     // direct light isn't support transmission, and has only basic alpha channel support
                     // support such features too expensive for shadows
+                    // also, direct light doesn't support refraction
                     const bool shadowed = shadowTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, length(LS), lightDir);
                     const vec3 directLight = (sqrt(max(dot(TBN[2], lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f).xxx;
 

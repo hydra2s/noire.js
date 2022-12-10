@@ -273,7 +273,7 @@ class GltfLoaderObj extends B.BasicObj {
                 sam: T >= 0 ? Math.max(samplerDescIndices[rawData.textures[T].sampler], 0) :  0,
 
                 // 1.0 for test, default is 0.0
-                col: [trns != undefined ? trns : 1.0, 1.0, 1.0, 1.0]
+                col: [trns != undefined ? trns : 1.0, M.extensions?.["KHR_materials_ior"]?.ior || 1.0, 1.0, 1.0]
             }
         });
 

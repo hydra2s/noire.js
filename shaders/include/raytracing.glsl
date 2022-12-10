@@ -160,8 +160,9 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         if (rayData.transmission.g < 1.f) { rayData.transmission.g = 1.f; };
 
         //
+        bool backface = false;
         if (dot(NOR, rayData.dir) >= 0.f) {
-            rayData.transmission.g = 1.f / rayData.transmission.g;
+            rayData.transmission.g = 1.f / rayData.transmission.g; backface = true;
         };
 
         //
@@ -189,7 +190,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         rayData.normal.xyz = faceforward(rayData.normal.xyz, min16float3(rayData.dir.xyz), rayData.normal.xyz);
 
         //
-        rayData.PBR.r = mix(fresnel(max(dot(vec3(rayData.normal.xyz), -rayData.dir.xyz), 0.f), 0.1f, rayData.transmission.g), 1.f, float(rayData.PBR.b));
+        rayData.PBR.r = mix(backface ? 0.f : fresnel(max(dot(vec3(rayData.normal.xyz), -rayData.dir.xyz), 0.f), 0.1f, max(rayData.transmission.g, 1.2f)), 1.f, float(rayData.PBR.b));
         rayData.PBR.r *= (1.f - float(rayData.PBR.g));
 
         // emitent can't to be transmissive

@@ -171,6 +171,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
 
         //
         rayData.PBR.xyz = max(rayData.PBR.xyz, 0.01f);
+        rayData.PBR.r *= rayData.diffuse.a;
     }
 
     // TODO: remove such sh&t
@@ -326,7 +327,7 @@ GIData globalIllumination(in RayTracedData rayData) {
 
                 // if reflection
                 if (rtype == 1) {
-                    reflDir = normalize(mix(normalize(reflect(rayData.dir, vec3(TBN[2]))), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
+                    reflDir = normalize(mix(normalize(reflect(rayData.dir, vec3(TBN[2]))), normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g) * random_seeded(C, 2.0+F)));
                     energy.xyz *= min(mix(min16float3(1.f.xxx), max(rayData.diffuse.xyz, min16float3(0.f.xxx)), rayData.PBR.b), min16float(1.f));
 
                     //
@@ -336,7 +337,7 @@ GIData globalIllumination(in RayTracedData rayData) {
                 if (rtype == 2) {
                     // TODO: IOR support
                     if (transpCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
-                    reflDir = normalize(mix(rayData.dir, -normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g) * rayData.diffuse.a));
+                    reflDir = normalize(mix(rayData.dir, -normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g) * rayData.diffuse.a * random_seeded(C, 2.0+F)));
                     energy.xyz *= mix(1.f.xxx, rayData.diffuse.xyz, rayData.diffuse.a); // transmission is broken with alpha channels
                     if (R > 0) { ITERATION_COUNT += 1; R--; }
                 } else

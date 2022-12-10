@@ -256,7 +256,7 @@ class GltfLoaderObj extends B.BasicObj {
             material.PBR = {
                 tex: P >= 0 ? Math.max(textureDescIndices[rawData.textures[P].source], -1) : -1,
                 sam: P >= 0 ? Math.max(samplerDescIndices[rawData.textures[P].sampler], 0) :  0,
-                col: [1.0, roughness != null ? roughness : 1.0, metallic != null ? metallic : 1.0]
+                col: [1.0, roughness != undefined ? roughness : 1.0, metallic != undefined ? metallic : 1.0]
             }
             material.normal = {
                 tex: N >= 0 ? Math.max(textureDescIndices[rawData.textures[N].source], -1) : -1,
@@ -273,7 +273,7 @@ class GltfLoaderObj extends B.BasicObj {
                 sam: T >= 0 ? Math.max(samplerDescIndices[rawData.textures[T].sampler], 0) :  0,
 
                 // 1.0 for test, default is 0.0
-                col: [trns != null ? trns : 1.0, 1.0, 1.0, 1.0]
+                col: [trns != undefined ? trns : 1.0, 1.0, 1.0, 1.0]
             }
         });
 

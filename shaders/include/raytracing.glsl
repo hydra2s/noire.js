@@ -258,7 +258,7 @@ bool shadowTrace(in vec3 origin, in float dist, in vec3 dir) {
         const float transparency = readTexData(materialData.diffuse, texcoord.xy).a;
 
         //
-        if (transparency > 0.f && T <= dist) {
+        if (random_seeded(vec2(gl_GlobalInvocationID.xy), 3.0+frameCount) < transparency && T <= dist) {
             rayQueryConfirmIntersectionEXT(rayQuery);
         }
     }
@@ -357,7 +357,8 @@ GIData globalIllumination(in RayTracedData rayData) {
                     reflDir = normalize(cosineWeightedPoint(TBN, C, F));
                     lightDir = normalize(LS);
 
-                    // 
+                    // direct light isn't support transmission, and has only basic alpha channel support
+                    // support such features too expensive for shadows
                     const bool shadowed = shadowTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, length(LS), lightDir);
                     const vec3 directLight = (sqrt(max(dot(TBN[2], lightDir), 0.0)) * (shadowed?0.f:1.f) + 0.0f).xxx;
 

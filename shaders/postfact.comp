@@ -26,8 +26,8 @@ layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 
 //
 vec4 upto(in vec4 samples, in float to) {
-    const float scnt = max(samples.w, 0.0001f);
-    samples  = samples/scnt;
+    const float scnt = samples.w;
+    samples  = samples/max(scnt, 0.0001f);;
     samples *= min(scnt, to);
     return samples;
 }
@@ -46,8 +46,8 @@ void main() {
         vec4 colR = isValid ? imageSetLoadPrevF(_DFACTOR, ivec2(hashed), i) : 0.f.xxxx;
 
         //
-        imageSetStoreF(_DFACTOR, ivec2(coord), upto(colC + colR, 32.f) /*filterComp(ivec2(coord), i)*/, i);
-        imageSetStoreF(_DFILTER, ivec2(coord), upto(colC + colR, 32.f) /*filterComp(ivec2(coord), i)*/, i);
+        imageSetStoreF(_DFACTOR, ivec2(coord), upto(colC + colR, 1024.f) /*filterComp(ivec2(coord), i)*/, i);
+        imageSetStoreF(_DFILTER, ivec2(coord), upto(colC + colR, 1024.f) /*filterComp(ivec2(coord), i)*/, i);
 
         //
         vec4 cT = imageSetLoadF(_DREPROJ, ivec2(coord), i);

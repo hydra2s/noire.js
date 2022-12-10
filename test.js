@@ -223,15 +223,15 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //const dResolveTemporal = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-resolve_temporal.comp.spv") });
 
     const gltfLoaderA = new K.GltfLoaderObj(deviceObj.handle, {
-        scale: 1.0,
+        scale: 100.0,
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
     });
 
     //
-    const gltfModel = await gltfLoaderA.load("models/TransmissionTest.gltf");
+    //const gltfModel = await gltfLoaderA.load("models/TransmissionTest.gltf");
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
     //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf"); // needs downscale model
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
@@ -431,7 +431,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 3]);
 
-        // TOO IMPACTFUL TO FPS!
+        // 
         dMotion.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [5]);
 
@@ -440,8 +440,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 3, 7]);
 
         // TOO IMPACTFUL TO FPS!
-        filterObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstageId(cmdBuf, [7]);
+        //filterObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
+        //imageSetObj.cmdSwapstageId(cmdBuf, [7]);
 
         // Render To Swapchain!
         pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));

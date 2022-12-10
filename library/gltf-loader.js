@@ -226,42 +226,54 @@ class GltfLoaderObj extends B.BasicObj {
             let P = Math.max(M.pbrMetallicRoughness?.metallicRoughnessTexture?.index, -1);
             let N = Math.max(M.normalTexture?.index, -1);
             let E = Math.max(M.emissiveTexture?.index, -1);
-            let T = Math.max(M.extensions?.KHR_materials_transmission?.transmissionTexture?.index, -1);
-            
-            //
-            if (isNaN(X)) { T = -1; };
-            if (isNaN(P)) { T = -1; };
-            if (isNaN(N)) { T = -1; };
-            if (isNaN(E)) { T = -1; };
-            if (isNaN(T)) { T = -1; };
+            let T = Math.max(M.extensions?.["KHR_materials_transmission"]?.transmissionTexture?.index, -1);
 
             //
+            if (isNaN(X)) { X = -1; };
+            if (isNaN(P)) { P = -1; };
+            if (isNaN(N)) { N = -1; };
+            if (isNaN(E)) { E = -1; };
+            if (isNaN(T)) { T = -1; };
+
+            // TODO: IOR support
+            const hasTransmission = !!M.extensions?.["KHR_materials_transmission"];
+            let trns = M.extensions?.["KHR_materials_transmission"]?.transmissionFactor;
+            let roughness = M.pbrMetallicRoughness?.roughnessFactor;
+            let metallic = M.pbrMetallicRoughness?.metallicFactor;
+            if (!hasTransmission) { trns = 0.0; };
+
+            // TODO: support NaN, null or undefined filtering, without dropping 0 or 0.0
             material.diffuse = {
                 tex: X >= 0 ? Math.max(textureDescIndices[rawData.textures[X].source], -1): -1,
                 sam: X >= 0 ? Math.max(samplerDescIndices[rawData.textures[X].sampler], 0) : 0,
-                col: [M.pbrMetallicRoughness?.baseColorFactor?.[0]||0.0, M.pbrMetallicRoughness?.baseColorFactor?.[1]||0.0, M.pbrMetallicRoughness?.baseColorFactor?.[2]||0.0, M.pbrMetallicRoughness?.baseColorFactor?.[3]||1.0]
+                col: M.pbrMetallicRoughness?.baseColorFactor ? [
+                    M.pbrMetallicRoughness?.baseColorFactor?.[0]||0.0, 
+                    M.pbrMetallicRoughness?.baseColorFactor?.[1]||0.0, 
+                    M.pbrMetallicRoughness?.baseColorFactor?.[2]||0.0, 
+                    M.pbrMetallicRoughness?.baseColorFactor?.[3]||1.0
+                ] : [1,1,1,1]
             }
             material.PBR = {
                 tex: P >= 0 ? Math.max(textureDescIndices[rawData.textures[P].source], -1) : -1,
                 sam: P >= 0 ? Math.max(samplerDescIndices[rawData.textures[P].sampler], 0) :  0,
-                col: [0.0, M.pbrMetallicRoughness?.roughnessFactor || 0.0, M.pbrMetallicRoughness?.metallicFactor || 0.0, 0.0]
+                col: [1.0, roughness != null ? roughness : 1.0, metallic != null ? metallic : 1.0]
             }
             material.normal = {
                 tex: N >= 0 ? Math.max(textureDescIndices[rawData.textures[N].source], -1) : -1,
                 sam: N >= 0 ? Math.max(samplerDescIndices[rawData.textures[N].sampler], 0) :  0,
-                col: [0.0, 0.0, 0.5, 0.5]
+                col: N >= 0 ? [1.0, 1.0, 1.0, 1.0] : [0.5, 0.5, 1.0, 1.0]
             }
             material.emissive = {
                 tex: E >= 0 ? Math.max(textureDescIndices[rawData.textures[E].source], -1) : -1,
                 sam: E >= 0 ? Math.max(samplerDescIndices[rawData.textures[E].sampler], 0) :  0,
-                col: M.emissiveFactor ? [...M.emissiveFactor, 0.0] : [0,0,0,0]
+                col: M.emissiveFactor ? [...M.emissiveFactor, 1.0] : [0,0,0,0]
             }
             material.transmission = {
                 tex: T >= 0 ? Math.max(textureDescIndices[rawData.textures[T].source], -1) : -1,
                 sam: T >= 0 ? Math.max(samplerDescIndices[rawData.textures[T].sampler], 0) :  0,
 
                 // 1.0 for test, default is 0.0
-                col: [M.extensions?.KHR_materials_transmission?.transmission || 0.0, 0.0, 0.0, 0.0]
+                col: [trns != null ? trns : 1.0, 1.0, 1.0, 1.0]
             }
         });
 

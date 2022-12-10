@@ -129,13 +129,19 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
 
         // 
         vec4 TAN = readFloatData3(geometryData.tangent, indices) * bary;
-        TAN.xyz = normalize((nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f)).xyz) * TAN.w;
-        TAN.xyz = normalize(TAN.xyz - dot(TAN.xyz, NOR) * NOR);
+        vec3 BIN = vec3(0.f.xxx);
+        if (abs(TAN.w) > 0.001f && dot(TAN.xyz, TAN.xyz) > 0.001f) {
+            TAN.xyz = normalize((nodeData.transformInverse * vec4(normalize(TAN.xyz), 0.f)).xyz) * TAN.w;
+            TAN.xyz = normalize(TAN.xyz - dot(TAN.xyz, NOR) * NOR);
 
-        //
-        vec3 BIN = normalize(cross(TAN.xyz, NOR));
-        BIN = BIN - NOR * dot(BIN, NOR);
-        BIN = normalize(BIN - TAN.xyz * dot(BIN, TAN.xyz));
+            //
+            BIN = normalize(cross(TAN.xyz, NOR));
+            BIN = BIN - NOR * dot(BIN, NOR);
+            BIN = normalize(BIN - TAN.xyz * dot(BIN, TAN.xyz));
+        } else {
+            // if TBN is broken!
+            genTB(NOR.xyz, TAN.xyz, BIN.xyz); TAN.w = 1.f;
+        }
 
         //
         rayData.transformAddress = uint64_t(nodeData);
@@ -330,7 +336,7 @@ GIData globalIllumination(in RayTracedData rayData) {
                 if (rtype == 2) {
                     // TODO: IOR support
                     if (transpCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
-                    reflDir = normalize(mix(rayData.dir, -normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
+                    reflDir = normalize(mix(rayData.dir, -normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g) * rayData.diffuse.a));
                     energy.xyz *= mix(1.f.xxx, rayData.diffuse.xyz, rayData.diffuse.a); // transmission is broken with alpha channels
                     if (R > 0) { ITERATION_COUNT += 1; R--; }
                 } else

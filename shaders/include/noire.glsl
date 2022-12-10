@@ -79,7 +79,8 @@ struct nrTexBinding { vec4 col; int16_t tex, sam; uvec3 meta; };
 
 //
 min16float4 readTexData(in nrTexBinding B, in vec2 texcoord) {
-    return min16float4(B.tex >= 0 ? texture(sampler2D(textures[B.tex], samplers[B.sam]), texcoord.xy) : B.col);
+    const min16float4 tcol = B.tex >= 0 ? texture(sampler2D(textures[B.tex], samplers[B.sam]), texcoord.xy) : 1.f.xxxx;
+    return min16float4(tcol * B.col);
 }
 
 //

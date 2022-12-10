@@ -74,8 +74,8 @@ struct nrBinding {
     uint32_t format;
 };
 
-//
-struct nrTexBinding { vec4 col; int16_t tex, sam; };
+// META include such thing as bit-depth, format (RGBA, R, RGB, etc.)
+struct nrTexBinding { vec4 col; int16_t tex, sam; uvec3 meta; };
 
 //
 min16float4 readTexData(in nrTexBinding B, in vec2 texcoord) {
@@ -111,6 +111,7 @@ layout (buffer_reference, scalar, buffer_reference_align = 1) readonly buffer nr
     nrTexBinding normal;
     nrTexBinding PBR;
     nrTexBinding emissive;
+    nrTexBinding transmission; // i.e. means, it should contain IOR, etc.
 };
 
 //
@@ -178,7 +179,7 @@ uint readIndexData(in nrBinding binding, in uint index) {
 #define _AVERAGE 0
 #define _DREPROJ 1
 #define _METAPBR 2
-#define _DIFFUSE 3
+#define _DFACTOR 3
 //#define _TBNDATA 4
 #define _DOTHERS 4
 #define _UATOMIC 5

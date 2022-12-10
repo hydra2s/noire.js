@@ -42,11 +42,12 @@ void main() {
         bool isValid = pack32(u16vec2(hashed)) > 0;
 
         //
-        vec4 colC = imageSetLoadF(_DIFFUSE, ivec2(coord), i);
-        vec4 colR = isValid ? imageSetLoadPrevF(_DIFFUSE, ivec2(hashed), i) : 0.f.xxxx;
+        vec4 colC = imageSetLoadF(_DFACTOR, ivec2(coord), i);
+        vec4 colR = isValid ? imageSetLoadPrevF(_DFACTOR, ivec2(hashed), i) : 0.f.xxxx;
 
         //
-        imageSetStoreF(_DIFFUSE, ivec2(coord), upto(colC + colR, 32.f) /*filterComp(ivec2(coord), i)*/, i);
+        imageSetStoreF(_DFACTOR, ivec2(coord), upto(colC + colR, 32.f) /*filterComp(ivec2(coord), i)*/, i);
+        imageSetStoreF(_DFILTER, ivec2(coord), upto(colC + colR, 32.f) /*filterComp(ivec2(coord), i)*/, i);
 
         //
         vec4 cT = imageSetLoadF(_DREPROJ, ivec2(coord), i);

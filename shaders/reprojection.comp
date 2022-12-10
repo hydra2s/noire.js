@@ -98,7 +98,7 @@ void accumulate(in int type) {
 
     //
     const vec4 meta = imageSetLoadF(_METAPBR, _to, type);
-    const vec4 clr = imageSetLoadPrevLinF(_DIFFUSE, _from, type);
+    const vec4 clr = imageSetLoadPrevLinF(_DFACTOR, _from, type);
     const vec3 bary = framebufferLoadF(_BARY, _to, 0).xyz;
     if (prj.isValid && prj.h < 0.9999f && meta.r > 0.001f && prj.nsimilarity > mix(0.999f, 0.99f, meta.g) && clr.w > 0.1f && prj.dsimilarity < 0.001f && any(greaterThan(bary, 0.00001f.xxx))) {
         imageSetAtomicMaxU2(_UATOMIC, _to, uvec2(_from.xy*vec2(width, height)), type);

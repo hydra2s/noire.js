@@ -109,8 +109,8 @@ vec4 filterComp(in ivec2 coord, in int type) {
 
     uvec2 hashed = imageSetAtomicLoadU2(_UATOMIC, ivec2(coord), type);
 
-	vec4 cval = imageSetLoadF(_DIFFUSE, ivec2(coord), type);
-    vec4 rval = pack32(u16vec2(hashed)) > 0 ? imageSetLoadPrevF(_DIFFUSE, ivec2(coord), type) : 0.f.xxxx;
+	vec4 cval = imageSetLoadF(_DFACTOR, ivec2(coord), type);
+    vec4 rval = pack32(u16vec2(hashed)) > 0 ? imageSetLoadPrevF(_DFACTOR, ivec2(coord), type) : 0.f.xxxx;
 	vec3 nval = imageSetLoadF(_PRECISE, ivec2(coord), 1).xyz;
 
     float ang = 2.0*3.1415926535*hash1(251.12860182*coord.x + 729.9126812*coord.y+5.1839513*frameCount);
@@ -126,7 +126,7 @@ vec4 filterComp(in ivec2 coord, in int type) {
         vec2 px = vec2(coord)+m*(offset[i]* denoiseStrength);
         vec2 uv = px/vec2(width, height);
 
-        vec4 ctmp = imageSetLoadLinF(_DIFFUSE, uv, type);
+        vec4 ctmp = imageSetLoadLinF(_DFACTOR, uv, type);
         vec4 t = cval/max(cval.w, 0.001f) - ctmp/max(ctmp.w, 0.001f);
         float dist2 = dot(t.xyz,t.xyz);
         float c_w = max(min(exp(-(dist2)/c_phi), 1.0), 0.001f);
@@ -137,7 +137,7 @@ vec4 filterComp(in ivec2 coord, in int type) {
         float n_w = max(min(exp(-(dist2)/n_phi), 1.0), 0.001f);
 
         uvec2 hashed = imageSetAtomicLoadU2(_UATOMIC, ivec2(px), type);
-        vec4 rtmp = pack32(u16vec2(hashed)) > 0 ? imageSetLoadPrevF(_DIFFUSE, ivec2(hashed), type) : 0.f.xxxx;
+        vec4 rtmp = pack32(u16vec2(hashed)) > 0 ? imageSetLoadPrevF(_DFACTOR, ivec2(hashed), type) : 0.f.xxxx;
         t = rval/max(rval.w, 0.001f) - rtmp/max(rtmp.w, 0.001f);
         dist2 = dot(t.xyz,t.xyz);
         float r_w = max(min(exp(-(dist2)/r_phi), 1.0), 0.001f);

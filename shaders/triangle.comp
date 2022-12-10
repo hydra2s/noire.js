@@ -31,6 +31,6 @@ void main() {
     GIData GI = globalIllumination(rayData);
 
     // for reflections needs reproject data
-    imageSetStoreF(_DIFFUSE, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(GI.color.xyz, 1.f), int(GI.type));
+    imageSetStoreF(_DFACTOR, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(GI.color.xyz, 1.f), int(GI.type));
     imageSetStoreF(_DREPROJ, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(GI.nearT), int(GI.type));
 }

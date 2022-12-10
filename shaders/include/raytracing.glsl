@@ -4,6 +4,7 @@ struct RayTracedData {
     min16float4 normal;
     min16float4 PBR;
     min16float4 emissive;
+    min16float4 transmission;
     mat3x3 TBN;
     uvec4 indices;
     uint64_t materialAddress;
@@ -37,9 +38,9 @@ RayTracedData rasterize(in uvec2 coord) {
     rayData.normal = min16float4(imageSetLoadF(_PRECISE, ivec2(coord), 1));
     rayData.bary = bary;
     rayData.TBN = mat3x3(
-        normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 2)),
         normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 3)),
-        normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 4))
+        normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 4)),
+        normalize(imageSetLoadF(_DOTHERS, ivec2(coord), 5))
     );
 
     //
@@ -57,9 +58,10 @@ RayTracedData rasterize(in uvec2 coord) {
 
     //
     rayData.materialAddress = geometryData.materialAddress;
-    rayData.diffuse  = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 0));
-    rayData.emissive = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 1));
-    rayData.PBR      = min16float4(imageSetLoadF(_METAPBR, ivec2(coord), 3));
+    rayData.diffuse      = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 0));
+    rayData.emissive     = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 1));
+    rayData.transmission = min16float4(imageSetLoadF(_DOTHERS, ivec2(coord), 2));
+    rayData.PBR          = min16float4(imageSetLoadF(_METAPBR, ivec2(coord), 3));
     //rayData.diffuse.xyz = max(rayData.diffuse.xyz + rayData.emissive.xyz, 0.f.xxx);
 
     //
@@ -78,6 +80,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
     rayData.materialAddress = uint64_t(0u);
     rayData.transformAddress = uint64_t(0u);
     rayData.PBR = vec4(0.f.xxxx);
+    rayData.transmission = f16vec4(0.f.xxxx);
 
     //
     const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(dir));
@@ -140,6 +143,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         rayData.diffuse = readTexData(materialData.diffuse, texcoord.xy);
         rayData.normal = readTexData(materialData.normal, texcoord.xy);
         rayData.PBR = readTexData(materialData.PBR, texcoord.xy);
+        rayData.transmission = readTexData(materialData.transmission, texcoord.xy);
         rayData.diffuse.xyz = pow(rayData.diffuse.xyz, 2.2hf.xxx);
         rayData.emissive.xyz = pow(rayData.emissive.xyz, 2.2hf.xxx);
 
@@ -151,6 +155,9 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         //
         rayData.PBR.r = mix(pow(1.f - max(dot(vec3(rayData.normal.xyz), -rayData.dir.xyz), 0.f), 2.f) * 1.f, 1.f, float(rayData.PBR.b));
         rayData.PBR.r *= (1.f - float(rayData.PBR.g));
+
+        // emitent can't to be transmissive
+        if (dot(rayData.emissive.xyz, 1.f.xxx) > 0.1f) { rayData.transmission.r = 0.f; };
 
         // debug reflection
         //rayData.PBR.g = 0.f;
@@ -295,7 +302,7 @@ GIData globalIllumination(in RayTracedData rayData) {
     //
     //int REFL_RIGHT = 0;
     float reflCoef = rayData.PBR.r, transpCoef = 1.f - rayData.diffuse.a;
-    int ITERATION_COUNT = 2;
+    int ITERATION_COUNT = 2, R = 3;
     if (hasHit = any(greaterThan(rayData.bary, 0.00001f.xxx))) {
         for (int I=0;I<ITERATION_COUNT;I++) {
             if ((hasHit = any(greaterThan(rayData.bary, 0.00001f.xxx))) && dot(energy.xyz, 1.f.xxx) > 0.001f) {
@@ -308,7 +315,7 @@ GIData globalIllumination(in RayTracedData rayData) {
                 // TODO: push first rays depence on pixel and frametime
                 int rtype = 0;
                 if (random_seeded(C, 1.0+F) <= rayData.PBR.r) { rtype = 1; } else 
-                if (random_seeded(C, 1.5+F) <= (1.f - rayData.diffuse.a)) { rtype = 2; }
+                if (random_seeded(C, 1.5+F) <= mix(1.f, rayData.transmission.x, rayData.diffuse.a)) { rtype = 2; }
                 if (I == 0) { type = rtype; }
 
                 // if reflection
@@ -317,12 +324,15 @@ GIData globalIllumination(in RayTracedData rayData) {
                     energy.xyz *= min(mix(min16float3(1.f.xxx), max(rayData.diffuse.xyz, min16float3(0.f.xxx)), rayData.PBR.b), min16float(1.f));
 
                     //
-                    if (reflCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); if (I == 0) ITERATION_COUNT += 1; };
+                    if (reflCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); if (I == 0 && R > 0) { ITERATION_COUNT += 1; R--; } };
                 } else 
 
                 if (rtype == 2) {
-                    // TODO: transmission materials support, and IOR
-                    if (transpCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); if (I == 0) ITERATION_COUNT += 1; };
+                    // TODO: IOR support
+                    // TODO: glossy transparency support
+                    if (transpCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
+                    energy.xyz *= mix(1.f.xxx, rayData.diffuse.xyz, rayData.diffuse.a); // transmission is broken with alpha channels
+                    reflDir = rayData.dir; if (R > 0) { ITERATION_COUNT += 1; R--; }
                 } else
 
                 // if diffuse
@@ -359,7 +369,7 @@ GIData globalIllumination(in RayTracedData rayData) {
 
                 // next step
                 if (dot(energy.xyz, 1.f.xxx) > 0.001f && I<(ITERATION_COUNT-1)) {
-                    RayTracedData _rayData = rayTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon, reflDir);
+                    RayTracedData _rayData = rayTrace(rayData.origin.xyz + rayData.TBN[2] * epsilon * sign(dot(rayData.TBN[2], -reflDir)), reflDir);
                     rayData = _rayData;
                 }
             } else {

@@ -46,7 +46,7 @@ const nrNode = new Proxy(V.CStructView, new V.CStruct("nrNode", {
 
 //
 const nrTexBinding = new Proxy(V.CStructView, new V.CStruct("nrTexBinding", {
-    col: "f32[4]", tex: "i16", sam: "i16"
+    col: "f32[4]", tex: "i16", sam: "i16", meta: "u32[3]"
 }));
 
 //
@@ -55,6 +55,7 @@ const nrMaterial = new Proxy(V.CStructView, new V.CStruct("nrMaterial", {
     normal: "nrTexBinding",
     PBR: "nrTexBinding",
     emissive: "nrTexBinding",
+    transmission: "nrTexBinding"
 }));
 
 //
@@ -225,6 +226,8 @@ class GltfLoaderObj extends B.BasicObj {
             const P = Math.max(M.pbrMetallicRoughness?.metallicRoughnessTexture?.index, -1);
             const N = Math.max(M.normalTexture?.index, -1);
             const E = Math.max(M.emissiveTexture?.index, -1);
+            const T = Math.max(M.KHR_materials_transmission?.transmissionTexture?.index, -1);
+
             material.diffuse = {
                 tex: X >= 0 ? Math.max(textureDescIndices[rawData.textures[X].source], -1): -1,
                 sam: X >= 0 ? Math.max(samplerDescIndices[rawData.textures[X].sampler], 0) : 0,
@@ -233,7 +236,7 @@ class GltfLoaderObj extends B.BasicObj {
             material.PBR = {
                 tex: P >= 0 ? Math.max(textureDescIndices[rawData.textures[P].source], -1) : -1,
                 sam: P >= 0 ? Math.max(samplerDescIndices[rawData.textures[P].sampler], 0) :  0,
-                col: [0.0, 0.0, 0.0, 0.0]
+                col: [0.0, M.pbrMetallicRoughness?.roughnessFactor || 0.0, M.pbrMetallicRoughness?.metallicFactor || 0.0, 0.0]
             }
             material.normal = {
                 tex: N >= 0 ? Math.max(textureDescIndices[rawData.textures[N].source], -1) : -1,
@@ -244,6 +247,13 @@ class GltfLoaderObj extends B.BasicObj {
                 tex: E >= 0 ? Math.max(textureDescIndices[rawData.textures[E].source], -1) : -1,
                 sam: E >= 0 ? Math.max(samplerDescIndices[rawData.textures[E].sampler], 0) :  0,
                 col: M.emissiveFactor ? [...M.emissiveFactor, 0.0] : [0,0,0,0]
+            }
+            material.transmission = {
+                tex: T >= 0 ? Math.max(textureDescIndices[rawData.textures[T].source], -1) : -1,
+                sam: T >= 0 ? Math.max(samplerDescIndices[rawData.textures[T].sampler], 0) :  0,
+
+                // 1.0 for test, default is 0.0
+                col: [M.KHR_materials_transmission?.transmission || 0.0, 0.0, 0.0, 0.0]
             }
         });
 

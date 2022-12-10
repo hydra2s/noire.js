@@ -29,7 +29,7 @@ void main() {
     // TODO: linear interpolation support (virtual sampler)
     ivec2 coord = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
 
-    vec4 fcolor = vec4(0.f.xxx, 1.f);
+    vec4 fcolor = vec4(0.f.xxx, 0.f);
     for (int i=0;i<3;i++) {
         const vec4 MULT    = i == 0 ? vec4(max(imageSetLoadF(_DOTHERS, coord, 0).xyz, 0.0001f.xxx), 1.f) : vec4(1.f.xxx, 1.f);
         const vec4 EMIS    = i == 0 ? vec4(max(imageSetLoadF(_DOTHERS, coord, 1).xyz, 0.0001f.xxx), 1.f) : vec4(0.f.xxx, 0.f);

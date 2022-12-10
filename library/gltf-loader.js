@@ -222,16 +222,24 @@ class GltfLoaderObj extends B.BasicObj {
         //
         rawData.materials.map((M)=>{
             const material = {}; materials.push(material);
-            const X = Math.max(M.pbrMetallicRoughness?.baseColorTexture?.index, -1);
-            const P = Math.max(M.pbrMetallicRoughness?.metallicRoughnessTexture?.index, -1);
-            const N = Math.max(M.normalTexture?.index, -1);
-            const E = Math.max(M.emissiveTexture?.index, -1);
-            const T = Math.max(M.KHR_materials_transmission?.transmissionTexture?.index, -1);
+            let X = Math.max(M.pbrMetallicRoughness?.baseColorTexture?.index, -1);
+            let P = Math.max(M.pbrMetallicRoughness?.metallicRoughnessTexture?.index, -1);
+            let N = Math.max(M.normalTexture?.index, -1);
+            let E = Math.max(M.emissiveTexture?.index, -1);
+            let T = Math.max(M.extensions?.KHR_materials_transmission?.transmissionTexture?.index, -1);
+            
+            //
+            if (isNaN(X)) { T = -1; };
+            if (isNaN(P)) { T = -1; };
+            if (isNaN(N)) { T = -1; };
+            if (isNaN(E)) { T = -1; };
+            if (isNaN(T)) { T = -1; };
 
+            //
             material.diffuse = {
                 tex: X >= 0 ? Math.max(textureDescIndices[rawData.textures[X].source], -1): -1,
                 sam: X >= 0 ? Math.max(samplerDescIndices[rawData.textures[X].sampler], 0) : 0,
-                col: [0.0, 0.0, 0.0, 1.0]
+                col: [M.pbrMetallicRoughness?.baseColorFactor?.[0]||0.0, M.pbrMetallicRoughness?.baseColorFactor?.[1]||0.0, M.pbrMetallicRoughness?.baseColorFactor?.[2]||0.0, M.pbrMetallicRoughness?.baseColorFactor?.[3]||1.0]
             }
             material.PBR = {
                 tex: P >= 0 ? Math.max(textureDescIndices[rawData.textures[P].source], -1) : -1,
@@ -253,7 +261,7 @@ class GltfLoaderObj extends B.BasicObj {
                 sam: T >= 0 ? Math.max(samplerDescIndices[rawData.textures[T].sampler], 0) :  0,
 
                 // 1.0 for test, default is 0.0
-                col: [M.KHR_materials_transmission?.transmission || 0.0, 0.0, 0.0, 0.0]
+                col: [M.extensions?.KHR_materials_transmission?.transmission || 0.0, 0.0, 0.0, 0.0]
             }
         });
 
@@ -345,11 +353,12 @@ class GltfLoaderObj extends B.BasicObj {
             if (node.matrix?.length >= 16) { matrix = $M.mat4.multiply($M.mat4.create(), $M.mat4.clone(matrix), $M.mat4.fromQuat($M.mat4.create(), $M.mat4.fromValues(...node.matrix))); };
 
             //
-            if (node.children) {
-                $node = [...$node, ...node.children.flatMap((idx)=>{
+            if ((node.children || node.nodes)) {
+                $node = [...$node, ...(node.children || node.nodes).flatMap((idx)=>{
                     return parseNode(rawData.nodes[idx], matrix);
                 })];
-            } else {
+            } else 
+            if (node.mesh != undefined) {
                 const MTX = $M.mat4.transpose($M.mat4.create(), matrix);
                 const MTI = $M.mat4.transpose($M.mat4.create(), $M.mat4.invert($M.mat4.create(), matrix));
                 $node = [...$node, {
@@ -374,7 +383,7 @@ class GltfLoaderObj extends B.BasicObj {
         };
 
         // only single instanced data supported
-        const instancedData = parseNode(rawData.nodes[rawData.scenes[0].nodes[0]], $M.mat4.fromScaling($M.mat4.create(), [
+        const instancedData = parseNode(rawData.scenes[0], $M.mat4.fromScaling($M.mat4.create(), [
             this.cInfo.scale || 1.0,
             this.cInfo.scale || 1.0,
             this.cInfo.scale || 1.0

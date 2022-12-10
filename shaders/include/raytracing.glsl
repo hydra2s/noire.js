@@ -329,10 +329,10 @@ GIData globalIllumination(in RayTracedData rayData) {
 
                 if (rtype == 2) {
                     // TODO: IOR support
-                    // TODO: glossy transparency support
                     if (transpCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
+                    reflDir = normalize(mix(rayData.dir, -normalize(cosineWeightedPoint(TBN, C, F)), float(rayData.PBR.g)));
                     energy.xyz *= mix(1.f.xxx, rayData.diffuse.xyz, rayData.diffuse.a); // transmission is broken with alpha channels
-                    reflDir = rayData.dir; if (R > 0) { ITERATION_COUNT += 1; R--; }
+                    if (R > 0) { ITERATION_COUNT += 1; R--; }
                 } else
 
                 // if diffuse

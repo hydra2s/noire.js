@@ -14,6 +14,7 @@
 #extension GL_EXT_samplerless_texture_functions : enable
 #extension GL_EXT_shared_memory_block : enable
 #extension GL_EXT_shader_atomic_float : enable
+//#extension GL_EXT_shader_atomic_float2 : enable
 
 //
 //#define A_GLSL
@@ -102,6 +103,8 @@ void accumulate(in int type) {
     const vec3 bary = framebufferLoadF(_BARY, _to, 0).xyz;
     if (prj.isValid && prj.h < 0.9999f && meta.r > 0.001f && prj.nsimilarity > mix(0.999f, 0.99f, meta.g) && clr.w > 0.1f && prj.dsimilarity < 0.001f && any(greaterThan(bary, 0.00001f.xxx))) {
         imageSetAtomicMaxU2(_UATOMIC, _to, uvec2(_from.xy*vec2(width, height)), type);
+        imageSetAtomicStoreF(_DREPROJ, _to, prj.T, type); // unpreferred, but NVIDIA isn't support max operation
+        //imageSetAtomicMaxF(_DREPROJ, _to, prj.T, type);
     }
 }
 

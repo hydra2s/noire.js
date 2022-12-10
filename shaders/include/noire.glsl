@@ -6,6 +6,7 @@ layout (set = 0, binding = 0) uniform utexture2DArray FBOU[];
 layout (set = 0, binding = 0, rgba32f ) uniform  image2DArray SETF[];
 layout (set = 0, binding = 0, rgba32ui) uniform uimage2DArray SETU[];
 layout (set = 0, binding = 0, r32ui) uniform uimage2DArray SETA[];
+layout (set = 0, binding = 0, r32f) uniform image2DArray SETAF[];
 //_DOTHERS
 layout (set = 0, binding = 0, rgb10_a2 ) uniform  image2D SWAP[];
 
@@ -219,13 +220,21 @@ vec2 invertY(vec2 coord) {
     //return coord;
 }
 
-// TODO: Vulkan Memory Semantic Using
-u16vec2 imageSetAtomicMaxU2(in int IMG_STORE, in ivec2 coord, in uvec2 XY, in int layer) {
-    return unpack16(imageAtomicMax(SETA[imageSets[2][IMG_STORE]], ivec3(coord, layer), pack32(u16vec2(XY))));
+void imageSetAtomicStoreF(in int IMG_STORE, in ivec2 coord, in float X, in int layer) {
+    imageAtomicExchange(SETAF[imageSets[2][IMG_STORE]], ivec3(coord, layer), X);
 }
 
-void imageSetAtomicStoreU2(in int IMG_STORE, in ivec2 coord, in uvec2 XY, in int layer) {
-    imageAtomicExchange(SETA[imageSets[2][IMG_STORE]], ivec3(coord, layer), pack32(u16vec2(XY)));
+// unsupported by NVIDIA, currently
+//void imageSetAtomicMaxF(in int IMG_STORE, in ivec2 coord, in float X, in int layer) {
+    //imageAtomicMax(SETAF[imageSets[2][IMG_STORE]], ivec3(coord, layer), X);
+//}
+
+float imageSetAtomicLoadF(in int IMG_STORE, in ivec2 coord, in int layer) {
+    return texelFetch(FBOF[imageSets[0][IMG_STORE]], ivec3(coord.x, coord.y, layer), 0).r;
+}
+
+float imageSetAtomicLoadPrevF(in int IMG_STORE, in ivec2 coord, in int layer) {
+    return texelFetch(FBOF[imageSets[1][IMG_STORE]], ivec3(coord.x, coord.y, layer), 0).r;
 }
 
 void imageSetAtomicStoreU(in int IMG_STORE, in ivec2 coord, in uint X, in int layer) {
@@ -236,12 +245,21 @@ uint imageSetAtomicLoadU(in int IMG_STORE, in ivec2 coord, in int layer) {
     return texelFetch(FBOU[imageSets[0][IMG_STORE]], ivec3(coord.x, coord.y, layer), 0).r;
 }
 
-u16vec2 imageSetAtomicLoadU2(in int IMG_STORE, in ivec2 coord, in int layer) {
-    return unpack16(texelFetch(FBOU[imageSets[0][IMG_STORE]], ivec3(coord.x, coord.y, layer), 0).r);
-}
-
 uint imageSetAtomicLoadPrevU(in int IMG_STORE, in ivec2 coord, in int layer) {
     return texelFetch(FBOU[imageSets[1][IMG_STORE]], ivec3(coord.x, coord.y, layer), 0).r;
+}
+
+void imageSetAtomicStoreU2(in int IMG_STORE, in ivec2 coord, in uvec2 XY, in int layer) {
+    imageAtomicExchange(SETA[imageSets[2][IMG_STORE]], ivec3(coord, layer), pack32(u16vec2(XY)));
+}
+
+// TODO: Vulkan Memory Semantic Using
+u16vec2 imageSetAtomicMaxU2(in int IMG_STORE, in ivec2 coord, in uvec2 XY, in int layer) {
+    return unpack16(imageAtomicMax(SETA[imageSets[2][IMG_STORE]], ivec3(coord, layer), pack32(u16vec2(XY))));
+}
+
+u16vec2 imageSetAtomicLoadU2(in int IMG_STORE, in ivec2 coord, in int layer) {
+    return unpack16(texelFetch(FBOU[imageSets[0][IMG_STORE]], ivec3(coord.x, coord.y, layer), 0).r);
 }
 
 u16vec2 imageSetAtomicLoadPrevU2(in int IMG_STORE, in ivec2 coord, in int layer) {

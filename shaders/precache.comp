@@ -59,22 +59,14 @@ void main() {
     imageSetStoreF(_DFACTOR, ivec2(coord), vec4(0.f.xxxx), 2);
 
     //
-    imageSetStoreF(_DFILTER, ivec2(coord), vec4(0.f.xxxx), 0);
-    imageSetStoreF(_DFILTER, ivec2(coord), vec4(0.f.xxxx), 1);
-    imageSetStoreF(_DFILTER, ivec2(coord), vec4(0.f.xxxx), 2);
-
-    //
     RayTracedData rayData = getData(origin.xyz, dir.xyz, sys, bary, 0.f, -1);
 
     // make a background, needs reproject from previous
     for (int i=0;i<3;i++) {
+        imageSetStoreF(_DFILTER, ivec2(coord), vec4(0.f), i);
         imageSetStoreF(_DREPROJ, ivec2(coord), vec4(0.f), i);
+        imageSetAtomicStoreU2(_UATOMIC, ivec2(coord), uvec2(0), i);
     }
-
-    //
-    imageSetAtomicStoreU2(_UATOMIC, ivec2(coord), uvec2(0), 0);
-    imageSetAtomicStoreU2(_UATOMIC, ivec2(coord), uvec2(0), 1);
-    imageSetAtomicStoreU2(_UATOMIC, ivec2(coord), uvec2(0), 2);
 
     // to be have history data
     imageSetStoreF(_PRECISE, ivec2(coord), vec4(origin.xyz, 1.f), 0);

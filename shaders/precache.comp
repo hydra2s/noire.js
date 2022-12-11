@@ -81,9 +81,16 @@ void main() {
     imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.TBN[2].xyz, 0.0), 5);
 
     //
-    const float tcoef = mix(1.f, rayData.transmission.x, rayData.diffuse.a);
-    imageSetStoreF(_METAPBR, ivec2(coord), vec4(max(1.f - rayData.PBR.r, 0.f) * (1.f - tcoef), 1.f          , 0.f          , 0.f), 0); // diffuse, indirect, shadows
-    imageSetStoreF(_METAPBR, ivec2(coord), vec4(rayData.PBR.r                                , rayData.PBR.g, 0.f          , 0.f), 1); // reflection, mirror, glossy
-    imageSetStoreF(_METAPBR, ivec2(coord), vec4(tcoef                                        , 0.f          , 0.f          , 0.f), 2); // tranparency, transmission
-    imageSetStoreF(_METAPBR, ivec2(coord), vec4(rayData.PBR.r                                , rayData.PBR.g, rayData.PBR.b, 0.f), 3); // general, generic
+    const float tcoef = rayData.transmission.r;
+    const float rcoef = rayData.PBR.r;
+    const float rgh = rayData.PBR.g;
+    const float met = rayData.PBR.b;
+
+    //
+    imageSetStoreF(_METAPBR, ivec2(coord), vec4(max(1.f - rcoef, 0.f) * (1.f - tcoef), 1.f, 1.f, 0.f), 0); // diffuse, indirect, shadows
+    imageSetStoreF(_METAPBR, ivec2(coord), vec4(rcoef                                , rgh, met, 0.f), 1); // reflection, mirror, glossy
+    imageSetStoreF(_METAPBR, ivec2(coord), vec4(max(1.f - rcoef, 0.f) * tcoef        , rgh, 0.f, 0.f), 2); // tranparency, transmission
+
+    //
+    imageSetStoreF(_METAPBR, ivec2(coord), vec4(rcoef                                , rgh, met, 0.f), 3); // general, generic
 }

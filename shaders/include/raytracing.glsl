@@ -100,7 +100,7 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
     rayData.materialAddress = uint64_t(0u);
     rayData.transformAddress = uint64_t(0u);
     rayData.PBR = vec4(0.f.xxxx);
-    rayData.transmission = f16vec4(0.f, 1.f, 1.f, 1.f);
+    rayData.transmission = f16vec4(0.f, 0.f, 1.f, 1.f);
 
     //
     const vec4 env = texture(nonuniformEXT(sampler2D(textures[nonuniformEXT(backgroundImageView)], samplers[nonuniformEXT(linearSampler)])), lcts(dir));
@@ -157,12 +157,12 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         NOR = normalize((nodeData.transformInverse * vec4(NOR.xyz, 0.0f)).xyz);
 
         // broken transmission IOR
-        if (rayData.transmission.g < 1.f) { rayData.transmission.g = 1.f; };
+        if (rayData.transmission.w < 1.f) { rayData.transmission.w = 1.f; };
 
         //
         bool backface = false;
         if (dot(NOR, rayData.dir) >= 0.f) {
-            rayData.transmission.g = 1.f / max(rayData.transmission.g, 0.001f); backface = true;
+            rayData.transmission.w = 1.f / max(rayData.transmission.w, 0.001f); backface = true;
         };
 
         //
@@ -190,11 +190,12 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         rayData.normal.xyz = faceforward(rayData.normal.xyz, min16float3(rayData.dir.xyz), rayData.normal.xyz);
 
         //
-        rayData.PBR.r = mix(backface ? 0.f : fresnel(max(dot(vec3(rayData.normal.xyz), -rayData.dir.xyz), 0.f), 0.1f, max(rayData.transmission.g, 1.2f)), 1.f, float(rayData.PBR.b));
+        const float fren = fresnel(max(dot(vec3(rayData.normal.xyz), -rayData.dir.xyz), 0.f), 0.1f, max(rayData.transmission.w, 1.2f));
+        rayData.PBR.r = mix(backface ? 0.f : fren, 1.f, float(rayData.PBR.b));
         rayData.PBR.r *= (1.f - float(rayData.PBR.g));
 
         // emitent can't to be transmissive
-        if (dot(rayData.emissive.xyz, 1.f.xxx) > 0.1f) { rayData.transmission.r = 0.f; };
+        if (dot(rayData.emissive.xyz, 1.f.xxx) > 0.1f) { rayData.transmission.x = 0.f; };
 
         // debug reflection
         //rayData.PBR.g = 0.f;
@@ -203,6 +204,11 @@ RayTracedData getData(in vec3 origin, in vec3 dir, in uvec4 sys, in vec3 bary, i
         //
         rayData.PBR.xyz = max(rayData.PBR.xyz, 0.01f);
         rayData.PBR.r *= rayData.diffuse.a;
+
+        // TODO: correct thin support
+        //rayData.diffuse.a *= mix(1.f, 0.1f, rayData.transmission.g * fren);
+        rayData.transmission.x = mix(1.f, pow(rayData.transmission.x, 1.f/2.f), rayData.diffuse.a);
+        //rayData.transmission.x = mix(1.f, pow(rayData.transmission.x, mix(1.f/16.f, 1.f/2.f, rayData.transmission.g * (1.f - max(dot(-rayData.dir, rayData.normal.xyz), 0.f)))), rayData.diffuse.a);
     } else 
     // TODO: more light source support
     if (source >= 0) {
@@ -354,8 +360,10 @@ GIData globalIllumination(in RayTracedData rayData) {
 
                 // TODO: push first rays depence on pixel and frametime
                 int rtype = 0;
-                if (random_seeded(C, 6.0+F) <= rayData.PBR.r) { rtype = 1; } else 
-                if (random_seeded(C, 7.0+F) <= mix(1.f, rayData.transmission.x, rayData.diffuse.a)) { rtype = 2; }
+                if (random_seeded(C, 6.0+F) <= rayData.PBR.x) { rtype = 1; } else 
+                if (random_seeded(C, 7.0+F) <= rayData.transmission.x) { rtype = 2; }
+
+                //
                 if (I == 0) { type = rtype; }
 
                 // if reflection
@@ -370,7 +378,7 @@ GIData globalIllumination(in RayTracedData rayData) {
                 if (rtype == 2) {
                     // TODO: volume support
                     if (transpCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
-                    reflDir = normalize(mix(refract(rayData.dir, vec3(TBN[2]), 1.f / rayData.transmission.g), -normalize(cosineWeightedPoint(TBN, C, F+8.0)), float(rayData.PBR.g) * rayData.diffuse.a * random_seeded(C, 2.0+F)));
+                    reflDir = normalize(mix(refract(rayData.dir, vec3(TBN[2]), 1.f / rayData.transmission.w), -normalize(cosineWeightedPoint(TBN, C, F+8.0)), float(rayData.PBR.g) * rayData.diffuse.a * random_seeded(C, 2.0+F)));
                     energy.xyz *= mix(1.f.xxx, rayData.diffuse.xyz, rayData.diffuse.a); // transmission is broken with alpha channels
                     if (R > 0) { ITERATION_COUNT += 1; R--; }
                 } else

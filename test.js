@@ -223,16 +223,16 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //const dResolveTemporal = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-resolve_temporal.comp.spv") });
 
     const gltfLoaderA = new K.GltfLoaderObj(deviceObj.handle, {
-        scale: 100.0,
+        scale: 5.0,
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
     });
 
     //
     //const gltfModel = await gltfLoaderA.load("models/MosquitoInAmber.gltf");
-    //const gltfModel = await gltfLoaderA.load("models/TransmissionTest.gltf");
+    const gltfModel = await gltfLoaderA.load("models/TransmissionTest.gltf");
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
     //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf"); // needs downscale model
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
@@ -490,7 +490,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         const dY = (mY - lastY) / windowSize[1] / DPI[1] * 2.0;
 
         //
-        const viewSpeed = 0.01;
+        const viewSpeed = 0.001;
         let localEye = $M.vec4.transformMat4($M.vec4.create(), $M.vec4.fromValues(...eye, 1.0), $M.mat4.copy($M.mat4.create(), modelView)).subarray(0, 3);
         let moveVec = $M.vec3.create(0,0,0);
 

@@ -238,6 +238,8 @@ class GltfLoaderObj extends B.BasicObj {
             // TODO: IOR support
             const hasTransmission = !!M.extensions?.["KHR_materials_transmission"];
             let trns = M.extensions?.["KHR_materials_transmission"]?.transmissionFactor;
+            let tnhk = M.extensions?.["KHR_materials_volume"]?.thicknessFactor;
+            let ior = M.extensions?.["KHR_materials_ior"]?.ior;
             let roughness = M.pbrMetallicRoughness?.roughnessFactor;
             let metallic = M.pbrMetallicRoughness?.metallicFactor;
             if (!hasTransmission) { trns = 0.0; };
@@ -273,7 +275,7 @@ class GltfLoaderObj extends B.BasicObj {
                 sam: T >= 0 ? Math.max(samplerDescIndices[rawData.textures[T].sampler], 0) :  0,
 
                 // 1.0 for test, default is 0.0
-                col: [trns != undefined ? trns : 1.0, M.extensions?.["KHR_materials_ior"]?.ior || 1.0, 1.0, 1.0]
+                col: [trns != undefined ? trns : 1.0, tnhk || 0.0, 1.0, ior || 1.0]
             }
         });
 

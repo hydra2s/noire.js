@@ -28,17 +28,17 @@ layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 void main() {
     // TODO: linear interpolation support (virtual sampler)
     ivec2 coord = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+     vec2 uv = vec2(coord)/vec2(windowWidth, windowHeight);
 
     vec4 fcolor = vec4(0.f.xxx, 0.f);
     for (int i=0;i<3;i++) {
-        const vec4 MULT    = i == 0 ? vec4(max(imageSetLoadF(_DOTHERS, coord, 0).xyz, 0.0001f.xxx), 1.f) : vec4(1.f.xxx, 1.f);
-        const vec4 EMIS    = i == 0 ? vec4(max(imageSetLoadF(_DOTHERS, coord, 1).xyz, 0.0001f.xxx), 1.f) : vec4(0.f.xxx, 0.f);
-        const float coef   = imageSetLoadF(_METAPBR, coord, i).r;
-        const vec4 rcolor  = imageSetLoadF(_DFILTER, coord, i);
+        const vec4 MULT    = i == 0 ? vec4(max(imageSetLoadLinF(_DOTHERS, uv, 0).xyz, 0.0001f.xxx), 1.f) : vec4(1.f.xxx, 1.f);
+        const vec4 EMIS    = i == 0 ? vec4(max(imageSetLoadLinF(_DOTHERS, uv, 1).xyz, 0.0001f.xxx), 1.f) : vec4(0.f.xxx, 0.f);
+        const float coef   = imageSetLoadLinF(_METAPBR, uv, i).r;
+        const vec4 rcolor  = imageSetLoadLinF(_DFILTER, uv, i);
                    fcolor += vec4(rcolor.xyz / max(rcolor.w, 0.0001f) * coef * MULT.xyz + EMIS.xyz, 0.f);
                    fcolor.w = max(sign(rcolor.w), fcolor.w);
     }
-    //fcolor = vec4(imageSetAtomicLoadF(_FATOMIC, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), 1, 0));
 
     //
     imageStore(SWAP[imageIndex], coord, vec4(pow(fcolor.xyz/max(fcolor.w, 0.0001f), 1.f.xxx/2.2f), 1.f));

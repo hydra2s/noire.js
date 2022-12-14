@@ -259,8 +259,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     const bgImageView = await textureLoader.load("./background.ktx2");
 
     //
-    let mouseMoving = false;
-    let cameraMoving = false;
+    let mouseMoving = true;
+    let cameraMoving = true;
     let moveDir = $M.vec3.fromValues(0,0,0);
     let viewDir = $M.vec3.fromValues(0,0,1);
     let lastX = 0.0, lastY = 0.0;
@@ -455,6 +455,10 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
     //
     const keys = {};
+    
+    // Putin
+    const touchPadMod = true;
+    V.glfwSetInputMode(windowObj.getWindow(), V.GLFW_CURSOR, V.GLFW_CURSOR_DISABLED);
 
     //
     V.glfwSetKeyCallback(windowObj.getWindow(), (window, key, scancode, action, mods)=>{
@@ -472,7 +476,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     V.glfwSetMouseButtonCallback(windowObj.getWindow(), (window, button, action, mods)=>{
         if (button == V.GLFW_MOUSE_BUTTON_1) {
             if (action == V.GLFW_PRESS) { mouseMoving = true; };
-            if (action == V.GLFW_RELEASE) { mouseMoving = false; };
+            if (action == V.GLFW_RELEASE) { mouseMoving = touchPadMod; };
         }
     });
 

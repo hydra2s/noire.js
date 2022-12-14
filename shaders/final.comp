@@ -1,8 +1,8 @@
 #version 460 core
+
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_EXT_ray_query : enable
-#extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int32 : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
@@ -28,7 +28,7 @@ layout (local_size_x = 32, local_size_y = 6, local_size_z = 1) in;
 void main() {
     // TODO: linear interpolation support (virtual sampler)
     ivec2 coord = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
-     vec2 uv = vec2(coord)/vec2(windowWidth, windowHeight);
+     vec2 uv = (vec2(coord) + 0.5f)/vec2(windowWidth, windowHeight);
 
     vec4 fcolor = vec4(0.f.xxx, 0.f);
     for (int i=0;i<3;i++) {

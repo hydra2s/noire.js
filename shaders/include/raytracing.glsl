@@ -372,12 +372,12 @@ GIData globalIllumination(in RayTracedData rayData) {
                     energy.xyz *= min(mix(min16float3(1.f.xxx), max(rayData.diffuse.xyz, min16float3(0.f.xxx)), rayData.PBR.b), min16float(1.f));
 
                     //
-                    if (reflCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); if (I == 0 && R > 0) { ITERATION_COUNT += 1; R--; } };
+                    if (reflCoef >= 0.6 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); if (I == 0 && R > 0) { ITERATION_COUNT += 1; R--; } };
                 } else 
 
                 if (rtype == 2) {
                     // TODO: volume support
-                    if (transpCoef > 0.8 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
+                    if (transpCoef >= 0.6 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
                     reflDir = normalize(mix(refract(rayData.dir, vec3(TBN[2]), 1.f / rayData.transmission.w), -normalize(cosineWeightedPoint(TBN, C, F+8.0)), float(rayData.PBR.g) * rayData.diffuse.a * random_seeded(C, 2.0+F)));
                     energy.xyz *= mix(1.f.xxx, rayData.diffuse.xyz, rayData.diffuse.a); // transmission is broken with alpha channels
                     if (R > 0) { ITERATION_COUNT += 1; R--; }
@@ -415,7 +415,7 @@ GIData globalIllumination(in RayTracedData rayData) {
                 }
 
                 //
-                reflCoef = rayData.PBR.r, transpCoef = 1.f - rayData.diffuse.a;
+                reflCoef = rayData.PBR.r, transpCoef = rayData.transmission.x;
 
                 // next step
                 if (dot(energy.xyz, 1.f.xxx) > 0.001f && I<(ITERATION_COUNT-1)) {

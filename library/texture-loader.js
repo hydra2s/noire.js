@@ -36,6 +36,9 @@ class TextureLoaderObj extends B.BasicObj {
         this.hdrloader = new HDR.loader();
     }
 
+    // TODO! Support for Resizable BAR!
+    // Loading should become up to 20% faster!
+    // With direct mapping also should to be more faster (up to 10%).
     async load(file, relative = "./") {
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];

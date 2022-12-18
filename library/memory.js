@@ -75,12 +75,26 @@ class DeviceMemoryObj extends B.BasicObj {
         ) : V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
         //
+        let memoryTypeIndex = B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, propertyFlag, cInfo.isHost ? V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0, cInfo.memoryRequirements.size);
+
+        // host memory fallback (but FPS will drop), especially due for budget end
+        if (cInfo.isBAR && memoryTypeIndex < 0) { 
+            memoryTypeIndex = B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, 
+                V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                V.VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+                0,
+                cInfo.memoryRequirements.size
+            );
+        };
+
+        //
         V.vkAllocateMemory(deviceObj.handle[0], this.allocInfo = new V.VkMemoryAllocateInfo({
             pNext: new V.VkMemoryAllocateFlagsInfo({
                 flags: cInfo.isBuffer ? V.VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR : 0
             }),
             allocationSize: cInfo.memoryRequirements.size,
-            memoryTypeIndex: B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, propertyFlag, cInfo.isHost ? V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0, cInfo.memoryRequirements.size)
+            memoryTypeIndex
         }), null, this.handle = new BigUint64Array(1));
     }
 

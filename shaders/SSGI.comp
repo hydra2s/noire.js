@@ -37,17 +37,27 @@ vec4 upto(in vec4 samples, in float to) {
 void main() {
     for (int i=0;i<3;i++) {
         uvec2 coord = gl_GlobalInvocationID.xy;
-        uvec2 hashed = imageSetAtomicLoadU2(_UATOMIC, ivec2(coord), i);
+        vec4 wpos = imageSetLoadF(_DOTHERS, ivec2(coord), 6+i);
+        vec4 origin = divW((vec4(wpos.xyz, 1.f) * modelView[0]) * perspective);
 
         //
-        bool isValid = pack32(u16vec2(hashed)) > 0;
+        origin.y *= -1.f;
+        origin.xy = origin.xy * 0.5f + 0.5f;
 
         //
         vec4 colC = imageSetLoadF(_DFACTOR, ivec2(coord), i);
-        vec4 colR = isValid ? imageSetLoadPrevF(_DFACTOR, ivec2(hashed), i) : 0.f.xxxx;
+        vec4 bary = framebufferLoadLinF(_BARY, origin.xy, 0);
+        bool validUV = abs(bary.w - origin.z) < 0.0001f && !all(lessThanEqual(abs(wpos.xyz), 0.0001f.xxx));
+
+        // re-use image space sample from current RT
+        const vec4 MULT    = validUV ? vec4(max(imageSetLoadLinF(_DOTHERS, origin.xy, 0).xyz, 0.0001f.xxx), 1.f) : vec4(0.f.xxx, 0.f);
+        const vec4 EMIS    = validUV ? vec4(max(imageSetLoadLinF(_DOTHERS, origin.xy, 1).xyz, 0.0001f.xxx), 1.f) : vec4(0.f.xxx, 0.f);
+        const float coef   = imageSetLoadLinF(_METAPBR, origin.xy, 0).r;
+        const vec4 rcolor  = imageSetLoadLinF(_DFACTOR, origin.xy, 0);
+        const vec4 fcolor  = vec4(rcolor.xyz/max(rcolor.w, 0.0001f), sign(rcolor.w)) * coef * vec4(MULT.xyz, 1.f) + vec4(EMIS.xyz, 0.f);
 
         //
-        imageSetStoreF(_DFACTOR, ivec2(coord), upto(colC + colR, 1024.f) /*filterComp(ivec2(coord), i)*/, i);
-        imageSetStoreF(_DFILTER, ivec2(coord), upto(colC + colR, 1024.f) /*filterComp(ivec2(coord), i)*/, i);
+        imageSetStoreF(_DFACTOR, ivec2(coord), upto(colC + fcolor, 1024.f) /*filterComp(ivec2(coord), i)*/, i);
+        imageSetStoreF(_DFILTER, ivec2(coord), upto(colC + fcolor, 1024.f) /*filterComp(ivec2(coord), i)*/, i);
     }
 }

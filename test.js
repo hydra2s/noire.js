@@ -159,7 +159,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         memoryAllocator: memoryAllocatorObj.handle[0],
 
         // TODO: optional previous layer support
-        layerCount: [1    , 3   , 4    , 3   , 6    , 3   , 2   , 3    ],
+        layerCount: [1    , 3   , 4    , 3   , 9    , 3   , 2   , 3    ],
         manualSwap: [true , true, true , true, true , true, true, true ],
         hasHistory: [false, true, false, true, false, true, true, false],
 
@@ -223,7 +223,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //const dResolveTemporal = deviceObj.createComputePipeline({ framebufferLayout: framebufferLayoutObj.handle[0], pipelineLayout: descriptorsObj.handle[0], code: await fs.promises.readFile("shaders/denoise-resolve_temporal.comp.spv") });
 
     const gltfLoaderA = new K.GltfLoaderObj(deviceObj.handle, {
-        scale: 1.0,
+        scale: 100.0,
         pipelineLayout: descriptorsObj.handle[0],
         memoryAllocator: memoryAllocatorObj.handle[0],
     });
@@ -232,8 +232,8 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     //const gltfModel = await gltfLoaderA.load("models/MosquitoInAmber.gltf");
     //const gltfModel = await gltfLoaderA.load("models/TransmissionTest.gltf");
     //const gltfModel = await gltfLoaderA.load("models/BoomBox.gltf");
-    //const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
-    const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf"); // needs downscale model
+    const gltfModel = await gltfLoaderA.load("models/BoomBoxWithAxes.gltf");
+    //const gltfModel = await gltfLoaderA.load("sponza/Sponza.gltf"); // needs downscale model
     //const gltfModel = await gltfLoaderA.load("models/MetalRoughSpheres.gltf");
     const triangleObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
@@ -248,6 +248,11 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
     const filterObj = deviceObj.createComputePipeline({
         pipelineLayout: descriptorsObj.handle[0],
         code: await fs.promises.readFile("shaders/filter.comp.spv")
+    });
+
+    const SSGIObj = deviceObj.createComputePipeline({
+        pipelineLayout: descriptorsObj.handle[0],
+        code: await fs.promises.readFile("shaders/SSGI.comp.spv")
     });
 
     const precacheObj = deviceObj.createComputePipeline({
@@ -431,7 +436,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         // VERY IMPACTFL TO FPS!
         triangleObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        imageSetObj.cmdSwapstageId(cmdBuf, [1, 3]);
+        imageSetObj.cmdSwapstageId(cmdBuf, [1, 3, 4]);
 
         // 
         dMotion.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
@@ -444,6 +449,10 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         // TOO IMPACTFUL TO FPS!
         //filterObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         //imageSetObj.cmdSwapstageId(cmdBuf, [7]);
+
+        //
+        SSGIObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
+        imageSetObj.cmdSwapstageId(cmdBuf, [3, 7]);
 
         // Render To Swapchain!
         pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));

@@ -6,4 +6,5 @@ call glslangValidator --client vulkan100 --target-env spirv1.6 precache.comp -o 
 call glslangValidator --client vulkan100 --target-env spirv1.6 final.comp -o final.comp.spv
 call glslangValidator --client vulkan100 --target-env spirv1.6 reprojection.comp -o reprojection.comp.spv
 call glslangValidator --client vulkan100 --target-env spirv1.6 filter.comp -o filter.comp.spv
+call glslangValidator --client vulkan100 --target-env spirv1.6 SSGI.comp -o SSGI.comp.spv
 ::pause

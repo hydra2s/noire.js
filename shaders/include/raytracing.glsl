@@ -322,6 +322,7 @@ bool shadowTrace(in vec3 origin, in float dist, in vec3 dir) {
 //
 struct GIData {
     min16float4 color;
+    min16float3 origin;
     float nearT;
     uint type;
 };
@@ -339,7 +340,7 @@ GIData globalIllumination(in RayTracedData rayData) {
     //
     uvec4 indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u);
     float roughness = rayData.PBR.g;
-    float nearT = 0.f;
+    float nearT = 0.f; vec3 nearOrigin = vec3(0.f);
     bool hasHit = false;
 
     //
@@ -372,12 +373,12 @@ GIData globalIllumination(in RayTracedData rayData) {
                     energy.xyz *= min(mix(min16float3(1.f.xxx), max(rayData.diffuse.xyz, min16float3(0.f.xxx)), rayData.PBR.b), min16float(1.f));
 
                     //
-                    if (reflCoef >= 0.6 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); if (I == 0 && R > 0) { ITERATION_COUNT += 1; R--; } };
+                    if (reflCoef >= 0.6 || I == 1) { nearT += rayData.hitT; nearOrigin = rayData.origin.xyz; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); if (I == 0 && R > 0) { ITERATION_COUNT += 1; R--; } };
                 } else 
 
                 if (rtype == 2) {
                     // TODO: volume support
-                    if (transpCoef >= 0.6 || I == 1) { nearT += rayData.hitT; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
+                    if (transpCoef >= 0.6 || I == 1) { nearT += rayData.hitT; nearOrigin = rayData.origin.xyz; indices = uvec4(unpack32(rayData.transformAddress), 0u, 0u); };
                     reflDir = normalize(mix(refract(rayData.dir, vec3(TBN[2]), 1.f / rayData.transmission.w), -normalize(cosineWeightedPoint(TBN, C, F+8.0)), float(rayData.PBR.g) * rayData.diffuse.a * random_seeded(C, 2.0+F)));
                     energy.xyz *= mix(1.f.xxx, rayData.diffuse.xyz, rayData.diffuse.a); // transmission is broken with alpha channels
                     if (R > 0) { ITERATION_COUNT += 1; R--; }
@@ -386,6 +387,9 @@ GIData globalIllumination(in RayTracedData rayData) {
                 // if diffuse
                 /*if (rtype == 0)*/
                 {
+                    if (I == 1) { nearT += rayData.hitT; nearOrigin = rayData.origin.xyz; };
+
+                    //
                     const vec3 SO = lightPos[0].xyz;
                     const vec3 SS = lightPos[0].w * randomSpherePoint(C, F) + SO;
                     const vec3 LC = SO - rayData.origin.xyz;
@@ -436,6 +440,7 @@ GIData globalIllumination(in RayTracedData rayData) {
 
     //
     GIData data;
+    data.origin = nearOrigin;
     data.color = min16float4(fcolor.xyz/fcolor.w, 1.f);
     data.nearT = nearT;
     data.type = type;

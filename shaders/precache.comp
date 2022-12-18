@@ -76,9 +76,16 @@ void main() {
     imageSetStoreF(_DOTHERS, ivec2(coord), max(rayData.diffuse, 0.f.xxxx), 0);
     imageSetStoreF(_DOTHERS, ivec2(coord), max(rayData.emissive, 0.f.xxxx), 1);
     imageSetStoreF(_DOTHERS, ivec2(coord), max(rayData.transmission, 0.f.xxxx), 2);
+
+    //
     imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.TBN[0].xyz, 0.0), 3);
     imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.TBN[1].xyz, 0.0), 4);
     imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(rayData.TBN[2].xyz, 0.0), 5);
+
+    //
+    imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(0.0), 6);
+    imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(0.0), 7);
+    imageSetStoreF(_DOTHERS, ivec2(coord), min16float4(0.0), 8);
 
     //
     const float tcoef = rayData.transmission.r;

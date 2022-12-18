@@ -130,22 +130,26 @@ class GltfLoaderObj extends B.BasicObj {
     // TODO! Also, planned multi-threading support (by workers with shared data, and different queues)
     // With MT performance should to increase up to 10-20% additionally.
     async parse(gltf, relative) {
+        const reBAREnabled = true;
+        
+        //
         const rawData = JSON.parse(gltf);
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
         const memoryAllocatorObj = B.Handles[this.cInfo.memoryAllocator[0] || this.cInfo.memoryAllocator];
 
-        //
-        const materialBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: nrMaterial.byteLength * rawData.materials.length }));
-        const materialBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrMaterial.byteLength * rawData.materials.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR }));
+        // TODO: decide, what is BAR or/and Device memory
+        const materialBuffer = memoryAllocatorObj.allocateMemory({ isHost: true, isBAR: reBAREnabled, isDevice: reBAREnabled }, deviceObj.createBuffer({ size: nrMaterial.byteLength * rawData.materials.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR }));
+        const materialBufferGPU = reBAREnabled ? materialBuffer : memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrMaterial.byteLength * rawData.materials.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR }));
         const buffersGPU = new Array(rawData.buffers.length).fill({});
         const buffers = new Array(rawData.buffers.length).fill({});
         const bindings = [];
 
         // 
         await Promise.all(rawData.buffers.map(async ($B, K)=>{
-            const buffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: $B.byteLength }));
-            const bufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: $B.byteLength, usage: V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | V.VK_BUFFER_USAGE_INDEX_BUFFER_BIT }));
+            // TODO: decide, what is BAR or/and Device memory
+            const buffer = memoryAllocatorObj.allocateMemory({ isHost: true, isBAR: reBAREnabled, isDevice: reBAREnabled }, deviceObj.createBuffer({ size: $B.byteLength, usage: V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | V.VK_BUFFER_USAGE_INDEX_BUFFER_BIT }));
+            const bufferGPU = reBAREnabled ? buffer : memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: $B.byteLength, usage: V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | V.VK_BUFFER_USAGE_INDEX_BUFFER_BIT }));
 
             //
             buffers[K] = buffer;
@@ -289,15 +293,16 @@ class GltfLoaderObj extends B.BasicObj {
         materialBuffer.map().set(materialData.buffer);
         materialBuffer.unmap();
 
-        //
-        const meshBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: nrMesh.byteLength * rawData.meshes.length }));
-        const meshBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrMesh.byteLength * rawData.meshes.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT }));
+        // TODO: decide, what is BAR or/and Device memory
+        const meshBuffer = memoryAllocatorObj.allocateMemory({ isHost: true, isBAR: reBAREnabled, isDevice: reBAREnabled }, deviceObj.createBuffer({ size: nrMesh.byteLength * rawData.meshes.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT }));
+        const meshBufferGPU = reBAREnabled ? meshBuffer : memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrMesh.byteLength * rawData.meshes.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT }));
 
         // 
-        const geometryBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ 
-            size: rawData.meshes.reduce((acc, M)=>{ return acc + M.primitives.length; }, 0) * nrGeometry.byteLength
+        const geometryBuffer = memoryAllocatorObj.allocateMemory({ isHost: true, isBAR: reBAREnabled, isDevice: reBAREnabled }, deviceObj.createBuffer({ 
+            size: rawData.meshes.reduce((acc, M)=>{ return acc + M.primitives.length; }, 0) * nrGeometry.byteLength, 
+            usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
         }));
-        const geometryBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ 
+        const geometryBufferGPU = reBAREnabled ? geometryBuffer : memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ 
             size: rawData.meshes.reduce((acc, M)=>{ return acc + M.primitives.length; }, 0) * nrGeometry.byteLength, 
             usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
         }));
@@ -416,9 +421,9 @@ class GltfLoaderObj extends B.BasicObj {
             instanced: instancedData.map((ID)=>(ID.instance))
         });
 
-        // 
-        const nodeBuffer = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: nrNode.byteLength * nodeData.length }));
-        const nodeBufferGPU = memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrNode.byteLength * nodeData.length }));
+        // TODO: decide, what is BAR or/and Device memory
+        const nodeBuffer = memoryAllocatorObj.allocateMemory({ isHost: true, isBAR: reBAREnabled, isDevice: reBAREnabled }, deviceObj.createBuffer({ size: nrNode.byteLength * nodeData.length }));
+        const nodeBufferGPU = reBAREnabled ? nodeBuffer : memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrNode.byteLength * nodeData.length }));
 
         // also, `set` offset is broken!
         // TODO: optimize accesses
@@ -426,15 +431,31 @@ class GltfLoaderObj extends B.BasicObj {
         nodeBuffer.unmap();
 
         // commit mesh buffers
-        B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
+        const loadingFence = B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
             queueFamilyIndex: 0,
             queueIndex: 0,
             cmdBufFn: async (cmdBuf)=>{
-                
-                buffers.map((buffer, I)=>{
-                    buffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, buffersGPU[I].handle[0], [{ srcOffset: 0, dstOffset: 0, size: buffer.pInfo.size }]);
-                });
+                // enforce memory barrier for re-BAR, to avoid memory corruption
+                if (reBAREnabled) {
+                    const memoryBarrier = new V.VkMemoryBarrier2({ 
+                        srcStageMask: V.VK_PIPELINE_STAGE_2_HOST_BIT,
+                        srcAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT | V.VK_ACCESS_2_HOST_READ_BIT | V.VK_ACCESS_2_HOST_WRITE_BIT,
+                        dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                        dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT,
+                        srcQueueFamilyIndex: ~0,
+                        dstQueueFamilyIndex: ~0,
+                    });
+                    V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ memoryBarrierCount: memoryBarrier.length, pMemoryBarriers: memoryBarrier }));
+                }
 
+                //
+                if (!reBAREnabled) {
+                    buffers.map((buffer, I)=>{
+                        buffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, buffersGPU[I].handle[0], [{ srcOffset: 0, dstOffset: 0, size: buffer.pInfo.size }]);
+                    });
+                }
+
+                //
                 meshes.map((mesh)=>{
                     mesh.accelerationStructure.cmdBuild(cmdBuf, mesh.geometries.map((G,I)=>({
                         primitiveCount: geometries[G].primitiveCount,
@@ -444,21 +465,27 @@ class GltfLoaderObj extends B.BasicObj {
                     })))
                 });
 
-                geometryBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, geometryBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: rawData.meshes.reduce((acc, M)=>{ return acc + M.primitives.length; }, 0) * nrGeometry.byteLength }]);
-                materialBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, materialBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: materialData.byteLength }]);
-                meshBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, meshBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: nrMesh.byteLength * rawData.meshes.length }]);
-                nodeBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, nodeBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: nrNode.byteLength * nodeData.length }]);
+                //
+                if (!reBAREnabled) {
+                    geometryBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, geometryBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: rawData.meshes.reduce((acc, M)=>{ return acc + M.primitives.length; }, 0) * nrGeometry.byteLength }]);
+                    materialBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, materialBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: materialData.byteLength }]);
+                    meshBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, meshBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: nrMesh.byteLength * rawData.meshes.length }]);
+                    nodeBuffer.cmdCopyToBuffer(cmdBuf[0]||cmdBuf, nodeBufferGPU.handle[0], [{ srcOffset: 0, dstOffset: 0, size: nrNode.byteLength * nodeData.length }]);
+                }
+
+                //
                 nodeAccelerationStructure.cmdBuild(cmdBuf, [{
                     primitiveCount: instancedData.length,
                     primitiveOffset: 0,
                     firstVertex: 0,
                     transformOffset: 0
                 }]);
-                
+
             }
         }));
 
         //console.log("parsed!");
+        // TODO: remove host buffers when No Resiable BAR enabled (`texBuf`)
 
         //
         return {

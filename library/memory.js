@@ -68,27 +68,30 @@ class DeviceMemoryObj extends B.BasicObj {
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 
         //
+        const hostBased = (cInfo.isHost && !cInfo.isDevice);
         const propertyFlag = cInfo.isBAR ? (
             V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|
             V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT|
             V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        ) : (cInfo.isHost ? 
+        ) : (hostBased ? 
         (
             V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
             V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
             V.VK_MEMORY_PROPERTY_HOST_CACHED_BIT
-        ) : 
-        V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        ) : V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
         //
         let memoryTypeIndex = B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, propertyFlag, cInfo.isHost ? V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0, cInfo.memoryRequirements.size);
 
         // host memory fallback (but FPS will drop), especially due for budget end
-        if (cInfo.isBAR && memoryTypeIndex < 0) { 
+        if (memoryTypeIndex < 0) { 
             memoryTypeIndex = B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, 
-                V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                V.VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+                (cInfo.isBAR ? true : !hostBased) ? 
+                (
+                    V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                    V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                    V.VK_MEMORY_PROPERTY_HOST_CACHED_BIT
+                ) : V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                 0,
                 cInfo.memoryRequirements.size
             );

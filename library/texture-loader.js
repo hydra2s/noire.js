@@ -42,6 +42,9 @@ class TextureLoaderObj extends B.BasicObj {
     // TODO! Also, planned multi-threading support (by workers with shared data, and different queues)
     // With MT performance should to increase up to 10-20% additionally.
     async load(file, relative = "./") {
+        // for textures re-bar isn't available
+        const reBAREnabled = false;
+
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
         const memoryAllocatorObj = B.Handles[this.cInfo.memoryAllocator[0] || this.cInfo.memoryAllocator];
@@ -65,8 +68,14 @@ class TextureLoaderObj extends B.BasicObj {
                 fs.createReadStream(relative + file).pipe(this.hdrloader.on('load', async function() {
                     const image = this;
 
+                    // TODO: decide, what is BAR or/and Device memory
+                    texImage = memoryAllocatorObj.allocateMemory({ isHost: false, isBAR: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R16G16B16A16_SFLOAT, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+
+                    //
+                    texBuf = reBAREnabled ? texImage : memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 8 }));
+
                     // covnert into fp16 + RGB from XYZ
-                    const fp16data = new Uint16Array(image.width*image.height*4); const fp16address = fp16data.address();
+                    const fp16data = new Uint16Array(image.width*image.height*4); const fp16address = texBuf.map().address();
                     const fp32data = new Float32Array(8);                         const fp32address = fp32data.address();
                     for (let I=0;I<image.width*image.height;I+=2) {
                         fp32data.set([
@@ -77,15 +86,6 @@ class TextureLoaderObj extends B.BasicObj {
                         // make operation bit faster, due priority in native code
                         V.convertF32toF16x8(fp16address + BigInt(I)*8n, fp32address);
                     }
-
-                    console.log(fp16data);
-
-                    //
-                    texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R16G16B16A16_SFLOAT, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
-
-                    //
-                    texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 8 }));
-                    V.memcpy(texBuf.map(), fp16data.buffer, fp16data.byteLength);
 
                     r(1);
                 }));
@@ -98,11 +98,13 @@ class TextureLoaderObj extends B.BasicObj {
             status = await new Promise(async (r,rj)=>{
                 Jimp.read(relative + file, (err, DATA)=>{
                     const image = DATA.bitmap;
-                    texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+
+                    // TODO: decide, what is BAR or/and Device memory
+                    texImage = memoryAllocatorObj.allocateMemory({ isHost: false, isBAR: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
                     componentMapping = { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A };
 
                     // 
-                    texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 4 }));
+                    texBuf = reBAREnabled ? texImage : memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 4 }));
                     texBuf.map().set(image.data);
                     texBuf.unmap();
                     
@@ -117,13 +119,14 @@ class TextureLoaderObj extends B.BasicObj {
             status = await new Promise(async(r,rj)=>{
                 const container = read(await fs.promises.readFile(relative + file));
 
-                console.log(JSON.stringify(container.dataFormatDescriptorm, null, 4));
+                //console.log(JSON.stringify(container.dataFormatDescriptorm, null, 4));
 
-                texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth||1 }, mipLevels: container.levels.length, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                // TODO: decide, what is BAR or/and Device memory
+                texImage = memoryAllocatorObj.allocateMemory({ isHost: false, isBAR: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth||1 }, mipLevels: container.levels.length, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
                 subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: container.levels.length || 1, baseArrayLayer: 0, layerCount: container.layerCount||1 };
 
                 // TODO: all mip levels support
-                texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: container.levels[0].uncompressedByteLength }));
+                texBuf = reBAREnabled ? texImage : memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: container.levels[0].uncompressedByteLength }));
                 texBuf.map().set(container.levels[0].levelData);
                 texBuf.unmap();
 
@@ -135,11 +138,13 @@ class TextureLoaderObj extends B.BasicObj {
                 status = await new Promise(async(r,rj)=>{
                 gmi(relative + file).quality(0).toBuffer('PNG', async (err, buffer) => {
                     new PNG({}).parse(buffer, function (error, image) {
-                        texImage = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: false }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+
+                        // TODO: decide, what is BAR or/and Device memory
+                        texImage = memoryAllocatorObj.allocateMemory({ isHost: false, isBAR: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
                         componentMapping = { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A };
 
                         //
-                        texBuf = memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 4 }));
+                        texBuf = reBAREnabled ? texImage : memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 4 }));
                         texBuf.map().set(image.data);
                         texBuf.unmap();
 
@@ -152,10 +157,10 @@ class TextureLoaderObj extends B.BasicObj {
 
         //
         const texBarrier = new V.VkImageMemoryBarrier2({
-            srcStageMask: V.VK_PIPELINE_STAGE_2_NONE,
-            srcAccessMask: V.VK_ACCESS_2_NONE,
+            srcStageMask: reBAREnabled ? V.VK_PIPELINE_STAGE_2_HOST_BIT : V.VK_PIPELINE_STAGE_2_NONE,
+            srcAccessMask: reBAREnabled ? (V.VK_ACCESS_2_HOST_READ_BIT | V.VK_ACCESS_2_HOST_WRITE_BIT) : V.VK_ACCESS_2_NONE,
             dstStageMask: V.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-            dstAccessMask: V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
+            dstAccessMask: V.VK_ACCESS_2_MEMORY_WRITE_BIT | V.VK_ACCESS_2_MEMORY_READ_BIT | V.VK_ACCESS_2_SHADER_WRITE_BIT | V.VK_ACCESS_2_SHADER_READ_BIT,
             oldLayout: V.VK_IMAGE_LAYOUT_UNDEFINED,
             newLayout: V.VK_IMAGE_LAYOUT_GENERAL,
             srcQueueFamilyIndex: ~0,
@@ -170,14 +175,18 @@ class TextureLoaderObj extends B.BasicObj {
             queueIndex: 0,
             cmdBufFn: (cmdBuf)=>{
                 V.vkCmdPipelineBarrier2(cmdBuf[0]||cmdBuf, new V.VkDependencyInfoKHR({ imageMemoryBarrierCount: texBarrier.length, pImageMemoryBarriers: texBarrier }));
-                
+
                 // TODO: multiple mip support
-                texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ 
-                    imageExtent: texImage.cInfo.extent,
-                    imageSubresource: { aspectMask: subresource.aspectMask, mipLevel: subresource.baseMipLevel, baseArrayLayer: subresource.baseArrayLayer, layerCount:subresource.layerCount }
-                }]);
+                if (!reBAREnabled) {
+                    texBuf.cmdCopyToImage(cmdBuf[0]||cmdBuf, texImage.handle[0], [{ 
+                        imageExtent: texImage.cInfo.extent,
+                        imageSubresource: { aspectMask: subresource.aspectMask, mipLevel: subresource.baseMipLevel, baseArrayLayer: subresource.baseArrayLayer, layerCount:subresource.layerCount }
+                    }]);
+                }
             }
         }));
+
+        // TODO: remove host buffer when No Resiable BAR enabled (`texBuf`)
 
         //
         parsedData = deviceObj.createImageView({

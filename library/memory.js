@@ -596,7 +596,7 @@ class SamplerObj extends B.BasicObj {
         const deviceObj = B.Handles[this.base[0]];
 
         //
-        V.vkCreateSampler(this.base[0], this.samplerInfo = new V.VkSamplerCreateInfo({
+        V.vkCreateSampler(this.base[0], this.samplerInfo = V.IsNumber(cInfo.samplerInfo) ? new V.VkSamplerCreateInfo(cInfo.samplerInfo) : new V.VkSamplerCreateInfo({
             magFilter: V.VK_FILTER_LINEAR,
             minFilter: V.VK_FILTER_LINEAR,
             addressModeU: V.VK_SAMPLER_ADDRESS_MODE_REPEAT,

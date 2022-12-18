@@ -50,6 +50,7 @@ void main() {
         bool validUV = abs(bary.w - origin.z) < 0.0001f && !all(lessThanEqual(abs(wpos.xyz), 0.0001f.xxx));
 
         // re-use image space sample from current RT
+        // currently, isn't support transmission backlayers
         const vec4 MULT    = validUV ? vec4(max(imageSetLoadLinF(_DOTHERS, origin.xy, 0).xyz, 0.0001f.xxx), 1.f) : vec4(0.f.xxx, 0.f);
         const vec4 EMIS    = validUV ? vec4(max(imageSetLoadLinF(_DOTHERS, origin.xy, 1).xyz, 0.0001f.xxx), 1.f) : vec4(0.f.xxx, 0.f);
         const float coef   = imageSetLoadLinF(_METAPBR, origin.xy, 0).r;

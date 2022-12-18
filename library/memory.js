@@ -81,7 +81,7 @@ class DeviceMemoryObj extends B.BasicObj {
         ) : V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
         //
-        let memoryTypeIndex = B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, propertyFlag, cInfo.isHost ? V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0, cInfo.memoryRequirements.size);
+        let memoryTypeIndex = B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, propertyFlag, hostBased ? V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0, cInfo.memoryRequirements.size);
 
         // host memory fallback (but FPS will drop), especially due for budget end
         if (memoryTypeIndex < 0) { 

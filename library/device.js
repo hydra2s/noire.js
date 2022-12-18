@@ -41,7 +41,8 @@ class DeviceObj extends B.BasicObj {
             "VK_KHR_workgroup_memory_explicit_layout",
             "VK_EXT_mutable_descriptor_type",
             "VK_EXT_transform_feedback",
-            "VK_EXT_shader_atomic_float2" // broken support in NVIDIA
+            "VK_EXT_shader_atomic_float2", // broken support in NVIDIA
+            "VK_EXT_memory_budget"
         ];
 
         //for (let K=0;K<physicalDeviceObj.extensions.length;K++) {

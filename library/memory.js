@@ -80,7 +80,7 @@ class DeviceMemoryObj extends B.BasicObj {
                 flags: cInfo.isBuffer ? V.VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR : 0
             }),
             allocationSize: cInfo.memoryRequirements.size,
-            memoryTypeIndex: B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, propertyFlag, cInfo.isHost ? V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0)
+            memoryTypeIndex: B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, propertyFlag, cInfo.isHost ? V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0, cInfo.memoryRequirements.size)
         }), null, this.handle = new BigUint64Array(1));
     }
 

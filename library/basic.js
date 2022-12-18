@@ -21,23 +21,25 @@ const createShaderModule = (device, shaderSrc) => {
     return shaderModule[0];
 }
 
-//
-const getMemoryTypeIndex = (physicalDevice, typeFilter, propertyFlag, ignoreFlags = 0) => {
-    let memoryProperties = new V.VkPhysicalDeviceMemoryProperties();
-    V.vkGetPhysicalDeviceMemoryProperties(physicalDevice, memoryProperties);
+// budget mostly usable only for AMD...
+const getMemoryTypeIndex = (physicalDevice, typeFilter, propertyFlag, ignoreFlags = 0, size = 0) => {
+    let memoryBudget = new V.VkPhysicalDeviceMemoryBudgetPropertiesEXT();
+    let memoryProperties2 = new V.VkPhysicalDeviceMemoryProperties2({ pNext: memoryBudget });
+    let memoryProperties = memoryProperties2.memoryProperties;
+    V.vkGetPhysicalDeviceMemoryProperties2(physicalDevice, memoryProperties2);
     for (let I = 0; I < memoryProperties.memoryTypeCount; ++I) {
+        let prop = memoryProperties.memoryTypes[I];
         if (
-        (typeFilter & (1 << I)) &&
-        (memoryProperties.memoryTypes[I].propertyFlags & propertyFlag) === propertyFlag &&
-        (memoryProperties.memoryTypes[I].propertyFlags & ignoreFlags) == 0
-        ) {
-        return I;
-        }
+            (typeFilter & (1 << I)) &&
+            (prop.propertyFlags & propertyFlag) === propertyFlag &&
+            (prop.propertyFlags & ignoreFlags) === 0 && 
+             memoryBudget.heapBudget[prop.heapIndex] >= size
+        ) { return I; }
     };
     return -1;
-};
+}
 
-//
+// 
 const createShaderModuleInfo = (module, stage, pName = "main")=>{
     return new V.VkPipelineShaderStageCreateInfo({
         flags: 0, stage, module, pName, pSpecializationInfo: null
@@ -79,7 +81,7 @@ const createTypedBuffer = (physicalDevice, device, usage, byteSize, PTR = null) 
     const memAllocInfo = new V.VkMemoryAllocateInfo({
         pNext: memAllocFlags,
         allocationSize: memoryRequirements.size,
-        memoryTypeIndex: getMemoryTypeIndex(physicalDevice, memoryRequirements.memoryTypeBits, propertyFlag)
+        memoryTypeIndex: getMemoryTypeIndex(physicalDevice, memoryRequirements.memoryTypeBits, propertyFlag, 0, memoryRequirements.size)
     });
 
     //

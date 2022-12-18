@@ -124,6 +124,9 @@ class GltfLoaderObj extends B.BasicObj {
         return parsedData;
     }
 
+    // TODO! Support for Resizable BAR!
+    // Loading should become up to 20% faster!
+    // With direct mapping also should to be more faster (up to 10%).
     async parse(gltf, relative) {
         const rawData = JSON.parse(gltf);
         const deviceObj = B.Handles[this.base[0]];

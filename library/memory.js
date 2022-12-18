@@ -68,8 +68,9 @@ class DeviceMemoryObj extends B.BasicObj {
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 
         //
+        const isBAR = (cInfo.isHost && cInfo.isDevice);
         const hostBased = (cInfo.isHost && !cInfo.isDevice);
-        const propertyFlag = cInfo.isBAR ? (
+        const propertyFlag = isBAR ? (
             V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|
             V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT|
             V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -86,7 +87,7 @@ class DeviceMemoryObj extends B.BasicObj {
         // host memory fallback (but FPS will drop), especially due for budget end
         if (memoryTypeIndex < 0) { 
             memoryTypeIndex = B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, 
-                (cInfo.isBAR ? true : !hostBased) ? 
+                (isBAR ? true : !hostBased) ? 
                 (
                     V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                     V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |

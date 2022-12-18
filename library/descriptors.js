@@ -181,9 +181,9 @@ class DescriptorsObj extends B.BasicObj {
 
         // TODO: create dedicated image resource buffer
         // create BARZ buffers
-        this.resourceDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isBAR: true }, deviceObj.createBuffer({ size: this.resourceDescriptorSetLayoutSize[0], usage: V.VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT }));
-        this. samplerDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isBAR: true }, deviceObj.createBuffer({ size: this.samplerDescriptorSetLayoutSize[0], usage: V.VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT }));
-        this. uniformDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isBAR: true }, deviceObj.createBuffer({ size: this.uniformBufferSize, usage: V.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT }));
+        this.resourceDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: true }, deviceObj.createBuffer({ size: this.resourceDescriptorSetLayoutSize[0], usage: V.VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT }));
+        this. samplerDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: true }, deviceObj.createBuffer({ size: this.samplerDescriptorSetLayoutSize[0], usage: V.VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT }));
+        this. uniformDescriptorBuffer = memoryAllocatorObj.allocateMemory({ isDevice: true, isHost: true }, deviceObj.createBuffer({ size: this.uniformBufferSize, usage: V.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT }));
 
         // 
         V.vkGetDescriptorSetLayoutBindingOffsetEXT(this.base[0], this.descriptorLayout[0], 0, this.resourceDescriptorOffset = new BigUint64Array(1));

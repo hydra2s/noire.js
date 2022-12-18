@@ -139,7 +139,7 @@ class GltfLoaderObj extends B.BasicObj {
         const memoryAllocatorObj = B.Handles[this.cInfo.memoryAllocator[0] || this.cInfo.memoryAllocator];
 
         // TODO: decide, what is BAR or/and Device memory
-        const materialBuffer = memoryAllocatorObj.allocateMemory({ isHost: true, isBAR: reBAREnabled, isDevice: reBAREnabled }, deviceObj.createBuffer({ size: nrMaterial.byteLength * rawData.materials.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR }));
+        const materialBuffer = memoryAllocatorObj.allocateMemory({ isHost: true, isDevice: reBAREnabled }, deviceObj.createBuffer({ size: nrMaterial.byteLength * rawData.materials.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR }));
         const materialBufferGPU = reBAREnabled ? materialBuffer : memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrMaterial.byteLength * rawData.materials.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR }));
         const buffersGPU = new Array(rawData.buffers.length).fill({});
         const buffers = new Array(rawData.buffers.length).fill({});
@@ -148,7 +148,7 @@ class GltfLoaderObj extends B.BasicObj {
         // 
         await Promise.all(rawData.buffers.map(async ($B, K)=>{
             // TODO: decide, what is BAR or/and Device memory
-            const buffer = memoryAllocatorObj.allocateMemory({ isHost: true, isBAR: reBAREnabled, isDevice: reBAREnabled }, deviceObj.createBuffer({ size: $B.byteLength, usage: V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | V.VK_BUFFER_USAGE_INDEX_BUFFER_BIT }));
+            const buffer = memoryAllocatorObj.allocateMemory({ isHost: true, isDevice: reBAREnabled }, deviceObj.createBuffer({ size: $B.byteLength, usage: V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | V.VK_BUFFER_USAGE_INDEX_BUFFER_BIT }));
             const bufferGPU = reBAREnabled ? buffer : memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: $B.byteLength, usage: V.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | V.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | V.VK_BUFFER_USAGE_INDEX_BUFFER_BIT }));
 
             //
@@ -294,11 +294,11 @@ class GltfLoaderObj extends B.BasicObj {
         materialBuffer.unmap();
 
         // TODO: decide, what is BAR or/and Device memory
-        const meshBuffer = memoryAllocatorObj.allocateMemory({ isHost: true, isBAR: reBAREnabled, isDevice: reBAREnabled }, deviceObj.createBuffer({ size: nrMesh.byteLength * rawData.meshes.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT }));
+        const meshBuffer = memoryAllocatorObj.allocateMemory({ isHost: true, isDevice: reBAREnabled }, deviceObj.createBuffer({ size: nrMesh.byteLength * rawData.meshes.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT }));
         const meshBufferGPU = reBAREnabled ? meshBuffer : memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrMesh.byteLength * rawData.meshes.length, usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT }));
 
         // 
-        const geometryBuffer = memoryAllocatorObj.allocateMemory({ isHost: true, isBAR: reBAREnabled, isDevice: reBAREnabled }, deviceObj.createBuffer({ 
+        const geometryBuffer = memoryAllocatorObj.allocateMemory({ isHost: true, isDevice: reBAREnabled }, deviceObj.createBuffer({ 
             size: rawData.meshes.reduce((acc, M)=>{ return acc + M.primitives.length; }, 0) * nrGeometry.byteLength, 
             usage: V.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
         }));
@@ -422,7 +422,7 @@ class GltfLoaderObj extends B.BasicObj {
         });
 
         // TODO: decide, what is BAR or/and Device memory
-        const nodeBuffer = memoryAllocatorObj.allocateMemory({ isHost: true, isBAR: reBAREnabled, isDevice: reBAREnabled }, deviceObj.createBuffer({ size: nrNode.byteLength * nodeData.length }));
+        const nodeBuffer = memoryAllocatorObj.allocateMemory({ isHost: true, isDevice: reBAREnabled }, deviceObj.createBuffer({ size: nrNode.byteLength * nodeData.length }));
         const nodeBufferGPU = reBAREnabled ? nodeBuffer : memoryAllocatorObj.allocateMemory({ isDevice: true }, deviceObj.createBuffer({ size: nrNode.byteLength * nodeData.length }));
 
         // also, `set` offset is broken!

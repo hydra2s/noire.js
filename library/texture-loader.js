@@ -69,7 +69,7 @@ class TextureLoaderObj extends B.BasicObj {
                     const image = this;
 
                     // TODO: decide, what is BAR or/and Device memory
-                    texImage = memoryAllocatorObj.allocateMemory({ isHost: false, isBAR: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R16G16B16A16_SFLOAT, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                    texImage = memoryAllocatorObj.allocateMemory({ isHost: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R16G16B16A16_SFLOAT, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
 
                     //
                     texBuf = reBAREnabled ? texImage : memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 8 }));
@@ -100,7 +100,7 @@ class TextureLoaderObj extends B.BasicObj {
                     const image = DATA.bitmap;
 
                     // TODO: decide, what is BAR or/and Device memory
-                    texImage = memoryAllocatorObj.allocateMemory({ isHost: false, isBAR: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                    texImage = memoryAllocatorObj.allocateMemory({ isHost: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
                     componentMapping = { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A };
 
                     // 
@@ -122,7 +122,7 @@ class TextureLoaderObj extends B.BasicObj {
                 //console.log(JSON.stringify(container.dataFormatDescriptorm, null, 4));
 
                 // TODO: decide, what is BAR or/and Device memory
-                texImage = memoryAllocatorObj.allocateMemory({ isHost: false, isBAR: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth||1 }, mipLevels: container.levels.length, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                texImage = memoryAllocatorObj.allocateMemory({ isHost: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: { width: container.pixelWidth, height: container.pixelHeight, depth: container.pixelDepth||1 }, mipLevels: container.levels.length, arrayLayers: container.layerCount, format: container.vkFormat, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
                 subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: container.levels.length || 1, baseArrayLayer: 0, layerCount: container.layerCount||1 };
 
                 // TODO: all mip levels support
@@ -140,7 +140,7 @@ class TextureLoaderObj extends B.BasicObj {
                     new PNG({}).parse(buffer, function (error, image) {
 
                         // TODO: decide, what is BAR or/and Device memory
-                        texImage = memoryAllocatorObj.allocateMemory({ isHost: false, isBAR: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                        texImage = memoryAllocatorObj.allocateMemory({ isHost: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
                         componentMapping = { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A };
 
                         //

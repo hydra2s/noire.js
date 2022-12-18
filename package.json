@@ -25,16 +25,12 @@
   "homepage": "https://github.com/hydra2s/noire.js#readme",
   "type": "module",
   "dependencies": {
-    "@flatten-js/interval-tree": "^1.0.19",
     "@petamoriken/float16": "^3.6.6",
-    "bmp-js": "^0.1.0",
     "gl-matrix": "^3.4.3",
-    "gm": "^1.25.0",
     "hdr": "^0.6.1",
-    "jimp": "^0.16.2",
     "jsox": "^1.2.116",
     "ktx-parse": "^0.4.5",
     "node-interval-tree": "^2.1.1",
-    "pngjs": "^6.0.0"
+    "sharp": "^0.31.2"
   }
 }

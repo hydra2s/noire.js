@@ -124,14 +124,11 @@ class GltfLoaderObj extends B.BasicObj {
         return parsedData;
     }
 
-    // TODO! Support for Resizable BAR!
-    // Loading should become up to 20% faster!
-    // With direct mapping also should to be more faster (up to 10%).
     // TODO! Also, planned multi-threading support (by workers with shared data, and different queues)
-    // With MT performance should to increase up to 10-20% additionally.
+    // With MT upload performance should to increase up to 10-20% additionally.
     async parse(gltf, relative) {
         const reBAREnabled = true;
-        
+
         //
         const rawData = JSON.parse(gltf);
         const deviceObj = B.Handles[this.base[0]];
@@ -223,7 +220,7 @@ class GltfLoaderObj extends B.BasicObj {
         const materials = []; //
         const geometries = [];
 
-        //
+        // most bad performance (bottleneck)
         await Promise.all(rawData.images.map(async (I, L)=>{
             textureDescIndices[L] = await this.load(I.uri, relative);
         }));

@@ -1,13 +1,14 @@
 import { default as B } from "./basic.js";
 import { default as V } from "../deps/vulkan.node.js/index.js";
-import { default as bmp } from "bmp-js";
-import { default as gm } from "gm";
 import path from 'path';
 import fs from 'fs';
 import { read, write } from 'ktx-parse';
+
+//
 import { default as HDR } from 'hdr';
-import { PNG } from 'pngjs';
-import { default as Jimp } from 'jimp';
+
+// best performance
+import { default as sharp } from 'sharp';
 
 //
 import {
@@ -17,7 +18,7 @@ import {
 } from "@petamoriken/float16";
 
 //
-const gmi = gm.subClass({imageMagick: true});
+//const gmi = gm.subClass({imageMagick: true});
 
 //
 const XYZtoRGB = ([X, Y, Z]) => {
@@ -36,19 +37,24 @@ class TextureLoaderObj extends B.BasicObj {
         this.hdrloader = new HDR.loader();
     }
 
-    // TODO! Support for Resizable BAR!
-    // Loading should become up to 20% faster!
-    // With direct mapping also should to be more faster (up to 10%).
+    // Resizable BAR for textures was failed
     // TODO! Also, planned multi-threading support (by workers with shared data, and different queues)
-    // With MT performance should to increase up to 10-20% additionally.
+    // With MT upload performance should to increase up to 10-20% additionally.
+    // TODO! Native Linear or sRGB support, without in-shader conversion...
     async load(file, relative = "./") {
         // for textures re-bar isn't available
         const reBAREnabled = false;
 
+        // uploading may to be faster
+        const reBARUpstream = true;
+
+        //
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
         const memoryAllocatorObj = B.Handles[this.cInfo.memoryAllocator[0] || this.cInfo.memoryAllocator];
         const ext = path.extname(file);
+
+        //
         let parsedData = null;
 
         //
@@ -63,6 +69,8 @@ class TextureLoaderObj extends B.BasicObj {
         let status = 0;
         const self = this;
         switch(ext) {
+
+            // Very bad performance, not recommended...
             case ".hdr":
             status = await new Promise(async (r,rj)=>{
                 fs.createReadStream(relative + file).pipe(this.hdrloader.on('load', async function() {
@@ -72,7 +80,7 @@ class TextureLoaderObj extends B.BasicObj {
                     texImage = memoryAllocatorObj.allocateMemory({ isHost: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R16G16B16A16_SFLOAT, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
 
                     //
-                    texBuf = reBAREnabled ? texImage : memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 8 }));
+                    texBuf = reBAREnabled ? texImage : memoryAllocatorObj.allocateMemory({ isHost: true, isDevice: reBARUpstream }, deviceObj.createBuffer({ size: image.width * image.height * 8 }));
 
                     // covnert into fp16 + RGB from XYZ
                     const fp16data = new Uint16Array(image.width*image.height*4); const fp16address = texBuf.map().address();
@@ -92,28 +100,7 @@ class TextureLoaderObj extends B.BasicObj {
             });
             break;
 
-            case ".bmp":
-            case ".jpg":
-            case ".png": 
-            status = await new Promise(async (r,rj)=>{
-                Jimp.read(relative + file, (err, DATA)=>{
-                    const image = DATA.bitmap;
-
-                    // TODO: decide, what is BAR or/and Device memory
-                    texImage = memoryAllocatorObj.allocateMemory({ isHost: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
-                    componentMapping = { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A };
-
-                    // 
-                    texBuf = reBAREnabled ? texImage : memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 4 }));
-                    texBuf.map().set(image.data);
-                    texBuf.unmap();
-                    
-                    //
-                    r(1);
-                });
-            });
-            break;
-            
+            // most preferred
             case ".ktx2":
             case ".ktx":
             status = await new Promise(async(r,rj)=>{
@@ -126,31 +113,31 @@ class TextureLoaderObj extends B.BasicObj {
                 subresource = { aspectMask: V.VK_IMAGE_ASPECT_COLOR_BIT, baseMipLevel: 0, levelCount: container.levels.length || 1, baseArrayLayer: 0, layerCount: container.layerCount||1 };
 
                 // TODO: all mip levels support
-                texBuf = reBAREnabled ? texImage : memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: container.levels[0].uncompressedByteLength }));
-                texBuf.map().set(container.levels[0].levelData);
+                texBuf = reBAREnabled ? texImage : memoryAllocatorObj.allocateMemory({ isHost: true, isDevice: reBARUpstream }, deviceObj.createBuffer({ size: container.levels[0].uncompressedByteLength }));
+                V.memcpy(texBuf.map().address(), container.levels[0].levelData.address(), container.levels[0].levelData.byteLength);
                 texBuf.unmap();
 
                 r(1);
             });
             break;
 
+            // determination!
             default:
-                status = await new Promise(async(r,rj)=>{
-                gmi(relative + file).quality(0).toBuffer('PNG', async (err, buffer) => {
-                    new PNG({}).parse(buffer, function (error, image) {
+            status = await new Promise(async(r,rj)=>{
+                const { data, info } = await sharp(relative + file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+                {
+                    // TODO: decide, what is BAR or/and Device memory
+                    texImage = memoryAllocatorObj.allocateMemory({ isHost: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: info.width, height: info.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
+                    componentMapping = { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A };
 
-                        // TODO: decide, what is BAR or/and Device memory
-                        texImage = memoryAllocatorObj.allocateMemory({ isHost: reBAREnabled, isDevice: true }, deviceObj.createImage({ extent: {width: image.width, height: image.height, depth: 1}, format: V.VK_FORMAT_R8G8B8A8_UNORM, usage: V.VK_IMAGE_USAGE_SAMPLED_BIT }));
-                        componentMapping = { x: V.VK_COMPONENT_SWIZZLE_R, g: V.VK_COMPONENT_SWIZZLE_G, b: V.VK_COMPONENT_SWIZZLE_B, a: V.VK_COMPONENT_SWIZZLE_A };
+                    //
+                    texBuf = reBAREnabled ? texImage : memoryAllocatorObj.allocateMemory({ isHost: true, isDevice: reBARUpstream }, deviceObj.createBuffer({ size: info.width * info.height * 4 }));
+                    V.memcpy(texBuf.map().address(), data.address(), data.byteLength);
+                    texBuf.unmap();
 
-                        //
-                        texBuf = reBAREnabled ? texImage : memoryAllocatorObj.allocateMemory({ isHost: true }, deviceObj.createBuffer({ size: image.width * image.height * 4 }));
-                        texBuf.map().set(image.data);
-                        texBuf.unmap();
-
-                        r(1);
-                    });
-                })
+                    //
+                    r(1);
+                }
             });
             break;
         }

@@ -224,7 +224,8 @@ class ImageSetObj extends B.BasicObj {
     }
 };
 
-//
+// TODO: update draw and render framebuffer object
+// TODO: needs refactor such system
 class FramebufferObj extends B.BasicObj {
     constructor(base, cInfo){
         super(base, null); this.cInfo = cInfo;

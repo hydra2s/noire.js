@@ -69,7 +69,8 @@ const createTypedBuffer = (physicalDevice, device, usage, byteSize, PTR = null) 
     //
     const propertyFlag = PTR == "BAR" ? (V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) : (PTR ? (
         V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-        V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+        V.VK_MEMORY_PROPERTY_HOST_CACHED_BIT
     ) : V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     //
@@ -78,10 +79,24 @@ const createTypedBuffer = (physicalDevice, device, usage, byteSize, PTR = null) 
     });
 
     //
+    let memoryTypeIndex = getMemoryTypeIndex(physicalDevice, memoryRequirements.memoryTypeBits, propertyFlag, 0, memoryRequirements.size);
+
+    // host memory fallback (but FPS will drop), especially due for budget end
+    if (PTR == "BAR" && memoryTypeIndex < 0) { 
+        memoryTypeIndex = getMemoryTypeIndex(physicalDevice, memoryRequirements.memoryTypeBits, 
+            V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+            V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+            V.VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+            0,
+            memoryRequirements.size
+        );
+    };
+
+    //
     const memAllocInfo = new V.VkMemoryAllocateInfo({
         pNext: memAllocFlags,
         allocationSize: memoryRequirements.size,
-        memoryTypeIndex: getMemoryTypeIndex(physicalDevice, memoryRequirements.memoryTypeBits, propertyFlag, 0, memoryRequirements.size)
+        memoryTypeIndex
     });
 
     //
@@ -97,6 +112,7 @@ const createTypedBuffer = (physicalDevice, device, usage, byteSize, PTR = null) 
         V.vkUnmapMemory(device, bufferMemory[0]);
     }
 
+    //
     return buffer[0];
 }
 

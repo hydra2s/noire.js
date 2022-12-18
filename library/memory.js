@@ -68,11 +68,17 @@ class DeviceMemoryObj extends B.BasicObj {
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
 
         //
-        const propertyFlag = cInfo.isBAR ? (V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT|V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) : (cInfo.isHost ? (
+        const propertyFlag = cInfo.isBAR ? (
+            V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|
+            V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT|
+            V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        ) : (cInfo.isHost ? 
+        (
             V.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
             V.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
             V.VK_MEMORY_PROPERTY_HOST_CACHED_BIT
-        ) : V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        ) : 
+        V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
         //
         let memoryTypeIndex = B.getMemoryTypeIndex(physicalDeviceObj.handle[0], cInfo.memoryRequirements.memoryTypeBits, propertyFlag, cInfo.isHost ? V.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0, cInfo.memoryRequirements.size);

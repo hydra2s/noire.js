@@ -446,13 +446,13 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         postfactObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [1, 3, 7]);
 
-        // TOO IMPACTFUL TO FPS!
-        //filterObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
-        //imageSetObj.cmdSwapstageId(cmdBuf, [7]);
-
         //
         SSGIObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
         imageSetObj.cmdSwapstageId(cmdBuf, [3, 7]);
+
+        // TOO IMPACTFUL TO FPS!
+        //filterObj.cmdDispatch(cmdBuf, Math.ceil( frameSize[0]/32), Math.ceil( frameSize[1]/6), 1);
+        //imageSetObj.cmdSwapstageId(cmdBuf, [7]);        
 
         // Render To Swapchain!
         pipelineObj.cmdDispatch(cmdBuf, Math.ceil(windowSize[0]/32), Math.ceil(windowSize[1]/6), 1, new Uint32Array([swapchainObj.getStorageDescId(imageIndex)]));

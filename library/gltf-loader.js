@@ -99,7 +99,7 @@ class GltfLoaderObj extends B.BasicObj {
         let parsedData = null;
 
         //
-        this.textureLoader = new B.TextureLoaderObj(this.base, this.cInfo);
+        this.textureLoader = new L.TextureLoaderObj(this.base, this.cInfo);
 
         //
         switch(ext) {
@@ -132,7 +132,7 @@ class GltfLoaderObj extends B.BasicObj {
         const reBAREnabled = true;
 
         //
-        const rawData = JSON.parse(gltf);
+        const rawData = JSOX.parse(gltf);
         const deviceObj = B.Handles[this.base[0]];
         const physicalDeviceObj = B.Handles[deviceObj.base[0]];
         const memoryAllocatorObj = B.Handles[this.cInfo.memoryAllocator[0] || this.cInfo.memoryAllocator];

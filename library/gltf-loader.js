@@ -490,7 +490,7 @@ class GltfLoaderObj extends B.BasicObj {
 
         // TODO: remove host buffers when No Resiable BAR enabled (`texBuf`)
         promised.then(async (status)=>{
-            const fn = fence[0]; fence[0] = 0n; V.vkDestroyFence(deviceObj.handle[0], fence[0], null);
+            V.vkDestroyFence(deviceObj.handle[0], B.exchange(fence, 0n), null);
         });
 
         //

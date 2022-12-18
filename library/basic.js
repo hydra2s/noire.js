@@ -158,6 +158,11 @@ const checkFence = (fence) => {
 }
 
 //
+const exchange = (arr, val, I = 0) => {
+    const old = arr[I]; arr[I] = val; return old;
+}
+
+//
 const awaitFenceGen = async function*(device, fence) {
     let status = V.VK_NOT_READY;
     let fenceX = checkFence(fence);
@@ -219,5 +224,6 @@ export default {
     createVertexBuffer,
     createInstanceBuffer,
     getBufferDeviceAddress,
-    getAcceelerationStructureAddress
+    getAcceelerationStructureAddress,
+    exchange
 };

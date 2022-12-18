@@ -558,7 +558,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
         // await fence before rendering (and poll events)
         //await awaitFenceAsync(device[0], fence[imageIndex[0]]);
         for await (let R of K.awaitFenceGen(deviceObj.handle[0], fenceI[imageIndex])) { yield R; };
-        const fn = fenceI[imageIndex]; fenceI[imageIndex] = 0n; V.vkDestroyFence(deviceObj.handle[0], fenceI[imageIndex], null);
+        V.vkDestroyFence(deviceObj.handle[0], B.exchange(fenceI, 0n, imageIndex), null);
 
         //
         const previousTime = thisLoop;
@@ -596,6 +596,7 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
             manualFence: true
         });
 
+        // TODO: new vulkan extension support
         // TODO: dedicated semaphores support
         swapchainObj.present({ queue: deviceObj.getQueue(0, 0) });
 

@@ -234,9 +234,9 @@ class DeviceObj extends B.BasicObj {
             if (result != V.VK_NOT_READY) {
                 const index = this.waitingProcesses.indexOf(deallocProcess);
                 if (index >= 0) this.waitingProcesses.splice(index, 1);
-            };
+            }
             if (!manualFence && fence[0]) {
-                const fn = fence[0]; fence[0] = 0n; V.vkDestroyFence(this.handle[0], fn, null);
+                V.vkDestroyFence(this.handle[0], B.exchange(fence, 0n), null);
             }
         };
         this.waitingProcesses.push(deallocProcess);
@@ -276,10 +276,10 @@ class DeviceObj extends B.BasicObj {
                 V.vkFreeCommandBuffers(this.handle[0], this.queueFamilies[queueFamilyIndex].cmdPool, cmdBuf.length, cmdBuf);
                 const index = this.waitingProcesses.indexOf(deallocProcess);
                 if (index >= 0) this.waitingProcesses.splice(index, 1); 
-            };
+            }
             if (!manualFence && fence[0]) {
                 // BROKEN!
-                const fn = fence[0]; fence[0] = 0n; V.vkDestroyFence(this.handle[0], fn, null);
+                V.vkDestroyFence(this.handle[0], B.exchange(fence, 0n), null);
             }
         };
         this.waitingProcesses.push(deallocProcess);

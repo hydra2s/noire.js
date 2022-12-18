@@ -127,6 +127,8 @@ class GltfLoaderObj extends B.BasicObj {
     // TODO! Also, planned multi-threading support (by workers with shared data, and different queues)
     // With MT upload performance should to increase up to 10-20% additionally.
     async parse(gltf, relative) {
+
+        // up to 10-20% faster loading, less memory consumption (in-host)
         const reBAREnabled = true;
 
         //
@@ -428,7 +430,9 @@ class GltfLoaderObj extends B.BasicObj {
         nodeBuffer.unmap();
 
         // commit mesh buffers
-        const loadingFence = B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
+        // TODO: add semaphore per threads
+        const fence = deviceObj.submitOnce({
+            manualFence: true,
             queueFamilyIndex: 0,
             queueIndex: 0,
             cmdBufFn: async (cmdBuf)=>{
@@ -479,10 +483,15 @@ class GltfLoaderObj extends B.BasicObj {
                 }]);
 
             }
-        }));
+        });
 
-        //console.log("parsed!");
+        //
+        const promised = B.awaitFenceAsync(deviceObj.handle[0], fence);
+
         // TODO: remove host buffers when No Resiable BAR enabled (`texBuf`)
+        promised.then(async (status)=>{
+            const fn = fence[0]; fence[0] = 0n; V.vkDestroyFence(deviceObj.handle[0], fence[0], null);
+        });
 
         //
         return {

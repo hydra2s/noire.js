@@ -46,7 +46,7 @@ const createShaderModuleInfo = (module, stage, pName = "main")=>{
     });
 }
 
-
+// DEPRECATED!
 // TODO: replace by general based buffers
 const createTypedBuffer = (physicalDevice, device, usage, byteSize, PTR = null) => {
     //
@@ -151,20 +151,26 @@ const getAcceelerationStructureAddress = (device, accelerationStructure, byteLen
 
 //
 const awaitTick = ()=> new Promise(setImmediate);
-const awaitFenceGen = async function*(device, fence) {
-    let status = V.VK_NOT_READY;
-    do {
-        await awaitTick(); yield status;
-        if (status == V.VK_ERROR_DEVICE_LOST) { throw Error("Vulkan Device Lost"); break; };
-        if (status != V.VK_NOT_READY) break;
-    } while((status = V.vkGetFenceStatus(device[0]||device, fence[0]||fence)) != V.VK_SUCCESS);
-    return status;
-}
 
+//
 const checkFence = (fence) => {
     return (fence && (Array.isArray(fence) || fence[0])) ? BigInt(fence[0]) : BigInt(fence || 0n);
 }
 
+//
+const awaitFenceGen = async function*(device, fence) {
+    let status = V.VK_NOT_READY;
+    let fenceX = checkFence(fence);
+    do {
+        await awaitTick(); yield status;
+        if (status == V.VK_ERROR_DEVICE_LOST) { throw Error("Vulkan Device Lost"); break; };
+        if (status != V.VK_NOT_READY) break;
+        if (!(fenceX = checkFence(fence))) break;
+    } while((status = V.vkGetFenceStatus(device[0]||device, checkFence(fence))) == V.VK_NOT_READY);
+    return status;
+}
+
+//
 const awaitFenceAsync = async (device, fence) => {
     let status = V.VK_NOT_READY;
     let fenceX = checkFence(fence);
@@ -173,7 +179,7 @@ const awaitFenceAsync = async (device, fence) => {
         if (status == V.VK_ERROR_DEVICE_LOST) { throw Error("Vulkan Device Lost"); break; };
         if (status != V.VK_NOT_READY) break;
         if (!(fenceX = checkFence(fence))) break;
-    } while((status = V.vkGetFenceStatus(device[0]||device, fenceX)) != V.VK_SUCCESS);
+    } while((status = V.vkGetFenceStatus(device[0]||device, checkFence(fence))) == V.VK_NOT_READY);
     return status;
 }
 

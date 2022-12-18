@@ -554,12 +554,11 @@ Object.defineProperty(Array.prototype, 'chunk', {value: function(n) {
 
         // TODO: use host memory for synchronize
         // use mapped memory
-        
 
         // await fence before rendering (and poll events)
         //await awaitFenceAsync(device[0], fence[imageIndex[0]]);
         for await (let R of K.awaitFenceGen(deviceObj.handle[0], fenceI[imageIndex])) { yield R; };
-        V.vkDestroyFence(deviceObj.handle[0], fenceI[imageIndex], null); // promise to manually broke fence
+        const fn = fenceI[imageIndex]; fenceI[imageIndex] = 0n; V.vkDestroyFence(deviceObj.handle[0], fenceI[imageIndex], null);
 
         //
         const previousTime = thisLoop;

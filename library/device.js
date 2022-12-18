@@ -236,7 +236,7 @@ class DeviceObj extends B.BasicObj {
                 if (index >= 0) this.waitingProcesses.splice(index, 1);
             };
             if (!manualFence && fence[0]) {
-                V.vkDestroyFence(this.handle[0], fence[0], null); fence[0] = 0n;
+                const fn = fence[0]; fence[0] = 0n; V.vkDestroyFence(this.handle[0], fn, null);
             }
         };
         this.waitingProcesses.push(deallocProcess);
@@ -279,7 +279,7 @@ class DeviceObj extends B.BasicObj {
             };
             if (!manualFence && fence[0]) {
                 // BROKEN!
-                V.vkDestroyFence(this.handle[0], fence[0], null); fence[0] = 0n;
+                const fn = fence[0]; fence[0] = 0n; V.vkDestroyFence(this.handle[0], fn, null);
             }
         };
         this.waitingProcesses.push(deallocProcess);

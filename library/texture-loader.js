@@ -157,7 +157,9 @@ class TextureLoaderObj extends B.BasicObj {
         });
 
         //
-        const imageFence = B.awaitFenceAsync(deviceObj.handle[0], deviceObj.submitOnce({
+        // TODO: add semaphore per threads
+        const fence = deviceObj.submitOnce({
+            manualFence: true,
             queueFamilyIndex: 0,
             queueIndex: 0,
             cmdBufFn: (cmdBuf)=>{
@@ -171,9 +173,15 @@ class TextureLoaderObj extends B.BasicObj {
                     }]);
                 }
             }
-        }));
+        });
+
+        //
+        const promised = B.awaitFenceAsync(deviceObj.handle[0], fence);
 
         // TODO: remove host buffer when No Resiable BAR enabled (`texBuf`)
+        promised.then(async (status)=>{
+            const fn = fence[0]; fence[0] = 0n; V.vkDestroyFence(deviceObj.handle[0], fence[0], null);
+        });
 
         //
         parsedData = deviceObj.createImageView({

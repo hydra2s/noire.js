@@ -1,6 +1,15 @@
 {
     "glsllint.glslangValidatorArgs": {
-        ".glsl": "--client vulkan100 --target-env spirv1.6 dummy.comp",
-        "*": "--client vulkan100 --target-env spirv1.6"
+        ".glsl"             : "--client vulkan100 --target-env spirv1.6 dummy.comp",
+        "filter.comp"       : "--client vulkan100 --target-env spirv1.6 -o filter.comp.spv",
+        "final.comp"        : "--client vulkan100 --target-env spirv1.6 -o final.comp.spv",
+        "postfact.comp"     : "--client vulkan100 --target-env spirv1.6 -o postfact.comp.spv",
+        "precache.comp"     : "--client vulkan100 --target-env spirv1.6 -o precache.comp.spv",
+        "reprojection.comp" : "--client vulkan100 --target-env spirv1.6 -o reprojection.comp.spv",
+        "SSGI.comp"         : "--client vulkan100 --target-env spirv1.6 -o SSGI.comp.spv",
+        "triangle.comp"     : "--client vulkan100 --target-env spirv1.6 -o triangle.comp.spv",
+        "triangle.frag"     : "--client vulkan100 --target-env spirv1.6 -o triangle.frag.spv",
+        "triangle.vert"     : "--client vulkan100 --target-env spirv1.6 -o triangle.vert.spv",
+        "*"                 : "--client vulkan100 --target-env spirv1.6"
     }
 }

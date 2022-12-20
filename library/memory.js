@@ -16,8 +16,8 @@ class MemoryAllocatorObj extends B.BasicObj {
         if (allocationObj) {
             cInfo.memoryRequirements2 = allocationObj.memoryRequirements2;
             cInfo.memoryRequirements = allocationObj.memoryRequirements;
-            cInfo.isImage = allocationObj.isImage;
-            cInfo.isBuffer = allocationObj.isBuffer;
+            cInfo.isImage  = allocationObj.isImage  ? allocationObj.handle[0] : 0n;
+            cInfo.isBuffer = allocationObj.isBuffer ? allocationObj.handle[0] : 0n;
         }
 
         //
@@ -101,6 +101,10 @@ class DeviceMemoryObj extends B.BasicObj {
         //
         V.vkAllocateMemory(deviceObj.handle[0], this.allocInfo = new V.VkMemoryAllocateInfo({
             pNext: new V.VkMemoryAllocateFlagsInfo({
+                pNext: new V.VkMemoryDedicatedAllocateInfo({
+                    image : cInfo.isImage,
+                    buffer: cInfo.isBuffer
+                }),
                 flags: cInfo.isBuffer ? V.VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR : 0
             }),
             allocationSize: cInfo.memoryRequirements.size,

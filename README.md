@@ -2,6 +2,12 @@
 
 A new brand renderer, based on JS and Vulkan API.
 
+### ⚠️ Outdated! ⚠️
+
+I currently working on bit newer and bit better, bit next-gen (but de-facto, it's improved clone) renderer engine, based on Java. Such version will usable for Minecraft.
+
+⌚ Please, wait huge update of JS libraries and JS renderer. I planned to do it in 2023 year, when Java will ready to use. ⌚
+
 ### Features
 
 - 📱 Minimalism

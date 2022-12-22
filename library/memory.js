@@ -103,7 +103,7 @@ class DeviceMemoryObj extends B.BasicObj {
             pNext: new V.VkMemoryAllocateFlagsInfo({
                 pNext: new V.VkMemoryDedicatedAllocateInfo({
                     image : cInfo.isImage,
-                    buffer: cInfo.isBuffer
+                    $buffer: cInfo.isBuffer
                 }),
                 flags: cInfo.isBuffer ? V.VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR : 0
             }),

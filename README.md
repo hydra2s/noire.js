@@ -2,6 +2,8 @@
 
 A new brand renderer, based on JS and Vulkan API.
 
+### 👩‍🎤 [Java Edition!](https://github.com/hydra2s/noire.java) 👩‍🎤
+
 ### ⚠️ Outdated! ⚠️
 
 I currently working on bit newer and bit better, bit next-gen (but de-facto, it's improved clone) renderer engine, based on Java. Such version will usable for Minecraft.

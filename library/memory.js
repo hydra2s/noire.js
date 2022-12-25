@@ -345,9 +345,16 @@ class ImageObj extends AllocationObj {
 
             // TODO: support for flags
             // TODO: support for external memory allocators
+            const imageType = extent.depth > 1 ? V.VK_IMAGE_TYPE_3D : (extent.height > 1 ? V.VK_IMAGE_TYPE_2D : V.VK_IMAGE_TYPE_1D);//VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT 
+            const arrayLayers = cInfo.arrayLayers || 1;
+            
+            //
             V.vkCreateImage(this.base[0], this.pInfo = new V.VkImageCreateInfo({
-                flags: V.VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT,
-                imageType: extent.depth > 1 ? V.VK_IMAGE_TYPE_3D : (extent.height > 1 ? V.VK_IMAGE_TYPE_2D : V.VK_IMAGE_TYPE_1D),
+                flags: 
+                    V.VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT | 
+                    (((imageType == V.VK_IMAGE_TYPE_3D)) ? V.VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT : 0) | 
+                    (((arrayLayers % 6) == 0 && extent.height == extent.width) ? V.VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0),
+                imageType,
                 format: cInfo.format,
                 extent: extent,
                 mipLevels: cInfo.mipLevels || 1,

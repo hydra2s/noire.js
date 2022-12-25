@@ -19,9 +19,8 @@ I currently working on bit newer and bit better, bit next-gen (but de-facto, it'
 
 ## Projects
 
-### 📀 [vk-utils](https://github.com/hydra2s/vk-utils), our helpers for Vulkan API development 
 ### 🥀 [about](https://github.com/hydra2s-info/about), our idiology
-### 🌋 [CopperRT](https://github.com/hydra2s/CopperRT), our renderer
+### 📀 [vk-utils](https://github.com/hydra2s/vk-utils), our helpers for Vulkan API development 
 ### 🍵 [Node.JS Vulkan API](https://github.com/hydra2s/node-vulkan-api), our nodejs bindings (alike LWJGL)
 ### 🖥️ [LG-24UD58-EDID-FIX](https://github.com/hydra2s/LG-24UD58-EDID-FIX), EDID fix for our monitor
 ### 📻 [WS-Comlink](https://github.com/hydra2s/ws-comlink), our comlink JS protocol

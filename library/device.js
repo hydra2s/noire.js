@@ -44,6 +44,7 @@ class DeviceObj extends B.BasicObj {
             "VK_EXT_shader_atomic_float2",
             "VK_EXT_memory_budget",
             "VK_EXT_image_2d_view_of_3d",
+            "VK_EXT_index_type_uint8",
             "VK_VALVE_mutable_descriptor_type"
         ];
 
